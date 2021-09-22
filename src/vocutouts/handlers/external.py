@@ -44,7 +44,7 @@ async def get_index(
     logger.info("Request for application metadata")
 
     metadata = get_metadata(
-        package_name="vocutouts",
+        package_name="vo-cutouts",
         application_name=config.name,
     )
     return Index(metadata=metadata)

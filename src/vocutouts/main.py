@@ -34,8 +34,8 @@ app = FastAPI()
 # interface definition and documentation URLs under the external URL.
 _subapp = FastAPI(
     title="vo-cutouts",
-    description=metadata("vocutouts").get("Summary", ""),
-    version=metadata("vocutouts").get("Version", "0.0.0"),
+    description=metadata("vo-cutouts").get("Summary", ""),
+    version=metadata("vo-cutouts").get("Version", "0.0.0"),
 )
 _subapp.include_router(external_router)
 
