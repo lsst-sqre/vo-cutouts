@@ -1,0 +1,6 @@
+<vosi:availability xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">
+  <vosi:available>{% if availability.available %}true{% else %}false{% endif %}</vosi:available>
+  {%- if availability.note %}
+  <vosi:note>{availability.note}</vosi:note>
+  {%- endif %}
+</vosi:availability>
