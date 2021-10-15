@@ -100,12 +100,35 @@ class FrontendJobStore:
     """Stores and manipulates jobs in the database for the frontend.
 
     This is the async storage layer used by the web service frontend.  Workers
-    use the WorkerJobStore, which is synchronous.
+    use the `WorkerJobStore`, which is synchronous.
 
     Parameters
     ----------
     session : `sqlalchemy.ext.asyncio.async_scoped_session`
         The underlying database session.
+
+    Notes
+    -----
+    Timestamp handling deserves special comment.  By default, SQLAlchemy
+    databases do not store timestamp information in database rows.  It's
+    possible to use a variant data type to do so in PostgreSQL, but since
+    all database times will be in UTC, there's no need to do so.
+
+    psycopg2 silently discards the UTC timezone information when storing a
+    datetime (and apparently silently adds it when retrieving one).  However,
+    asyncpg does not do this, and attempts to store a timezone-aware datetime
+    in a database column that is not defined as holding timezone information
+    results in an error.
+
+    Best practices for Python are to make every datetime normally seen in the
+    program timezone-aware so that one is never bitten by unexpected timezone
+    variations.  Therefore, the storage layer should only expose
+    timezone-aware datetimes.
+
+    This is done by stripping the timezone from datetimes when stored in the
+    database (making the assumption that all datetimes will use UTC, which is
+    maintained by the rest of the UWS layer), and adding the UTC timezone back
+    to datetimes when retrieved from the database.
     """
 
     def __init__(self, session: async_scoped_session) -> None:
@@ -284,6 +307,7 @@ class FrontendJobStore:
         destruction : `datetime.datetime`
             The new destruction time.
         """
+        destruction = destruction.replace(tzinfo=None)
         async with self._session.begin():
             job = await self._get_job(job_id)
             job.destruction_time = destruction

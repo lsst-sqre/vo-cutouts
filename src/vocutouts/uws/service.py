@@ -33,7 +33,11 @@ class JobService:
     ----------
     config : `vocutouts.uws.config.UWSConfig`
         The UWS configuration.
-    tasks : `vocutouts.uws.tasks.UWSTaskManager`
+    actor : `dramatiq.Actor`
+        The actor to invoke to execute a job.
+    policy : `vocutouts.uws.policy.UWSPolicy`
+        The policy layer for validating parameters, destruction times, and
+        execution durations.
     storage : `vocutouts.uws.storage.JobStore`
         The underlying storage for job metadata and result tracking.
     """
@@ -285,7 +289,6 @@ class JobService:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         destruction = self._policy.validate_destruction(destruction, job)
         if destruction != job.destruction_time:
-            destruction = destruction.replace(tzinfo=None)
             await self._storage.update_destruction(job_id, destruction)
 
     async def update_execution_duration(
