@@ -26,8 +26,8 @@ apt-get update
 # Install security updates:
 apt-get -y upgrade
 
-# Example of installing a new package, without unnecessary packages:
-apt-get -y install --no-install-recommends git
+# git is required by setuptools-scm.  libpq-dev is required by psycopg2.
+apt-get -y install --no-install-recommends git libpq-dev
 
 # Delete cached files we don't need anymore:
 apt-get clean
