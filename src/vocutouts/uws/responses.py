@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi.templating import Jinja2Templates
+
+from .utils import isodatetime
 
 if TYPE_CHECKING:
     from typing import List
@@ -18,15 +19,10 @@ if TYPE_CHECKING:
 __all__ = ["UWSTemplates"]
 
 
-def _isodatetime_filter(date: datetime) -> str:
-    """Format a datetime according to the requirements of IVOA standards."""
-    return date.strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
 _templates = Jinja2Templates(
     directory=str(Path(__file__).parent / "templates")
 )
-_templates.env.filters["isodatetime"] = _isodatetime_filter
+_templates.env.filters["isodatetime"] = isodatetime
 
 
 class UWSTemplates:

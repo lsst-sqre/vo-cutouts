@@ -16,6 +16,7 @@ from ..dependencies.auth import auth_dependency
 from .dependencies import UWSFactory, uws_dependency, uws_params_dependency
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
 from .models import ExecutionPhase, JobParameter
+from .utils import isodatetime
 
 __all__ = ["uws_router"]
 
@@ -172,7 +173,7 @@ async def get_job_destruction(
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
-    return job.destruction_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    return isodatetime(job.destruction_time)
 
 
 @uws_router.post(
@@ -384,7 +385,7 @@ async def get_job_quote(
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
     if job.quote:
-        return job.quote.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return isodatetime(job.quote)
     else:
         return ""
 

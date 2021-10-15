@@ -12,7 +12,7 @@ from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.tasks import uws_worker
-from vocutouts.uws.utils import isodate
+from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
     from typing import List
@@ -110,10 +110,10 @@ async def test_temporary_error(
         )
         assert r.status_code == 200
         assert r.text == ERRORED_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.end_time),
-            isodate(job.destruction_time),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.end_time),
+            isodatetime(job.destruction_time),
             "transient",
             "false",
             "Something failed",
@@ -172,10 +172,10 @@ async def test_fatal_error(
         )
         assert r.status_code == 200
         assert r.text == ERRORED_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.end_time),
-            isodate(job.destruction_time),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.end_time),
+            isodatetime(job.destruction_time),
             "fatal",
             "true",
             "Whoops",
@@ -236,10 +236,10 @@ async def test_unknown_error(
         )
         assert r.status_code == 200
         assert r.text == ERRORED_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.end_time),
-            isodate(job.destruction_time),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.end_time),
+            isodatetime(job.destruction_time),
             "transient",
             "true",
             "Unknown error executing task",

@@ -16,7 +16,7 @@ from tests.support.uws import uws_broker, wait_for_job
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.models import JobParameter, JobResult
 from vocutouts.uws.tasks import uws_worker
-from vocutouts.uws.utils import isodate
+from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
     from dramatiq import Worker
@@ -126,9 +126,9 @@ async def test_job_run(
     assert r.text == PENDING_JOB.strip().format(
         "1",
         "PENDING",
-        isodate(job.creation_time),
+        isodatetime(job.creation_time),
         "600",
-        isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
     @dramatiq.actor(broker=uws_broker)
@@ -169,9 +169,9 @@ async def test_job_run(
     assert r.text == PENDING_JOB.strip().format(
         "1",
         "QUEUED",
-        isodate(job.creation_time),
+        isodatetime(job.creation_time),
         "600",
-        isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
     # Start the job worker.
@@ -189,10 +189,10 @@ async def test_job_run(
         assert r.status_code == 200
         assert r.headers["Content-Type"] == "application/xml"
         assert r.text == FINISHED_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.end_time),
-            isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.end_time),
+            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
         )
 
         # Check that the phase is now correct.
@@ -243,9 +243,9 @@ async def test_job_api(
     assert r.text == PENDING_JOB.strip().format(
         "1",
         "PENDING",
-        isodate(job.creation_time),
+        isodatetime(job.creation_time),
         "600",
-        isodate(destruction_time),
+        isodatetime(destruction_time),
     )
 
     # Check retrieving each part separately.
@@ -254,7 +254,7 @@ async def test_job_api(
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
-    assert r.text == isodate(destruction_time)
+    assert r.text == isodatetime(destruction_time)
 
     r = await client.get(
         "/jobs/1/executionduration", headers={"X-Auth-Request-User": "user"}
@@ -316,7 +316,7 @@ async def test_job_api(
     assert r.text == PENDING_JOB.strip().format(
         "1",
         "PENDING",
-        isodate(job.creation_time),
+        isodatetime(job.creation_time),
         "1200",
         "2021-09-10T10:01:02Z",
     )
@@ -342,9 +342,9 @@ async def test_job_api(
     assert r.text == PENDING_JOB.strip().format(
         "2",
         "PENDING",
-        isodate(job.creation_time),
+        isodatetime(job.creation_time),
         "600",
-        isodate(job.destruction_time),
+        isodatetime(job.destruction_time),
     )
     r = await client.post(
         "/jobs/2",

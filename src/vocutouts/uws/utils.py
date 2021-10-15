@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
-def isodate(timestamp: datetime) -> str:
+def isodatetime(timestamp: datetime) -> str:
     """Format a timestamp in UTC in the expected UWS ISO date format."""
     assert timestamp.tzinfo in (None, timezone.utc)
     return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")

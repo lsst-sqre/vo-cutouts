@@ -14,7 +14,7 @@ from sqlalchemy import update
 
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.schema import Job as SQLJob
-from vocutouts.uws.utils import isodate
+from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -130,7 +130,7 @@ async def test_job_list(
     r = await client.get("/jobs", headers={"X-Auth-Request-User": "user"})
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
-    creation_times = [isodate(j.creation_time) for j in jobs]
+    creation_times = [isodatetime(j.creation_time) for j in jobs]
     creation_times.reverse()
     expected = FULL_JOB_LIST.strip().format(*creation_times)
     assert r.text == expected
@@ -140,7 +140,7 @@ async def test_job_list(
     r = await client.get(
         "/jobs",
         headers={"X-Auth-Request-User": "user"},
-        params={"after": isodate(threshold)},
+        params={"after": isodatetime(threshold)},
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
@@ -151,13 +151,13 @@ async def test_job_list(
     r = await client.get(
         "/jobs",
         headers={"X-Auth-Request-User": "user"},
-        params={"AFTER": isodate(threshold)},
+        params={"AFTER": isodatetime(threshold)},
     )
     assert r.text == result
     r = await client.get(
         "/jobs",
         headers={"X-Auth-Request-User": "user"},
-        params={"aFTer": isodate(threshold)},
+        params={"aFTer": isodatetime(threshold)},
     )
     assert r.text == result
 

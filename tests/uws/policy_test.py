@@ -11,7 +11,7 @@ from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.exceptions import ParameterError
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.policy import UWSPolicy
-from vocutouts.uws.utils import isodate
+from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
     from typing import List
@@ -70,7 +70,7 @@ async def test_policy(client: AsyncClient, uws_factory: UWSFactory) -> None:
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
-        data={"desTRUcTiON": isodate(destruction)},
+        data={"desTRUcTiON": isodatetime(destruction)},
     )
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/jobs/1"
@@ -78,13 +78,13 @@ async def test_policy(client: AsyncClient, uws_factory: UWSFactory) -> None:
         "/jobs/1/destruction", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 200
-    assert r.text == isodate(destruction)
+    assert r.text == isodatetime(destruction)
     destruction = datetime.now(tz=timezone.utc) + timedelta(days=5)
     expected = datetime.now(tz=timezone.utc) + timedelta(days=1)
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
-        data={"destruction": isodate(destruction)},
+        data={"destruction": isodatetime(destruction)},
     )
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/jobs/1"

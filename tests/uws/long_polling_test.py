@@ -13,7 +13,7 @@ from tests.support.uws import uws_broker
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.models import JobParameter, JobResult
 from vocutouts.uws.tasks import uws_worker
-from vocutouts.uws.utils import isodate
+from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
     from typing import List
@@ -121,8 +121,8 @@ async def test_poll(
     assert r.status_code == 200
     assert r.text == PENDING_JOB.strip().format(
         "PENDING",
-        isodate(job.creation_time),
-        isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+        isodatetime(job.creation_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
     # Change the job to be one that waits for a couple of seconds and then
@@ -150,8 +150,8 @@ async def test_poll(
     assert r.url == "https://example.com/jobs/1"
     assert r.text == PENDING_JOB.strip().format(
         "QUEUED",
-        isodate(job.creation_time),
-        isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+        isodatetime(job.creation_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
     now = datetime.now(tz=timezone.utc)
     stub_worker.start()
@@ -168,9 +168,9 @@ async def test_poll(
         job = await job_service.get("user", "1")
         assert job.start_time
         assert r.text == EXECUTING_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
         )
         r = await client.get(
             "/jobs/1",
@@ -182,10 +182,10 @@ async def test_poll(
         assert job.start_time
         assert job.end_time
         assert r.text == FINISHED_JOB.strip().format(
-            isodate(job.creation_time),
-            isodate(job.start_time),
-            isodate(job.end_time),
-            isodate(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+            isodatetime(job.creation_time),
+            isodatetime(job.start_time),
+            isodatetime(job.end_time),
+            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
         )
         assert (datetime.now(tz=timezone.utc) - now).total_seconds() >= 2
     finally:
