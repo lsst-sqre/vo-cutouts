@@ -1,4 +1,10 @@
-"""FastAPI dependencies for the UWS service."""
+"""FastAPI dependencies for the UWS service.
+
+The UWS FastAPI support is initialized by the parent application via this
+dependency's ``initialize`` method.  It then returns a `UWSFactory` on
+request to individual route handlers, which in turn can create other needed
+objects.
+"""
 
 from typing import AsyncIterator, List, Optional
 
@@ -58,7 +64,7 @@ class UWSFactory:
 
 
 class UWSDependency:
-    """Provides a UWS factory as a dependency."""
+    """Initializes UWS and provides a UWS factory as a dependency."""
 
     def __init__(self) -> None:
         self._config: Optional[UWSConfig] = None
@@ -81,6 +87,11 @@ class UWSDependency:
             logger=logger,
         )
         yield factory
+
+        # Following the recommendations in the SQLAlchemy documentation, each
+        # session is scoped to a single web request.  However, this all uses
+        # the same async_scoped_session object, so should share an underlying
+        # engine and connection pool.
         await self._session.remove()
 
     async def initialize(
@@ -103,11 +114,13 @@ class UWSDependency:
         policy : `vocutouts.uws.policy.UWSPolicy`
             The UWS policy layer.
         logger : `structlog.stdlib.BoundLogger`
-            Logger to use.
+            Logger to use during database initialization.  This is not saved;
+            subsequent invocations as a dependency will create a new logger
+            from the triggering request.
         reset_database : `bool`
             If set to `True`, drop all tables and reprovision the database.
-            Useful when running tests with an external database.  Default is
-            `False`.
+            Useful when running the test suite with an external database.
+            Default is `False`.
         """
         self._config = config
         self._actor = actor

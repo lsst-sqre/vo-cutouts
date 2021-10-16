@@ -1,4 +1,8 @@
-"""Exceptions for the Universal Worker Service."""
+"""Exceptions for the Universal Worker Service.
+
+The types of exceptions here control the error handling behavior configured in
+:py:mod:`vocutouts.uws.errors`.
+"""
 
 from __future__ import annotations
 
@@ -50,7 +54,7 @@ class TaskError(Exception):
     def to_job_error(self) -> JobError:
         """Convert to a `~vocutouts.uws.models.JobError`.
 
-        This should be overridden by child classes to provide additional
+        This may be overridden by child classes to provide additional
         information if desired, or `TaskFatalError` and `TaskTransientError`
         can be used as-is.
         """

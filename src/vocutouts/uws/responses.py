@@ -26,7 +26,10 @@ _templates.env.filters["isodatetime"] = isodatetime
 
 
 class UWSTemplates:
-    """Template responses for the UWS protocol."""
+    """Template responses for the UWS protocol.
+
+    This also includes VOSI-Availability since it was convenient to provide.
+    """
 
     def availability(
         self, request: Request, availability: Availability

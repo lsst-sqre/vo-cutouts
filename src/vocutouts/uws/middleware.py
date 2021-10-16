@@ -16,7 +16,11 @@ class CaseInsensitiveQueryMiddleware(BaseHTTPMiddleware):
     before the request is processed, allowing normal FastAPI query parsing to
     then work without regard for case.
 
-    Based on https://github.com/tiangolo/fastapi/issues/826.
+    This unfortunately doesn't handle POST, so POST routes require a much more
+    tedious workaround (see
+    `~vocutouts.uws.dependencies.uws_params_dependency`).
+
+    Based on `fastapi#826 <https://github.com/tiangolo/fastapi/issues/826>`__.
     """
 
     async def dispatch(

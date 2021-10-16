@@ -4,6 +4,16 @@ These handlers should be reusable for any IVOA service that implements UWS.
 The user of these handlers must provide an additional handler for POST at the
 root of the job list, since that handler has to specify the input parameters
 for a job, which will vary by service.
+
+Notes
+-----
+To use these handlers, include the ``uws_router`` in an appropriate FastAPI
+router, generally with a prefix matching the URL root for the async API.  For
+example:
+
+.. code-block:: python
+
+   external_router.include_router(uws_router, prefix="/jobs")
 """
 
 from datetime import datetime
@@ -50,6 +60,7 @@ async def get_job_list(
         title="Number of jobs",
         description="Return at most the given number of jobs",
     ),
+    params: List[JobParameter] = Depends(uws_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
@@ -92,17 +103,6 @@ async def get_job(
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
-    for param in params:
-        if param.parameter_id == "wait":
-            try:
-                wait = int(param.value)
-            except Exception:
-                raise ParameterError(f"Invalid wait duration {param.value}")
-        elif param.parameter_id == "phase":
-            try:
-                phase = ExecutionPhase[param.value]
-            except Exception:
-                raise ParameterError(f"Invalid phase {param.value}")
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id, wait=wait, wait_phase=phase)
     templates = uws_factory.create_templates()
@@ -147,6 +147,9 @@ async def delete_job_via_post(
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
+    # Work around the obnoxious requirement for case-insensitive parameters,
+    # which is also why the action parameter is declared as optional (but is
+    # listed to help with API documentation generation).
     saw_delete = False
     for param in params:
         if param.parameter_id != "action" or param.value != "DELETE":
@@ -156,6 +159,8 @@ async def delete_job_via_post(
             saw_delete = True
     if not saw_delete:
         raise ParameterError("No action given")
+
+    # Do the actual deletion.
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
     return request.url_for("get_job_list")
@@ -195,6 +200,7 @@ async def post_job_destruction(
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
+    # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
         if param.parameter_id != "destruction":
             msg = f"Unknown parameter {param.parameter_id}={param.value}"
@@ -207,6 +213,9 @@ async def post_job_destruction(
             raise ParameterError(f"Invalid date {param.value}")
     if not destruction:
         raise ParameterError("No new destruction time given")
+
+    # Update the destruction time.  Note that the policy layer may modify the
+    # destruction time, so the time set may not match the input.
     job_service = uws_factory.create_job_service()
     await job_service.update_destruction(user, job_id, destruction)
     return request.url_for("get_job", job_id=job_id)
@@ -268,6 +277,7 @@ async def post_job_execution_duration(
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
+    # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
         if param.parameter_id != "executionduration":
             msg = f"Unknown parameter {param.parameter_id}={param.value}"
@@ -280,6 +290,9 @@ async def post_job_execution_duration(
             raise ParameterError(f"Invalid duration {param.value}")
     if not executionduration:
         raise ParameterError("No new execution duration given")
+
+    # Update the execution duration.  Note that the policy layer may modify
+    # the execution duration, so the duration set may not match the input.
     job_service = uws_factory.create_job_service()
     await job_service.update_execution_duration(
         user, job_id, executionduration
@@ -352,6 +365,7 @@ async def post_job_phase(
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
+    # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
         if param.parameter_id != "phase":
             msg = f"Unknown parameter {param.parameter_id}={param.value}"
@@ -387,6 +401,8 @@ async def get_job_quote(
     if job.quote:
         return isodatetime(job.quote)
     else:
+        # The UWS standard says to return an empty text/plain response in this
+        # case, as weird as it might look.
         return ""
 
 

@@ -57,7 +57,6 @@ async def startup_event() -> None:
     app.add_middleware(XForwardedMiddleware)
     app.add_middleware(CaseInsensitiveQueryMiddleware)
     logger = structlog.get_logger(config.logger_name)
-    install_error_handlers(app)
     install_error_handlers(_subapp)
     await uws_dependency.initialize(
         config=config.uws_config(),

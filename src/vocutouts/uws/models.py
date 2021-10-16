@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class Availability:
-    """Availability information."""
+    """Availability information (from VOSI)."""
 
     available: bool
     """Whether the service appears to be available."""
@@ -126,7 +126,11 @@ class JobParameter:
 
 @dataclass
 class JobDescription:
-    """Brief job description used for the job list."""
+    """Brief job description used for the job list.
+
+    This is a strict subset of the fields of `Job`, but is kept separate
+    without an inheritance relationship to reflect how it's used in code.
+    """
 
     job_id: str
     """Unique identifier of the job."""
@@ -189,6 +193,9 @@ class Job:
 
     At this time, the job will be aborted if it is still running, its results
     will be deleted, and all record of the job will be discarded.
+
+    This field is optional in the UWS standard, but in this UWS implementation
+    all jobs will have a destruction time, so it is not marked as optional.
     """
 
     execution_duration: int

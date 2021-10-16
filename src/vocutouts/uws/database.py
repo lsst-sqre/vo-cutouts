@@ -185,9 +185,7 @@ async def initialize_database(
     """
     url = _build_database_url(config, is_async=True)
 
-    # Check connectivity to the database and retry if needed.  This uses a
-    # pre-ping to ensure the database is available and attempts to connect
-    # five times with a two second delay between each attempt.
+    # Try up to five times to initialize the database schema.
     for _ in range(5):
         try:
             engine = create_async_engine(url)

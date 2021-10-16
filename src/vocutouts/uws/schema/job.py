@@ -1,4 +1,10 @@
-"""The job database table."""
+"""The job database table.
+
+The details of how the relationships are defined are chosen to allow this
+schema to be used with async SQLAlchemy.  Review the SQLAlchemy asyncio
+documentation carefully before making changes.  There are a lot of surprises
+and sharp edges.
+"""
 
 from __future__ import annotations
 

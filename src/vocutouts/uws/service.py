@@ -27,7 +27,8 @@ class JobService:
 
     The goal of this layer is to encapsulate the machinery of a service that
     dispatches jobs using Dramatiq, without making assumptions about what the
-    jobs do or what outputs they may return.
+    jobs do or what outputs they may return.  Workers do not use this layer
+    and instead talk directly to the `~vocutouts.uws.storage.WorkerJobStore`.
 
     Parameters
     ----------
@@ -79,7 +80,7 @@ class JobService:
         """Create a pending job.
 
         This does not start execution of the job.  That must be done
-        separately with `queue`.
+        separately with `start`.
 
         Parameters
         ----------
@@ -132,6 +133,10 @@ class JobService:
     ) -> Job:
         """Retrieve a job.
 
+        This also supports long-polling, to implement UWS 1.1 blocking
+        behavior, and waiting for completion, to use as a building block when
+        constructing a sync API.
+
         Parameters
         ----------
         user : `str`
@@ -149,7 +154,9 @@ class JobService:
             immediately if the initial phase doesn't match this one.
         wait_for_completion : `bool`, optional
             If set to true, wait until the job completes (has a phase other
-            than ``QUEUED`` or ``EXECUTING``).
+            than ``QUEUED`` or ``EXECUTING``).  Only one of this or
+            ``wait_phase`` should be given.  Ignored if ``wait`` was not
+            given.
 
         Returns
         -------
@@ -161,6 +168,15 @@ class JobService:
         vocutouts.uws.exceptions.PermissionDeniedError
             If the job ID doesn't exist or is for a user other than the
             provided user.
+
+        Notes
+        -----
+        ``wait`` and related parameters are relatively inefficient since they
+        poll the database using exponential backoff (starting at a 0.1s delay
+        and increasing by 1.5x).  There doesn't seem to be a better solution
+        without the added complexity of Dramatiq result storage and complex
+        use of the Dramatiq message bus.  This may need to be reconsidered if
+        it becomes a performance bottleneck.
         """
         job = await self._storage.get(job_id)
         if job.owner != user:
@@ -266,9 +282,6 @@ class JobService:
     ) -> None:
         """Update the destruction time of a job.
 
-        The caller must have already verified that the job is owned by the
-        calling user (by, for instance, calling `get`).
-
         Parameters
         ----------
         user : `str`
@@ -276,7 +289,8 @@ class JobService:
         job_id : `str`
             Identifier of the job to update.
         destruction : `datetime.datetime`
-            The new job destruction time.
+            The new job destruction time.  This may be arbitrarily modified
+            by the policy layer.
 
         Raises
         ------
@@ -296,9 +310,6 @@ class JobService:
     ) -> None:
         """Update the execution duration time of a job.
 
-        The caller must have already verified that the job is owned by the
-        calling user (by, for instance, calling `get`).
-
         Parameters
         ----------
         user : `str`
@@ -306,7 +317,8 @@ class JobService:
         job_id : `str`
             Identifier of the job to update.
         duration : `int`
-            The new job execution duration.
+            The new job execution duration.  This may be arbitrarily modified
+            by the policy layer.
 
         Raises
         ------

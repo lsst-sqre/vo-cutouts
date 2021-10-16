@@ -402,5 +402,6 @@ async def create_job(
 
 
 # Add the UWS routes to our external routes.  This must be done after defining
-# the POST handler because include_router copies rather than links.
+# the POST handler for /jobs because of oddities in the implementation details
+# of include_router.
 external_router.include_router(uws_router, prefix="/jobs")

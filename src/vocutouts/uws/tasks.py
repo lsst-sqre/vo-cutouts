@@ -1,4 +1,10 @@
-"""Task execution API."""
+"""Task execution API.
+
+The application using this framework should define a Dramatiq worker that
+calls `uws_worker`, passing in the function that does the actual work as
+the ``worker`` argument.  `uws_worker` will then handle all of the necessary
+database bookkeeping.
+"""
 
 from __future__ import annotations
 
@@ -33,6 +39,22 @@ def uws_worker(
 ) -> None:
     """Retrieve the job parameters and do the bookkeeping for the task.
 
+    Parameters
+    ----------
+    job_id : `str`
+        The identifier of the job to run.
+    config : `vocutouts.uws.config.UWSConfig`
+        Configuration for the UWS subsystem.
+    logger : `structlog.stdlib.BoundLogger`
+        Logger for any messages.
+    worker : `typing.Callable`
+        The function to call to do the actual work of the job.  It will be
+        passed the list of `~vocutouts.uws.models.JobParameter` objects and
+        the logger, and should return a list of
+        `~vocutouts.uws.models.JobResult` objects.
+
+    Notes
+    -----
     This function will run in an entirely separate process from the rest of
     the service, so will not have the FastAPI application available.  It must
     create or receive its own infrastructure objects.

@@ -45,7 +45,7 @@ def _add_tz(time: None) -> None:
 def _add_tz(time: Optional[datetime]) -> Optional[datetime]:
     """Add the UTC time zone to a naive datetime from the database."""
     if not time:
-        return time
+        return None
     return time.replace(tzinfo=timezone.utc)
 
 
@@ -212,7 +212,7 @@ class FrontendJobStore:
             await self._session.execute(stmt)
 
     async def get(self, job_id: str) -> Job:
-        """Retrieve a job by ID from the database."""
+        """Retrieve a job by ID."""
         async with self._session.begin():
             job = await self._get_job(job_id)
             return _convert_job(job)

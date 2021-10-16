@@ -19,8 +19,8 @@ class UWSConfig:
     class encapsulates the configuration of the UWS component that may vary by
     service or specific installation.  The calling application with a UWS
     component should create this config object with appropriate settings from
-    whatever source and then pass that into the `vocutouts.uws.Factory`
-    object.
+    whatever source and then pass that into the
+    `vocutouts.uws.dependencies.UWSDependency` object.
     """
 
     execution_duration: int
