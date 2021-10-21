@@ -23,7 +23,9 @@ class JobResult(Base):
     )
     result_id: str = Column(String(64), nullable=False)
     sequence: int = Column(Integer, nullable=False)
-    url: str = Column(Text, nullable=False)
+    collection: str = Column(Text, nullable=False)
+    data_id: str = Column(Text, nullable=False)  # JSON-encoded
+    datatype: str = Column(Text, nullable=False)
     size: Optional[int] = Column(Integer)
     mime_type: Optional[str] = Column(String(64))
 

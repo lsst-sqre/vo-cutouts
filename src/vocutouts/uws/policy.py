@@ -9,6 +9,8 @@ if TYPE_CHECKING:
     from datetime import datetime
     from typing import List
 
+    from dramatiq import Message
+
     from .models import Job, JobParameter
 
 __all__ = ["UWSPolicy"]
@@ -18,15 +20,34 @@ class UWSPolicy(ABC):
     """Abstract interface for the application-provided policy layer.
 
     This class encapsulates functions to make policy decisions about UWS
-    actions specific to a particular service.  Examples include validating
-    parameters when the user attempts to change them after job creation,
-    or deciding whether to accept a new execution duration or destruction
-    time.
+    actions specific to a particular service.  Examples include dispatching
+    work to a backend worker, validating parameters when the user attempts to
+    change them after job creation, or deciding whether to accept a new
+    execution duration or destruction time.
 
     Applications that use UWS should create an implementation of this abstract
     base class and then pass it into
     `~vocutouts.uws.dependencies.UWSDepencency` ``initialize`` method.
     """
+
+    @abstractmethod
+    def dispatch(self, job: Job) -> Message:
+        """Dispatch a job to a backend worker.
+
+        This method is responsible for converting UWS job parameters to the
+        appropriate arguments for a backend job and invoking it with the
+        appropriate timeout.
+
+        Parameters
+        ----------
+        job : `vocutouts.uws.models.Job`
+            The job to start.
+
+        Returns
+        -------
+        message : `dramatiq.Message`
+            The message sent to the backend worker.
+        """
 
     @abstractmethod
     def validate_destruction(

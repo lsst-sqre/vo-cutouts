@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from dramatiq import Worker
 
-from vocutouts.config import uws_broker
+from vocutouts.broker import broker
 
 if TYPE_CHECKING:
     from typing import Dict, List
@@ -55,11 +55,12 @@ COMPLETED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id" isPost="true">some-id</uws:parameter>
-    <uws:parameter id="circle" isPost="true">1 1 1</uws:parameter>
+    <uws:parameter id="id" isPost="true">some:id:value</uws:parameter>
+    <uws:parameter id="pos" isPost="true">RANGE 1 1 2 2</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/cutout/some-id"/>
+    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+ mime-type="application/fits"/>
   </uws:results>
 </uws:job>
 """
@@ -82,7 +83,7 @@ async def test_create_job(client: AsyncClient) -> None:
     assert result == PENDING_JOB.strip()
 
     # Start a worker.
-    worker = Worker(uws_broker, worker_timeout=100)
+    worker = Worker(broker, worker_timeout=100)
     worker.start()
 
     # Try again but immediately queuing the job to run.
@@ -90,7 +91,11 @@ async def test_create_job(client: AsyncClient) -> None:
         r = await client.post(
             "/cutout/jobs",
             headers={"X-Auth-Request-User": "someone"},
-            data={"ID": "some-id", "circle": "1 1 1", "runid": "some-run-id"},
+            data={
+                "ID": "some:id:value",
+                "pos": "RANGE 1 1 2 2",
+                "runid": "some-run-id",
+            },
             params={"phase": "RUN"},
         )
         assert r.status_code == 303
@@ -105,7 +110,7 @@ async def test_create_job(client: AsyncClient) -> None:
             r = await client.get(
                 "/cutout/jobs/2",
                 headers={"X-Auth-Request-User": "someone"},
-                params={"wait": 2, "phase": "EXECUTING"},
+                params={"wait": 10, "phase": "EXECUTING"},
             )
             assert r.status_code == 200
         result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
@@ -129,9 +134,9 @@ async def test_bad_parameters(client: AsyncClient) -> None:
         {"id": "foo", "polygon": "1 2 3"},
         {"id": "foo", "circle": "1 1 1", "phase": "STOP"},
         {"id": "foo", "circle": "1 1 1", "PHASE": "STOP"},
+        {"ID": "some-id", "pos": "RANGE 1 1 2 2", "phase": "RUN"},
     ]
     for params in bad_params:
-        print(params)
         r = await client.post(
             "/cutout/jobs",
             headers={"X-Auth-Request-User": "user"},

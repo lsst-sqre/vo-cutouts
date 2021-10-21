@@ -9,17 +9,14 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-import dramatiq
 import pytest
+from dramatiq import Worker
 
 from tests.support.uws import uws_broker, wait_for_job
-from vocutouts.uws.dependencies import uws_dependency
-from vocutouts.uws.models import JobParameter, JobResult
-from vocutouts.uws.tasks import uws_worker
+from vocutouts.uws.models import JobParameter
 from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
-    from dramatiq import Worker
     from httpx import AsyncClient
     from structlog.stdlib import BoundLogger
 
@@ -71,7 +68,8 @@ FINISHED_JOB = """
     <uws:parameter id="circle">1 1 1</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/cutout"/>
+    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+ mime-type="application/fits"/>
   </uws:results>
 </uws:job>
 """
@@ -96,7 +94,8 @@ JOB_RESULTS = """
     xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
     xmlns:xlink="http://www.w3.org/1999/xlink"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <uws:result id="cutout" xlink:href="https://example.com/cutout"/>
+  <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+ mime-type="application/fits"/>
 </uws:results>
 """
 
@@ -107,7 +106,6 @@ async def test_job_run(
     logger: BoundLogger,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
-    stub_worker: Worker,
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
@@ -131,13 +129,6 @@ async def test_job_run(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    @dramatiq.actor(broker=uws_broker)
-    def inline_task(job_id: str) -> None:
-        results = [
-            JobResult(result_id="cutout", url="https://example.com/cutout")
-        ]
-        uws_worker(job_id, uws_config, logger, worker=lambda p, l: results)
-
     # Try to put the job in an invalid phase.
     r = await client.post(
         "/jobs/1/phase",
@@ -157,7 +148,6 @@ async def test_job_run(
     assert r.text.startswith("AuthorizationError")
 
     # Start the job.
-    uws_dependency.override_actor(inline_task)
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
@@ -175,7 +165,8 @@ async def test_job_run(
     )
 
     # Start the job worker.
-    stub_worker.start()
+    worker = Worker(uws_broker, worker_timeout=100)
+    worker.start()
 
     # Check the job results.
     try:
@@ -217,7 +208,7 @@ async def test_job_run(
         )
         assert r.status_code == 404
     finally:
-        stub_worker.stop()
+        worker.stop()
 
 
 @pytest.mark.asyncio

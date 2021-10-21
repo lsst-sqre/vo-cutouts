@@ -21,3 +21,17 @@ psycopg2
 safir
 sqlalchemy[asyncio]
 structlog
+
+# Copied from requirements.txt for lsst.daf.butler.
+click>7.0
+httpx
+pydantic
+pyyaml>=5.1
+
+# These are required by lsst.utils
+psutil>=5.7
+
+# Not yet available on PyPI.
+git+https://github.com/lsst/daf_butler@master#egg=daf-butler
+git+https://github.com/lsst/sphgeom@tickets/DM-32256#egg=lsst_sphgeom
+git+https://github.com/lsst/utils@master#egg=lsst_utils

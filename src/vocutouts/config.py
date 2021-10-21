@@ -6,10 +6,6 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import dramatiq
-from dramatiq.brokers.redis import RedisBroker
-from dramatiq.middleware import CurrentMessage
-
 from .uws.config import UWSConfig
 
 if TYPE_CHECKING:
@@ -21,6 +17,13 @@ __all__ = ["Configuration", "config"]
 @dataclass
 class Configuration:
     """Configuration for vocutouts."""
+
+    butler_repository: str = os.getenv("CUTOUT_BUTLER_REPOSITORY", "")
+    """The Butler repository to use for results.
+
+    Set with the ``CUTOUT_BUTLER_REPOSITORY`` environment variable.  Setting
+    this is mandatory.
+    """
 
     database_url: str = os.getenv("CUTOUT_DATABASE_URL", "")
     """The URL for the UWS job database.
@@ -96,6 +99,7 @@ class Configuration:
     def uws_config(self) -> UWSConfig:
         """Convert to configuration for the UWS subsystem."""
         return UWSConfig(
+            butler_repository=self.butler_repository,
             execution_duration=self.execution_duration,
             lifetime=self.lifetime,
             database_url=self.database_url,
@@ -107,15 +111,3 @@ class Configuration:
 
 config = Configuration()
 """Configuration for vo-cutouts."""
-
-
-# Configure the Dramatiq broker.  This must be done before any code using
-# @dramatiq.actor is imported, or those tasks will be associated with a
-# RabbitMQ broker.
-uws_broker = RedisBroker(
-    host=config.redis_host, password=config.redis_password
-)
-"""Broker used by UWS."""
-
-dramatiq.set_broker(uws_broker)
-uws_broker.add_middleware(CurrentMessage())

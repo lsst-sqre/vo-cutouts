@@ -8,17 +8,17 @@ from typing import TYPE_CHECKING
 
 import dramatiq
 import pytest
+from dramatiq import Worker
+from dramatiq.middleware import CurrentMessage
 
-from tests.support.uws import uws_broker
+from tests.support.uws import TrivialPolicy, job_started, uws_broker
 from vocutouts.uws.dependencies import uws_dependency
-from vocutouts.uws.models import JobParameter, JobResult
-from vocutouts.uws.tasks import uws_worker
+from vocutouts.uws.models import JobParameter
 from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
-    from typing import List
+    from typing import Any, Dict, List
 
-    from dramatiq import Worker
     from httpx import AsyncClient
     from structlog.stdlib import BoundLogger
 
@@ -87,7 +87,8 @@ FINISHED_JOB = """
     <uws:parameter id="id">bar</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/"/>
+    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+ mime-type="application/fits"/>
   </uws:results>
 </uws:job>
 """
@@ -99,7 +100,6 @@ async def test_poll(
     logger: BoundLogger,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
-    stub_worker: Worker,
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
@@ -125,21 +125,28 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    # Change the job to be one that waits for a couple of seconds and then
-    # returns a result.
-    def worker(
-        params: List[JobParameter], logger: BoundLogger
-    ) -> List[JobResult]:
-        assert params == [JobParameter(parameter_id="id", value="bar")]
+    @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
+    def wait_job(job_id: str) -> List[Dict[str, Any]]:
+        message = CurrentMessage.get_current_message()
+        now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        job_started.send(job_id, message.message_id, now)
         time.sleep(2)
-        return [JobResult(result_id="cutout", url="https://example.com/")]
-
-    @dramatiq.actor(broker=uws_broker)
-    def task(job_id: str) -> None:
-        return uws_worker(job_id, uws_config, logger, worker)
+        return [
+            {
+                "result_id": "cutout",
+                "collection": "output/collection",
+                "data_id": {
+                    "visit": 903332,
+                    "detector": 20,
+                    "instrument": "HSC",
+                },
+                "datatype": "calexp_cutouts",
+                "mime_type": "application/fits",
+            }
+        ]
 
     # Start the job and worker.
-    uws_dependency.override_actor(task)
+    uws_dependency.override_policy(TrivialPolicy(wait_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
@@ -154,7 +161,8 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
     now = datetime.now(tz=timezone.utc)
-    stub_worker.start()
+    worker = Worker(uws_broker, worker_timeout=100)
+    worker.start()
 
     # Now, wait again.  We should get a reply after a couple of seconds when
     # the job finishes.
@@ -189,4 +197,4 @@ async def test_poll(
         )
         assert (datetime.now(tz=timezone.utc) - now).total_seconds() >= 2
     finally:
-        stub_worker.stop()
+        worker.stop()

@@ -6,6 +6,6 @@
     xmlns:xlink="http://www.w3.org/1999/xlink"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   {%- for result in job.results %}
-  <uws:result id="{{ result.result_id }}" xlink:href="{{ result.url }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
+  <uws:result id="{{ result.result_id }}" xlink:href="{{ url_for_result(result) }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
   {%- endfor %}
 </uws:results>

@@ -28,13 +28,13 @@
   {%- if job.results %}
   <uws:results>
     {%- for result in job.results %}
-    <uws:result id="{{ result.result_id }}" xlink:href="{{ result.url }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
+    <uws:result id="{{ result.result_id }}" xlink:href="{{ url_for_result(result) }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
     {%- endfor %}
   </uws:results>
   {%- endif %}
   {%- if job.error %}
   <uws:errorSummary type="{{ job.error.error_type.value }}" hasDetail="{% if job.error.detail %}true{% else %}false{% endif %}">
-    <uws:message>{{ job.error.message }}</uws:message>
+    <uws:message>{{ job.error.error_code.value }} {{ job.error.message }}</uws:message>
   </uws:errorSummary>
   {%- endif %}
 </uws:job>

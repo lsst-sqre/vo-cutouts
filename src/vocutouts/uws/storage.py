@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, overload
+from functools import wraps
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from sqlalchemy import delete
 from sqlalchemy.exc import OperationalError
@@ -28,6 +38,9 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import async_scoped_session
     from sqlalchemy.orm import scoped_session
+
+F = TypeVar("F", bound=Callable[..., Any])
+G = TypeVar("G", bound=Callable[..., Awaitable[Any]])
 
 __all__ = ["FrontendJobStore", "WorkerJobStore"]
 
@@ -59,10 +72,11 @@ def _convert_job(job: SQLJob) -> Job:
     from the database representation to the internal representation.
     """
     error = None
-    if job.error_message and job.error_type:
+    if job.error_code and job.error_type and job.error_message:
         error = JobError(
-            message=job.error_message,
             error_type=job.error_type,
+            error_code=job.error_code,
+            message=job.error_message,
             detail=job.error_detail,
         )
     return Job(
@@ -86,7 +100,9 @@ def _convert_job(job: SQLJob) -> Job:
         results=[
             JobResult(
                 result_id=r.result_id,
-                url=r.url,
+                collection=r.collection,
+                data_id=json.loads(r.data_id),
+                datatype=r.datatype,
                 size=r.size,
                 mime_type=r.mime_type,
             )
@@ -94,6 +110,39 @@ def _convert_job(job: SQLJob) -> Job:
         ],
         error=error,
     )
+
+
+def retry_async_transaction(g: G) -> G:
+    """Retry once if a transaction failed.
+
+    Notes
+    -----
+    The UWS database workers may be run out of order (the one indicating the
+    job has started may be run after the one indicating the job has finished,
+    for example), which means we need a ``REPEATABLE READ`` transaction
+    isolation level so that we can check if a job status change has already
+    been done and avoid setting a job in ``COMPLETED`` back to ``EXECUTING``.
+
+    Unfortunately, that isolation level causes the underlying database to
+    raise an exception on commit if we raced with another worker.  We
+    therefore need to retry if a transaction failed with an exception.
+
+    The only functions that can race for a given job are the frontend setting
+    the job status to ``QUEUED``, the backend setting it to ``EXECUTING``, and
+    the backend setting it to ``COMPLETED`` or ``ERROR``.  Priorities should
+    force the second to always execute before the third, so we should only
+    race with at most one other SQL transaction.  Therefore, retrying once
+    should be sufficient.
+    """
+
+    @wraps(g)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return await g(*args, **kwargs)
+        except OperationalError:
+            return await g(*args, **kwargs)
+
+    return cast(G, wrapper)
 
 
 class FrontendJobStore:
@@ -129,6 +178,11 @@ class FrontendJobStore:
     database (making the assumption that all datetimes will use UTC, which is
     maintained by the rest of the UWS layer), and adding the UTC timezone back
     to datetimes when retrieved from the database.
+
+    The ``data_id`` column of the ``job_result`` table is an arbitrary set of
+    key/value pairs.  We just store this JSON-encoded rather than bothering
+    with another database table, since the value is opaque to all database
+    operations we care about.
     """
 
     def __init__(self, session: async_scoped_session) -> None:
@@ -273,6 +327,7 @@ class FrontendJobStore:
                 for j in jobs.all()
             ]
 
+    @retry_async_transaction
     async def mark_queued(self, job_id: str, message_id: str) -> None:
         """Mark a job as queued for processing.
 
@@ -337,6 +392,39 @@ class FrontendJobStore:
         return job
 
 
+def retry_transaction(f: F) -> F:
+    """Retry once if a transaction failed.
+
+    Notes
+    -----
+    The UWS database workers may be run out of order (the one indicating the
+    job has started may be run after the one indicating the job has finished,
+    for example), which means we need a ``REPEATABLE READ`` transaction
+    isolation level so that we can check if a job status change has already
+    been done and avoid setting a job in ``COMPLETED`` back to ``EXECUTING``.
+
+    Unfortunately, that isolation level causes the underlying database to
+    raise an exception on commit if we raced with another worker.  We
+    therefore need to retry if a transaction failed with an exception.
+
+    The only functions that can race for a given job are the frontend setting
+    the job status to ``QUEUED``, the backend setting it to ``EXECUTING``, and
+    the backend setting it to ``COMPLETED`` or ``ERROR``.  Priorities should
+    force the second to always execute before the third, so we should only
+    race with at most one other SQL transaction.  Therefore, retrying once
+    should be sufficient.
+    """
+
+    @wraps(f)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return f(*args, **kwargs)
+        except OperationalError:
+            return f(*args, **kwargs)
+
+    return cast(F, wrapper)
+
+
 class WorkerJobStore:
     """Records worker actions in the database.
 
@@ -351,6 +439,7 @@ class WorkerJobStore:
     def __init__(self, session: scoped_session) -> None:
         self._session = session
 
+    @retry_transaction
     def mark_completed(self, job_id: str, results: List[JobResult]) -> None:
         """Mark a job as completed."""
         with self._session.begin():
@@ -362,12 +451,15 @@ class WorkerJobStore:
                     job_id=job.id,
                     result_id=result.result_id,
                     sequence=sequence,
-                    url=result.url,
+                    collection=result.collection,
+                    data_id=json.dumps(result.data_id),
+                    datatype=result.datatype,
                     size=result.size,
                     mime_type=result.mime_type,
                 )
                 self._session.add(sql_result)
 
+    @retry_transaction
     def mark_errored(self, job_id: str, error: JobError) -> None:
         """Mark a job as failed with an error."""
         with self._session.begin():
@@ -375,10 +467,12 @@ class WorkerJobStore:
             job.phase = ExecutionPhase.ERROR
             job.end_time = datetime.now()
             job.error_type = error.error_type
+            job.error_code = error.error_code
             job.error_message = error.message
             job.error_detail = error.detail
 
-    def start_executing(self, job_id: str, message_id: str) -> Job:
+    @retry_transaction
+    def start_executing(self, job_id: str, message_id: str) -> None:
         """Mark a job as executing.
 
         Parameters
@@ -388,18 +482,13 @@ class WorkerJobStore:
         message_id : `str`
             The identifier for the execution of that job in the work queuing
             system.
-
-        Returns
-        -------
-        job : `vocutouts.uws.models.Job`
-            The job whose execution was started.
         """
         with self._session.begin():
             job = self._get_job(job_id)
-            job.phase = ExecutionPhase.EXECUTING
+            if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
+                job.phase = ExecutionPhase.EXECUTING
             job.start_time = datetime.now()
             job.message_id = message_id
-            return _convert_job(job)
 
     def _get_job(self, job_id: str) -> SQLJob:
         """Retrieve a job from the database by job ID."""

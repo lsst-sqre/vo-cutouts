@@ -1,5 +1,16 @@
 """Utility functions for database management.
 
+Engines defined here use an isolation level of ``REPEATABLE READ`` since the
+processing order of the UWS job messages that record job status in the
+database is not well-defined.  We may act on the message for finishing the job
+before the message for starting the job, which means that the code run by
+those workers must be robust against reordering and therefore not change the
+job state back to ``EXECUTING`` when it was already set to ``COMPLETED``.
+That, in turn, means that the read of the current job state has to be
+reliable, hence ``REPEATABLE READ`` transaction isolation.
+
+Notes
+-----
 SQLAlchemy, when creating a database schema, can only know about the tables
 that have been registered via a metaclass.  This module therefore must import
 every schema to ensure that SQLAlchemy has a complete view.
@@ -99,7 +110,9 @@ async def create_async_session(
     url = _build_database_url(config, is_async=True)
     for _ in range(5):
         try:
-            engine = create_async_engine(url)
+            engine = create_async_engine(
+                url, isolation_level="REPEATABLE READ"
+            )
             session = _create_async_scoped_session(engine)
             async with session.begin():
                 await session.execute(select(Job.id).limit(1))
@@ -142,10 +155,9 @@ def create_sync_session(
         The database session proxy.
     """
     url = _build_database_url(config, is_async=False)
-    print(url)
     for _ in range(5):
         try:
-            engine = create_engine(url)
+            engine = create_engine(url, isolation_level="REPEATABLE READ")
             session_factory = sessionmaker(bind=engine)
             session = scoped_session(session_factory)
             with session.begin():

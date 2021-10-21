@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.support.uws import TrivialPolicy
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.exceptions import ParameterError
 from vocutouts.uws.models import JobParameter
-from vocutouts.uws.policy import UWSPolicy
 from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
@@ -18,11 +18,12 @@ if TYPE_CHECKING:
 
     from httpx import AsyncClient
 
+    from vocutouts.uws.config import UWSConfig
     from vocutouts.uws.dependencies import UWSFactory
     from vocutouts.uws.models import Job
 
 
-class Policy(UWSPolicy):
+class Policy(TrivialPolicy):
     def validate_destruction(
         self, destruction: datetime, job: Job
     ) -> datetime:
@@ -48,9 +49,11 @@ class Policy(UWSPolicy):
 
 
 @pytest.mark.asyncio
-async def test_policy(client: AsyncClient, uws_factory: UWSFactory) -> None:
-    uws_dependency.override_policy(Policy())
-    uws_factory._policy = Policy()
+async def test_policy(
+    client: AsyncClient, uws_factory: UWSFactory, uws_config: UWSConfig
+) -> None:
+    uws_dependency.override_policy(Policy(uws_config))
+    uws_factory._policy = Policy(uws_config)
     job_service = uws_factory.create_job_service()
 
     # Check parameter rejection.
