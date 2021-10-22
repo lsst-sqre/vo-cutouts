@@ -75,6 +75,9 @@ class UWSDependency:
     async def __call__(
         self, logger: BoundLogger = Depends(logger_dependency)
     ) -> AsyncIterator[UWSFactory]:
+        # Tell mypy that not calling initialize first is an error.  This would
+        # fail anyway without the asserts when something tried to use the None
+        # value.
         assert self._config, "UWSDependency not initialized"
         assert self._actor, "UWSDependency not initialized"
         assert self._policy, "UWSDependency not initialized"

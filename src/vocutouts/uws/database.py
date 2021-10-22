@@ -42,7 +42,7 @@ def _build_database_url(config: UWSConfig, *, is_async: bool) -> str:
     Parameters
     ----------
     config : `vocutouts.uws.UWSConfig`
-        The Gafaelfawr configuration.
+        The UWS configuration.
     is_async : `bool`
         Whether the resulting URL should be async or not.
 
@@ -87,7 +87,7 @@ async def create_async_session(
     Parameters
     ----------
     config : `vocutouts.uws.UWSConfig`
-        The Gafaelfawr configuration.
+        The UWS configuration.
     logger : `structlog.stdlib.BoundLogger`
         Logger to use.
 
@@ -132,7 +132,7 @@ def create_sync_session(
     Parameters
     ----------
     config : `vocutouts.uws.UWSConfig`
-        The Gafaelfawr configuration.
+        The UWS configuration.
     logger : `structlog.stdlib.BoundLogger`
         Logger to use.
 
@@ -175,7 +175,7 @@ async def initialize_database(
     Parameters
     ----------
     config : `vocutouts.uws.UWSConfig`
-        The Gafaelfawr configuration.
+        The UWS configuration.
     logger : `structlog.stdlib.BoundLogger`
         Logger to use.
     reset : `bool`

@@ -14,10 +14,13 @@ class CaseInsensitiveQueryMiddleware(BaseHTTPMiddleware):
     which is not supported by modern HTTP web frameworks.  This middleware
     attempts to work around this by lowercasing the query parameter keys
     before the request is processed, allowing normal FastAPI query parsing to
-    then work without regard for case.
+    then work without regard for case.  This, in turn, permits FastAPI to
+    perform input validation on GET parameters, which would otherwise only
+    happen if the case used in the request happened to match the case used in
+    the function signature.
 
-    This unfortunately doesn't handle POST, so POST routes require a much more
-    tedious workaround (see
+    This unfortunately doesn't handle POST, so routes that accept POST require
+    a much more tedious workaround (see
     `~vocutouts.uws.dependencies.uws_params_dependency`).
 
     Based on `fastapi#826 <https://github.com/tiangolo/fastapi/issues/826>`__.
