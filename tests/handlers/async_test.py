@@ -55,7 +55,7 @@ COMPLETED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">some-id</uws:parameter>
+    <uws:parameter id="id" isPost="true">some-id</uws:parameter>
     <uws:parameter id="circle" isPost="true">1 1 1</uws:parameter>
   </uws:parameters>
   <uws:results>
@@ -90,8 +90,8 @@ async def test_create_job(client: AsyncClient) -> None:
         r = await client.post(
             "/cutout/jobs",
             headers={"X-Auth-Request-User": "someone"},
-            data={"circle": "1 1 1", "runid": "some-run-id"},
-            params={"ID": "some-id", "phase": "RUN"},
+            data={"ID": "some-id", "circle": "1 1 1", "runid": "some-run-id"},
+            params={"phase": "RUN"},
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout/jobs/2"

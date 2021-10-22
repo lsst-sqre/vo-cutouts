@@ -38,16 +38,6 @@ async def test_sync(client: AsyncClient) -> None:
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout/other-id"
-
-        # Mixed request.
-        r = await client.post(
-            "/cutout/sync",
-            headers={"X-Auth-Request-User": "someone"},
-            params={"id": "mixed-id"},
-            data={"pos": "RANGE 0 360 -2 2"},
-        )
-        assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/cutout/mixed-id"
     finally:
         worker.stop()
 

@@ -23,7 +23,11 @@ from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
 
 from ..dependencies.auth import auth_dependency
-from .dependencies import UWSFactory, uws_dependency, uws_params_dependency
+from .dependencies import (
+    UWSFactory,
+    uws_dependency,
+    uws_post_params_dependency,
+)
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
 from .models import ExecutionPhase, JobParameter
 from .utils import isodatetime
@@ -60,7 +64,6 @@ async def get_job_list(
         title="Number of jobs",
         description="Return at most the given number of jobs",
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
@@ -99,7 +102,6 @@ async def get_job(
             " wait is used."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
@@ -143,7 +145,7 @@ async def delete_job_via_post(
         title="Action to perform",
         description="Mandatory, must be set to DELETE",
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
@@ -196,7 +198,7 @@ async def post_job_destruction(
         description="Must be in ISO 8601 format.",
         example="2021-09-10T10:01:02Z",
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
@@ -273,7 +275,7 @@ async def post_job_execution_duration(
         description="Integer seconds of wall clock time.",
         example=14400,
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
@@ -361,7 +363,7 @@ async def post_job_phase(
         title="Job state change",
         summary="RUN to start the job, ABORT to abort the job.",
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:

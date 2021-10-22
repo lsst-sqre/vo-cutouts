@@ -26,7 +26,7 @@ __all__ = [
     "UWSDependency",
     "UWSFactory",
     "uws_dependency",
-    "uws_params_dependency",
+    "uws_post_params_dependency",
 ]
 
 
@@ -159,25 +159,24 @@ class UWSDependency:
 uws_dependency = UWSDependency()
 
 
-async def uws_params_dependency(request: Request) -> List[JobParameter]:
-    """Parse parameters.
+async def uws_post_params_dependency(request: Request) -> List[JobParameter]:
+    """Parse POST parameters.
 
-    The UWS standard has the annoying property that parameters may be provided
-    via either the query or a POST body, and the keys for both are
-    case-insensitive.  Modern web frameworks don't handle this easily.  This
-    dependency therefore parses the queries and (in the case of a POST) the
-    POST body directly from the Request, converts them to JobParameters, and
-    returns those as a list.
+    UWS requires that all POST parameters be case-insensitive, which is not
+    supported by FastAPI or Starlette.  POST parameters therefore have to be
+    parsed by this dependency and then extracted from the resulting
+    `~vocutouts.uws.models.JobParameter` list (which unfortunately also means
+    revalidating their types).
+
+    The POST parameters can also be (and should be) listed independently as
+    dependencies using the normal FastAPI syntax, in order to populate the
+    OpenAPI schema, but unfortunately they all have to be listed as optional
+    from FastAPI's perspective because they may be present using different
+    capitalization.
     """
-    params = [
-        JobParameter(parameter_id=k.lower(), value=v, is_post=False)
-        for k, v in request.query_params.items()
+    if request.method != "POST":
+        raise ValueError("uws_post_params_dependency used for non-POST route")
+    return [
+        JobParameter(parameter_id=k.lower(), value=v, is_post=True)
+        for k, v in (await request.form()).items()
     ]
-    if request.method == "POST":
-        params.extend(
-            [
-                JobParameter(parameter_id=k.lower(), value=v, is_post=True)
-                for k, v in (await request.form()).items()
-            ]
-        )
-    return params

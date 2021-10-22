@@ -17,9 +17,8 @@ from ..models.index import Index
 from ..uws.dependencies import (
     UWSFactory,
     uws_dependency,
-    uws_params_dependency,
+    uws_post_params_dependency,
 )
-from ..uws.exceptions import ParameterError
 from ..uws.handlers import uws_router
 from ..uws.models import ExecutionPhase, JobParameter
 
@@ -115,18 +114,15 @@ async def get_capabilities(request: Request) -> Response:
 
 
 async def _sync_request(
-    params: List[JobParameter], user: str, uws_factory: UWSFactory
+    params: List[JobParameter],
+    user: str,
+    runid: Optional[str],
+    uws_factory: UWSFactory,
 ) -> Response:
     """Process a sync request.
 
     Shared code for the GET and POST methods.
     """
-    runid = None
-    for param in params:
-        if param.parameter_id == "runid":
-            runid = param.value
-    params = [p for p in params if p.parameter_id != "runid"]
-
     # Create the job, start it, and wait for it to complete.
     job_service = uws_factory.create_job_service()
     job = await job_service.create(user, run_id=runid, params=params)
@@ -230,11 +226,14 @@ async def get_sync(
             " with specific larger operations."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
-    return await _sync_request(params, user, uws_factory)
+    params = [
+        JobParameter(parameter_id=k.lower(), value=v, is_post=False)
+        for k, v in request.query_params.items()
+    ]
+    return await _sync_request(params, user, runid, uws_factory)
 
 
 @external_router.post(
@@ -307,11 +306,16 @@ async def post_sync(
             " with specific larger operations."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> Response:
-    return await _sync_request(params, user, uws_factory)
+    runid = None
+    for param in params:
+        if param.parameter_id == "runid":
+            runid = param.value
+    params = [p for p in params if p.parameter_id != "runid"]
+    return await _sync_request(params, user, runid, uws_factory)
 
 
 @uws_router.post(
@@ -364,7 +368,7 @@ async def create_job(
             " numbers expressed as strings and separated by spaces."
         ),
     ),
-    phase: Optional[Literal["RUN"]] = Form(
+    phase: Optional[Literal["RUN"]] = Query(
         None, title="Immediately start job"
     ),
     runid: Optional[str] = Form(
@@ -376,25 +380,20 @@ async def create_job(
             " with specific larger operations."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_params_dependency),
+    params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
 ) -> str:
-    autorun = False
-    run_id = None
+    runid = None
     for param in params:
-        if param.parameter_id == "phase":
-            if param.value != "RUN":
-                raise ParameterError(f"Invalid phase {param.value}")
-            autorun = True
-        elif param.parameter_id == "runid":
-            run_id = param.value
-    params = [p for p in params if p.parameter_id not in ("phase", "runid")]
+        if param.parameter_id == "runid":
+            runid = param.value
+    params = [p for p in params if p.parameter_id != "runid"]
 
     # Create the job and optionally start it.
     job_service = uws_factory.create_job_service()
-    job = await job_service.create(user, run_id=run_id, params=params)
-    if autorun:
+    job = await job_service.create(user, run_id=runid, params=params)
+    if phase == "RUN":
         await job_service.start(user, job.job_id)
 
     # Redirect to the new job.
