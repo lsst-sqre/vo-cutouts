@@ -36,6 +36,6 @@ async def get_index() -> Metadata:
     By convention, this endpoint returns only the application's metadata.
     """
     return get_metadata(
-        package_name="vocutouts",
+        package_name="vo-cutouts",
         application_name=config.name,
     )

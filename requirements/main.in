@@ -8,8 +8,16 @@
 # These dependencies are for fastapi including some optional features.
 fastapi
 gunicorn
+python-multipart
 starlette
 uvicorn[standard]
 
 # Other dependencies.
+astropy
+asyncpg
+dramatiq[redis]
+jinja2
+psycopg2
 safir
+sqlalchemy[asyncio]
+structlog

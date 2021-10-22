@@ -15,4 +15,6 @@ pre-commit
 pytest
 pytest-asyncio
 pytest-cov
+pytest-timeout
+sqlalchemy[mypy]
 uvicorn
