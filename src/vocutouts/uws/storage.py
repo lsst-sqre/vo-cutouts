@@ -15,6 +15,7 @@ from typing import (
     overload,
 )
 
+from asyncpg.exceptions import SerializationError
 from sqlalchemy import delete
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.future import select
@@ -139,7 +140,7 @@ def retry_async_transaction(g: G) -> G:
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return await g(*args, **kwargs)
-        except OperationalError:
+        except (OperationalError, SerializationError):
             return await g(*args, **kwargs)
 
     return cast(G, wrapper)
