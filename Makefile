@@ -10,7 +10,7 @@ update-deps:
 .PHONY: init
 init:
 	pip install --editable .
-	pip install --no-deps --upgrade -r requirements/main.txt -r requirements/dev.txt
+	pip install --upgrade -r requirements/main.txt -r requirements/dev.txt
 	rm -rf .tox
 	pip install --upgrade tox tox-docker
 	pre-commit install

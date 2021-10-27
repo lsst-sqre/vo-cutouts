@@ -57,7 +57,7 @@ idna==3.3
     #   rfc3986
 jinja2==3.0.2
     # via -r requirements/main.in
-lsst-sphgeom @ git+https://github.com/lsst/sphgeom@tickets/DM-32256
+lsst-sphgeom @ git+https://github.com/lsst/sphgeom@master
     # via
     #   -r requirements/main.in
     #   daf-butler
