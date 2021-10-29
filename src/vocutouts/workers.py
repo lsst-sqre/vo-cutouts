@@ -26,7 +26,7 @@ import dramatiq
 from astropy.coordinates import SkyCoord
 from astropy.table import QTable
 from dramatiq.brokers.redis import RedisBroker
-from dramatiq.middleware import Callbacks, CurrentMessage
+from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
 from lsst.daf.butler import Butler, DatasetType
@@ -39,7 +39,6 @@ redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
 broker = RedisBroker(host=redis_host, password=redis_password)
 results = RedisBackend(host=redis_host, password=redis_password)
 dramatiq.set_broker(broker)
-broker.add_middleware(Callbacks())
 broker.add_middleware(CurrentMessage())
 broker.add_middleware(Results(backend=results))
 
