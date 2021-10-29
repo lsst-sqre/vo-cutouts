@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.types import JSON
 
 from .base import Base
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Mapping, Optional
 
 __all__ = ["JobResult"]
 
@@ -24,7 +25,7 @@ class JobResult(Base):
     result_id: str = Column(String(64), nullable=False)
     sequence: int = Column(Integer, nullable=False)
     collection: str = Column(Text, nullable=False)
-    data_id: str = Column(Text, nullable=False)  # JSON-encoded
+    data_id: Mapping[str, str] = Column(JSON, nullable=False)
     datatype: str = Column(Text, nullable=False)
     size: Optional[int] = Column(Integer)
     mime_type: Optional[str] = Column(String(64))

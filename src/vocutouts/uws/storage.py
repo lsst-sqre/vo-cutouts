@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import (
@@ -102,7 +101,7 @@ def _convert_job(job: SQLJob) -> Job:
             JobResult(
                 result_id=r.result_id,
                 collection=r.collection,
-                data_id=json.loads(r.data_id),
+                data_id=dict(r.data_id),
                 datatype=r.datatype,
                 size=r.size,
                 mime_type=r.mime_type,
@@ -453,7 +452,7 @@ class WorkerJobStore:
                     result_id=result.result_id,
                     sequence=sequence,
                     collection=result.collection,
-                    data_id=json.dumps(result.data_id),
+                    data_id=result.data_id,
                     datatype=result.datatype,
                     size=result.size,
                     mime_type=result.mime_type,
