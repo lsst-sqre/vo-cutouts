@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .models import ErrorType, JobError
+from .models import ErrorCode, ErrorType, JobError
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Dict, Optional
 
 __all__ = [
     "DataMissingError",
@@ -23,43 +23,101 @@ __all__ = [
     "TaskTransientError",
     "UnknownJobError",
     "UsageError",
+    "UWSError",
 ]
 
 
-class DataMissingError(Exception):
-    """The data requested does not exist for that job."""
+class UWSError(Exception):
+    """An error with an associated error code.
+
+    SODA requires errors be in ``text/plain`` and start with an error code.
+    Adopt that as a general representation of errors produced by the UWS
+    layer to simplify generating error responses.
+    """
+
+    def __init__(
+        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+    ) -> None:
+        super().__init__(message)
+        self.error_code = error_code
+        self.detail = detail
+        self.status_code = 400
 
 
-class UnknownJobError(DataMissingError):
-    """The named job could not be found in the database."""
+class MultiValuedParameterError(UWSError):
+    """Multiple values not allowed for this parameter."""
 
-    def __init__(self, job_id: str) -> None:
-        self.job_id = job_id
-        super().__init__(f"Job {job_id} not found")
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.MULTIVALUED_PARAM_NOT_SUPPORTED, message)
+        self.status_code = 422
 
 
-class PermissionDeniedError(Exception):
+class PermissionDeniedError(UWSError):
     """User does not have access to this resource."""
 
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.AUTHORIZATION_ERROR, message)
+        self.status_code = 403
 
-class TaskError(Exception):
+
+class TaskError(UWSError):
     """An error occurred during background task processing."""
 
-    error_type = ErrorType.FATAL
+    @classmethod
+    def from_callback(cls, exception: Dict[str, str]) -> TaskError:
+        """Reconstitute the exception passed to an on_failure callback.
 
-    def __init__(self, message: str, detail: Optional[str] = None) -> None:
-        super().__init__(message)
+        Notes
+        -----
+        Unfortunately, the ``dramatiq.middleware.Callbacks`` middleware only
+        provides the type of the error message and the body as strings, so we
+        have to parse the body of the exception to get the structured data we
+        want to store in the UWS database.
+        """
+        exception_type = exception["type"]
+        exception_message = exception["message"]
+        detail = None
+        if exception_type in ("TaskFatalError", "TaskTransientError"):
+            try:
+                error_code_str, rest = exception_message.split(None, 1)
+                error_code = ErrorCode(error_code_str)
+                if "\n" in rest:
+                    message, detail = rest.split("\n", 1)
+                else:
+                    message = rest
+            except Exception:
+                error_code = ErrorCode.ERROR
+                message = exception_message
+            if exception_type == "TaskFatalError":
+                return TaskFatalError(error_code, message, detail)
+            else:
+                return TaskTransientError(error_code, message, detail)
+        else:
+            return cls(
+                ErrorType.TRANSIENT,
+                ErrorCode.ERROR,
+                "Unknown error executing task",
+                f"{exception_type}: {exception_message}",
+            )
+
+    def __init__(
+        self,
+        error_type: ErrorType,
+        error_code: ErrorCode,
+        message: str,
+        detail: Optional[str] = None,
+    ) -> None:
+        super().__init__(error_code, message)
+        self.error_type = error_type
         self.detail = detail
 
     def to_job_error(self) -> JobError:
-        """Convert to a `~vocutouts.uws.models.JobError`.
-
-        This may be overridden by child classes to provide additional
-        information if desired, or `TaskFatalError` and `TaskTransientError`
-        can be used as-is.
-        """
+        """Convert to a `~vocutouts.uws.models.JobError`."""
         return JobError(
-            message=str(self), error_type=self.error_type, detail=self.detail
+            error_code=self.error_code,
+            error_type=self.error_type,
+            message=str(self),
+            detail=self.detail,
         )
 
 
@@ -70,7 +128,10 @@ class TaskFatalError(TaskError):
     never succeed.
     """
 
-    error_type = ErrorType.FATAL
+    def __init__(
+        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+    ) -> None:
+        super().__init__(ErrorType.FATAL, error_code, message, detail)
 
 
 class TaskTransientError(TaskError):
@@ -79,11 +140,26 @@ class TaskTransientError(TaskError):
     The job may be retried with the same parameters and may succeed.
     """
 
-    error_type = ErrorType.TRANSIENT
+    def __init__(
+        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+    ) -> None:
+        super().__init__(ErrorType.TRANSIENT, error_code, message, detail)
 
 
-class UsageError(Exception):
+class UsageError(UWSError):
     """Invalid parameters were passed to a UWS API."""
+
+    def __init__(self, message: str, detail: Optional[str] = None) -> None:
+        super().__init__(ErrorCode.USAGE_ERROR, message, detail)
+        self.status_code = 422
+
+
+class DataMissingError(UWSError):
+    """The data requested does not exist for that job."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(ErrorCode.USAGE_ERROR, message)
+        self.status_code = 404
 
 
 class InvalidPhaseError(UsageError):
@@ -92,3 +168,11 @@ class InvalidPhaseError(UsageError):
 
 class ParameterError(UsageError):
     """Unsupported value passed to a parameter."""
+
+
+class UnknownJobError(DataMissingError):
+    """The named job could not be found in the database."""
+
+    def __init__(self, job_id: str) -> None:
+        super().__init__(f"Job {job_id} not found")
+        self.job_id = job_id

@@ -30,7 +30,7 @@ from .dependencies import (
 )
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
 from .models import ExecutionPhase, JobParameter
-from .utils import isodatetime
+from .utils import isodatetime, parse_isodatetime
 
 __all__ = ["uws_router"]
 
@@ -207,11 +207,8 @@ async def post_job_destruction(
         if param.parameter_id != "destruction":
             msg = f"Unknown parameter {param.parameter_id}={param.value}"
             raise ParameterError(msg)
-        if not param.value.endswith("Z"):
-            raise ParameterError(f"Invalid date {param.value}")
-        try:
-            destruction = datetime.fromisoformat(param.value[:-1] + "+00:00")
-        except Exception:
+        destruction = parse_isodatetime(param.value)
+        if destruction is None:
             raise ParameterError(f"Invalid date {param.value}")
     if not destruction:
         raise ParameterError("No new destruction time given")

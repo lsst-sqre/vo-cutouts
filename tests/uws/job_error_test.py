@@ -2,28 +2,33 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import dramatiq
 import pytest
+from dramatiq import Worker
+from dramatiq.middleware import CurrentMessage
 
-from tests.support.uws import uws_broker, wait_for_job
+from tests.support.uws import (
+    TrivialPolicy,
+    job_started,
+    uws_broker,
+    wait_for_job,
+)
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
-from vocutouts.uws.models import JobParameter
-from vocutouts.uws.tasks import uws_worker
+from vocutouts.uws.models import ErrorCode, JobParameter
 from vocutouts.uws.utils import isodatetime
 
 if TYPE_CHECKING:
-    from typing import List
+    from typing import Any, Dict, List
 
-    from dramatiq import Worker
     from httpx import AsyncClient
     from structlog.stdlib import BoundLogger
 
     from vocutouts.uws.config import UWSConfig
     from vocutouts.uws.dependencies import UWSFactory
-    from vocutouts.uws.models import JobResult
 
 
 ERRORED_JOB = """
@@ -67,7 +72,6 @@ async def test_temporary_error(
     logger: BoundLogger,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
-    stub_worker: Worker,
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
@@ -80,25 +84,26 @@ async def test_temporary_error(
     )
     assert r.status_code == 404
 
-    # Create a backend worker that raises a temporary error with no detail.
-    def worker(
-        params: List[JobParameter], logger: BoundLogger
-    ) -> List[JobResult]:
-        raise TaskTransientError("Something failed")
-
-    @dramatiq.actor(broker=uws_broker)
-    def error_task(job_id: str) -> None:
-        return uws_worker(job_id, uws_config, logger, worker)
+    # Create a backend worker that raises a transient error.
+    @dramatiq.actor(broker=uws_broker, queue_name="job")
+    def error_transient_job(job_id: str) -> List[Dict[str, Any]]:
+        message = CurrentMessage.get_current_message()
+        now = datetime.now(tz=timezone.utc)
+        job_started.send(job_id, message.message_id, isodatetime(now))
+        raise TaskTransientError(
+            ErrorCode.USAGE_ERROR, "UsageError Something failed"
+        )
 
     # Start the job.
-    uws_dependency.override_actor(error_task)
+    uws_dependency.override_policy(TrivialPolicy(error_transient_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    stub_worker.start()
+    worker = Worker(uws_broker, worker_timeout=100)
+    worker.start()
 
     # Check the results.
     try:
@@ -116,7 +121,7 @@ async def test_temporary_error(
             isodatetime(job.destruction_time),
             "transient",
             "false",
-            "Something failed",
+            "UsageError Something failed",
         )
 
         # Retrieve the error separately.
@@ -124,9 +129,11 @@ async def test_temporary_error(
             "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
         )
         assert r.status_code == 200
-        assert r.text == JOB_ERROR_SUMMARY.strip().format("Something failed")
+        assert r.text == JOB_ERROR_SUMMARY.strip().format(
+            "UsageError Something failed"
+        )
     finally:
-        stub_worker.stop()
+        worker.stop()
 
 
 @pytest.mark.asyncio
@@ -135,7 +142,6 @@ async def test_fatal_error(
     logger: BoundLogger,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
-    stub_worker: Worker,
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
@@ -143,24 +149,23 @@ async def test_fatal_error(
     )
 
     # Create a backend worker that raises a fatal error with detail.
-    def worker(
-        params: List[JobParameter], logger: BoundLogger
-    ) -> List[JobResult]:
-        raise TaskFatalError("Whoops", detail="Some details")
-
-    @dramatiq.actor(broker=uws_broker)
-    def error_task(job_id: str) -> None:
-        return uws_worker(job_id, uws_config, logger, worker)
+    @dramatiq.actor(broker=uws_broker, queue_name="job")
+    def error_fatal_job(job_id: str) -> List[Dict[str, Any]]:
+        message = CurrentMessage.get_current_message()
+        now = datetime.now(tz=timezone.utc)
+        job_started.send(job_id, message.message_id, isodatetime(now))
+        raise TaskFatalError(ErrorCode.ERROR, "Error Whoops\nSome details")
 
     # Start the job.
-    uws_dependency.override_actor(error_task)
+    uws_dependency.override_policy(TrivialPolicy(error_fatal_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    stub_worker.start()
+    worker = Worker(uws_broker, worker_timeout=100)
+    worker.start()
 
     # Check the results.
     try:
@@ -178,7 +183,7 @@ async def test_fatal_error(
             isodatetime(job.destruction_time),
             "fatal",
             "true",
-            "Whoops",
+            "Error Whoops",
         )
 
         # Retrieve the error separately.
@@ -187,10 +192,10 @@ async def test_fatal_error(
         )
         assert r.status_code == 200
         assert r.text == JOB_ERROR_SUMMARY.strip().format(
-            "Whoops\n\nSome details"
+            "Error Whoops\n\nSome details"
         )
     finally:
-        stub_worker.stop()
+        worker.stop()
 
 
 @pytest.mark.asyncio
@@ -199,7 +204,6 @@ async def test_unknown_error(
     logger: BoundLogger,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
-    stub_worker: Worker,
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
@@ -207,24 +211,23 @@ async def test_unknown_error(
     )
 
     # Create a backend worker that raises a fatal error with detail.
-    def worker(
-        params: List[JobParameter], logger: BoundLogger
-    ) -> List[JobResult]:
+    @dramatiq.actor(broker=uws_broker, queue_name="job")
+    def error_unknown_job(job_id: str) -> List[Dict[str, Any]]:
+        message = CurrentMessage.get_current_message()
+        now = datetime.now(tz=timezone.utc)
+        job_started.send(job_id, message.message_id, isodatetime(now))
         raise ValueError("Unknown exception")
 
-    @dramatiq.actor(broker=uws_broker)
-    def error_task(job_id: str) -> None:
-        return uws_worker(job_id, uws_config, logger, worker)
-
     # Start the job.
-    uws_dependency.override_actor(error_task)
+    uws_dependency.override_policy(TrivialPolicy(error_unknown_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    stub_worker.start()
+    worker = Worker(uws_broker, worker_timeout=100)
+    worker.start()
 
     # Check the results.
     try:
@@ -242,7 +245,7 @@ async def test_unknown_error(
             isodatetime(job.destruction_time),
             "transient",
             "true",
-            "Unknown error executing task",
+            "Error Unknown error executing task",
         )
 
         # Retrieve the error separately.
@@ -251,7 +254,8 @@ async def test_unknown_error(
         )
         assert r.status_code == 200
         assert r.text == JOB_ERROR_SUMMARY.strip().format(
-            "Unknown error executing task\n\nValueError: Unknown exception"
+            "Error Unknown error executing task\n\n"
+            "ValueError: Unknown exception"
         )
     finally:
-        stub_worker.stop()
+        worker.stop()

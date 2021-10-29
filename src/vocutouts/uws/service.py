@@ -12,7 +12,7 @@ from .models import ACTIVE_PHASES, ExecutionPhase
 if TYPE_CHECKING:
     from typing import List, Optional
 
-    from dramatiq import Actor, Message
+    from dramatiq import Message
 
     from .config import UWSConfig
     from .models import Availability, Job, JobDescription, JobParameter
@@ -34,11 +34,9 @@ class JobService:
     ----------
     config : `vocutouts.uws.config.UWSConfig`
         The UWS configuration.
-    actor : `dramatiq.Actor`
-        The actor to invoke to execute a job.
     policy : `vocutouts.uws.policy.UWSPolicy`
-        The policy layer for validating parameters, destruction times, and
-        execution durations.
+        The policy layer for dispatching jobs and validating parameters,
+        destruction times, and execution durations.
     storage : `vocutouts.uws.storage.JobStore`
         The underlying storage for job metadata and result tracking.
     """
@@ -47,12 +45,10 @@ class JobService:
         self,
         *,
         config: UWSConfig,
-        actor: Actor,
         policy: UWSPolicy,
         storage: FrontendJobStore,
     ) -> None:
         self._config = config
-        self._actor = actor
         self._policy = policy
         self._storage = storage
 
@@ -271,9 +267,7 @@ class JobService:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         if job.phase not in (ExecutionPhase.PENDING, ExecutionPhase.HELD):
             raise InvalidPhaseError("Cannot start job in phase {job.phase}")
-        message = self._actor.send_with_options(
-            args=(job_id,), time_limit=job.execution_duration * 1000
-        )
+        message = self._policy.dispatch(job)
         await self._storage.mark_queued(job_id, message.message_id)
         return message
 

@@ -8,12 +8,12 @@ objects.
 
 from typing import AsyncIterator, List, Optional
 
-from dramatiq import Actor
 from fastapi import Depends, Request
 from safir.dependencies.logger import logger_dependency
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
+from .butler import UWSButler
 from .config import UWSConfig
 from .database import create_async_session, initialize_database
 from .models import JobParameter
@@ -37,30 +37,31 @@ class UWSFactory:
         self,
         *,
         config: UWSConfig,
-        actor: Actor,
         policy: UWSPolicy,
         session: async_scoped_session,
+        butler: UWSButler,
         logger: BoundLogger,
     ) -> None:
         self._config = config
-        self._actor = actor
         self._policy = policy
         self._session = session
+        self._butler = butler
         self._logger = logger
+
+    def create_butler(self) -> UWSButler:
+        """Return a wrapper around Butler."""
+        return self._butler
 
     def create_job_service(self) -> JobService:
         """Create a new UWS job metadata service."""
         storage = FrontendJobStore(self._session)
         return JobService(
-            config=self._config,
-            actor=self._actor,
-            policy=self._policy,
-            storage=storage,
+            config=self._config, policy=self._policy, storage=storage
         )
 
     def create_templates(self) -> UWSTemplates:
         """Create a new XML renderer for responses."""
-        return UWSTemplates()
+        return UWSTemplates(self._butler)
 
 
 class UWSDependency:
@@ -68,9 +69,9 @@ class UWSDependency:
 
     def __init__(self) -> None:
         self._config: Optional[UWSConfig] = None
-        self._actor: Optional[Actor] = None
         self._policy: Optional[UWSPolicy] = None
         self._session: Optional[async_scoped_session] = None
+        self._butler: Optional[UWSButler] = None
 
     async def __call__(
         self, logger: BoundLogger = Depends(logger_dependency)
@@ -79,14 +80,14 @@ class UWSDependency:
         # fail anyway without the asserts when something tried to use the None
         # value.
         assert self._config, "UWSDependency not initialized"
-        assert self._actor, "UWSDependency not initialized"
         assert self._policy, "UWSDependency not initialized"
         assert self._session, "UWSDependency not initialized"
+        assert self._butler, "UWSDependency not initialized"
         factory = UWSFactory(
             config=self._config,
-            actor=self._actor,
             policy=self._policy,
             session=self._session,
+            butler=self._butler,
             logger=logger,
         )
         yield factory
@@ -101,7 +102,6 @@ class UWSDependency:
         self,
         *,
         config: UWSConfig,
-        actor: Actor,
         policy: UWSPolicy,
         logger: BoundLogger,
         reset_database: bool = False,
@@ -112,8 +112,6 @@ class UWSDependency:
         ----------
         config : `vocutouts.uws.config.UWSConfig`
             The UWS configuration.
-        actor : `dramatiq.Actor`
-            The backend task for this service.
         policy : `vocutouts.uws.policy.UWSPolicy`
             The UWS policy layer.
         logger : `structlog.stdlib.BoundLogger`
@@ -126,22 +124,10 @@ class UWSDependency:
             Default is `False`.
         """
         self._config = config
-        self._actor = actor
         self._policy = policy
         self._session = await create_async_session(self._config, logger)
         await initialize_database(config, logger, reset=reset_database)
-
-    def override_actor(self, actor: Actor) -> None:
-        """Change the actor used in subsequent invocations.
-
-        This method is probably only useful for the test suite.
-
-        Parameters
-        ----------
-        actor : `dramatiq.Actor`
-            The new actor.
-        """
-        self._actor = actor
+        self._butler = UWSButler(config.butler_repository)
 
     def override_policy(self, policy: UWSPolicy) -> None:
         """Change the actor used in subsequent invocations.

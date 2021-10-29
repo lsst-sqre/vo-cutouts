@@ -134,26 +134,23 @@ async def _sync_request(
     # Check for error states.
     if job.phase not in (ExecutionPhase.COMPLETED, ExecutionPhase.ERROR):
         return PlainTextResponse(
-            f"Error\n\nCutout did not complete in {config.sync_timeout}s",
+            f"Error Cutout did not complete in {config.sync_timeout}s",
             status_code=400,
         )
+    if job.error:
+        response = f"{job.error.error_code.value} {job.error.message}\n"
+        if job.error.detail:
+            response += f"\n{job.error.detail}"
+        return PlainTextResponse(response, status_code=400)
     if not job.results:
         return PlainTextResponse(
-            "Error\n\nJob did not return any results", status_code=400
+            "Error Job did not return any results", status_code=400
         )
-    if job.error:
-        if job.error.detail:
-            return PlainTextResponse(
-                f"Error {job.error.message}\n\n{job.error.detail}",
-                status_code=400,
-            )
-        else:
-            return PlainTextResponse(
-                f"Error\n\n{job.error.message}", status_code=400
-            )
 
     # Redirect to the URL of the first result.
-    return RedirectResponse(job.results[0].url, status_code=303)
+    butler = uws_factory.create_butler()
+    url = butler.url_for_result(job.results[0])
+    return RedirectResponse(url, status_code=303)
 
 
 @external_router.get(

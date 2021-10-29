@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from ..models import ErrorType, ExecutionPhase
+from ..models import ErrorCode, ErrorType, ExecutionPhase
 from .base import Base
 
 if TYPE_CHECKING:
@@ -41,6 +41,7 @@ class Job(Base):
     execution_duration: int = Column(Integer, nullable=False)
     quote: Optional[datetime] = Column(DateTime)
     error_type: Optional[ErrorType] = Column(Enum(ErrorType))
+    error_code: Optional[ErrorCode] = Column(Enum(ErrorCode))
     error_message: Optional[str] = Column(Text)
     error_detail: Optional[str] = Column(Text)
 

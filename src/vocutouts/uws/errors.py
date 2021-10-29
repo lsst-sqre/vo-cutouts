@@ -12,30 +12,25 @@ from typing import TYPE_CHECKING
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 
-from .exceptions import DataMissingError, PermissionDeniedError, UsageError
+from .exceptions import UWSError
 
 if TYPE_CHECKING:
-    from typing import Union
-
     from fastapi import FastAPI, Request
 
 __all__ = ["install_error_handlers"]
 
 
-async def _data_missing_handler(
-    request: Request, exc: DataMissingError
+async def _uws_error_handler(
+    request: Request, exc: UWSError
 ) -> PlainTextResponse:
-    return PlainTextResponse(f"UsageError\n\n{str(exc)}", status_code=404)
-
-
-async def _permission_denied_handler(
-    request: Request, exc: PermissionDeniedError
-) -> PlainTextResponse:
-    return PlainTextResponse("AuthorizationError", status_code=403)
+    response = f"{exc.error_code.value} {str(exc)}\n"
+    if exc.detail:
+        response += "\n{exc.detail}"
+    return PlainTextResponse(response, status_code=exc.status_code)
 
 
 async def _usage_handler(
-    request: Request, exc: Union[RequestValidationError, UsageError]
+    request: Request, exc: RequestValidationError
 ) -> PlainTextResponse:
     return PlainTextResponse(f"UsageError\n\n{str(exc)}", status_code=422)
 
@@ -48,7 +43,5 @@ def install_error_handlers(app: FastAPI) -> None:
     this will change the error response for all parameter validation errors
     from FastAPI.
     """
-    app.exception_handler(DataMissingError)(_data_missing_handler)
-    app.exception_handler(PermissionDeniedError)(_permission_denied_handler)
+    app.exception_handler(UWSError)(_uws_error_handler)
     app.exception_handler(RequestValidationError)(_usage_handler)
-    app.exception_handler(UsageError)(_usage_handler)

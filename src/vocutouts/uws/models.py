@@ -12,7 +12,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Optional
+    from typing import Dict, List, Optional
 
 
 @dataclass
@@ -68,6 +68,17 @@ ACTIVE_PHASES = (
 """Phases in which the job is active and can be waited on."""
 
 
+class ErrorCode(Enum):
+    """Possible error codes in ``text/plain`` SODA errors."""
+
+    AUTHENTICATION_ERROR = "AuthenticationError"
+    AUTHORIZATION_ERROR = "AuthorizationError"
+    MULTIVALUED_PARAM_NOT_SUPPORTED = "MultiValuedParamNotSupported"
+    ERROR = "Error"
+    SERVICE_UNAVAILABLE = "ServiceUnavailable"
+    USAGE_ERROR = "UsageError"
+
+
 class ErrorType(Enum):
     """Types of job errors."""
 
@@ -79,15 +90,18 @@ class ErrorType(Enum):
 class JobError:
     """Failure information about a job."""
 
+    error_type: ErrorType
+    """Type of the error."""
+
+    error_code: ErrorCode
+    """The SODA error code of this error."""
+
     message: str
     """Brief error message.
 
     Note that the UWS specification allows a sequence of messages, but we only
     use a single message and thus a sequence of length one.
     """
-
-    error_type: ErrorType
-    """Type of the error."""
 
     detail: Optional[str] = None
     """Extended error message with additional detail."""
@@ -100,8 +114,14 @@ class JobResult:
     result_id: str
     """Identifier for the result."""
 
-    url: str
-    """URL to the content of the result."""
+    collection: str
+    """The Butler collection in which the result is stored."""
+
+    data_id: Dict[str, str]
+    """The data ID for the result (as JSON)."""
+
+    datatype: str
+    """The Datatype of the result."""
 
     size: Optional[int] = None
     """Size of the result in bytes."""

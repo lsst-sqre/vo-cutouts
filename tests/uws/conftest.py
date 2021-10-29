@@ -12,51 +12,38 @@ to Safir.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from unittest.mock import Mock, patch
 
-import dramatiq
 import pytest
 import structlog
 from asgi_lifespan import LifespanManager
-from dramatiq import Worker
 from fastapi import FastAPI
 from httpx import AsyncClient
+from lsst.daf.butler import Butler, ButlerURI
 from safir.dependencies.http_client import http_client_dependency
 
-from tests.support.uws import build_uws_config, uws_broker
+from tests.support.uws import (
+    TrivialPolicy,
+    WorkerSession,
+    build_uws_config,
+    trivial_job,
+    uws_broker,
+)
 from vocutouts.uws.database import create_async_session, initialize_database
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
-from vocutouts.uws.policy import UWSPolicy
-from vocutouts.uws.tasks import uws_worker
 
 if TYPE_CHECKING:
-    from datetime import datetime
     from pathlib import Path
-    from typing import AsyncIterator, List
+    from typing import AsyncIterator, Dict, Iterator, List
 
     from dramatiq import Broker
     from sqlalchemy.ext.asyncio import async_scoped_session
     from structlog.stdlib import BoundLogger
 
     from vocutouts.uws.config import UWSConfig
-    from vocutouts.uws.models import Job, JobParameter
-
-
-class TrivialPolicy(UWSPolicy):
-    def validate_destruction(
-        self, destruction: datetime, job: Job
-    ) -> datetime:
-        return destruction
-
-    def validate_execution_duration(
-        self, execution_duration: int, job: Job
-    ) -> int:
-        return execution_duration
-
-    def validate_params(self, params: List[JobParameter]) -> None:
-        pass
 
 
 @pytest.fixture
@@ -74,10 +61,7 @@ async def app(
     await initialize_database(uws_config, logger, reset=True)
     uws_app = FastAPI()
     uws_app.include_router(uws_router, prefix="/jobs")
-
-    @dramatiq.actor(broker=uws_broker)
-    def dummy_task(job_id: str) -> None:
-        uws_worker(job_id, uws_config, logger, worker=lambda p, l: [])
+    uws_broker.add_middleware(WorkerSession(uws_config))
 
     @uws_app.on_event("startup")
     async def startup_event() -> None:
@@ -85,8 +69,7 @@ async def app(
         uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
         await uws_dependency.initialize(
             config=uws_config,
-            actor=dummy_task,
-            policy=TrivialPolicy(),
+            policy=TrivialPolicy(trivial_job),
             logger=logger,
         )
 
@@ -110,6 +93,25 @@ def logger() -> BoundLogger:
     return structlog.get_logger("uws")
 
 
+def _mock_butler_getURI(
+    datatype: str, *, dataId: Dict[str, str], collections: List[str]
+) -> ButlerURI:
+    assert datatype == "calexp_cutouts"
+    assert dataId == {"visit": 903332, "detector": 20, "instrument": "HSC"}
+    assert collections == ["output/collection"]
+    mock = Mock(spec=ButlerURI)
+    mock.geturl.return_value = "https://example.com/cutout-result"
+    return mock
+
+
+@pytest.fixture(autouse=True)
+def mock_butler() -> Iterator[None]:
+    with patch("vocutouts.uws.butler.Butler") as mock:
+        mock.return_value = Mock(spec=Butler)
+        mock.return_value.getURI.side_effect = _mock_butler_getURI
+        yield
+
+
 @pytest.fixture
 async def session(
     uws_config: UWSConfig, logger: BoundLogger
@@ -122,11 +124,6 @@ def stub_broker() -> Broker:
     uws_broker.emit_after("process_boot")
     uws_broker.flush_all()
     return uws_broker
-
-
-@pytest.fixture
-async def stub_worker(stub_broker: Broker) -> Worker:
-    return Worker(uws_broker, worker_timeout=100)
 
 
 @pytest.fixture
