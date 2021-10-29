@@ -137,15 +137,15 @@ async def _sync_request(
             f"Error Cutout did not complete in {config.sync_timeout}s",
             status_code=400,
         )
-    if not job.results:
-        return PlainTextResponse(
-            "Error Job did not return any results", status_code=400
-        )
     if job.error:
         response = f"{job.error.error_code.value} {job.error.message}\n"
         if job.error.detail:
             response += f"\n{job.error.detail}"
         return PlainTextResponse(response, status_code=400)
+    if not job.results:
+        return PlainTextResponse(
+            "Error Job did not return any results", status_code=400
+        )
 
     # Redirect to the URL of the first result.
     butler = uws_factory.create_butler()
