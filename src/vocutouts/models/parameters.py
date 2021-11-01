@@ -38,7 +38,7 @@ class CutoutParameters:
 
         Returns
         -------
-        reuslt : `CutoutParameters`
+        result : `CutoutParameters`
             The parsed cutout parameters specific to the image cutout service.
 
         Raises

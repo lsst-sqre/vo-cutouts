@@ -31,7 +31,7 @@ PENDING_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id" isPost="true">some-id</uws:parameter>
+    <uws:parameter id="id" isPost="true">some:id:band:value</uws:parameter>
     <uws:parameter id="pos" isPost="true">RANGE 0 360 -2 2</uws:parameter>
   </uws:parameters>
 </uws:job>
@@ -55,7 +55,7 @@ COMPLETED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id" isPost="true">some:id:value</uws:parameter>
+    <uws:parameter id="id" isPost="true">some:id:band:value</uws:parameter>
     <uws:parameter id="pos" isPost="true">RANGE 1 1 2 2</uws:parameter>
   </uws:parameters>
   <uws:results>
@@ -71,7 +71,7 @@ async def test_create_job(client: AsyncClient) -> None:
     r = await client.post(
         "/cutout/jobs",
         headers={"X-Auth-Request-User": "someone"},
-        data={"ID": "some-id", "Pos": "RANGE 0 360 -2 2"},
+        data={"ID": "some:id:band:value", "Pos": "RANGE 0 360 -2 2"},
     )
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/cutout/jobs/1"
@@ -92,7 +92,7 @@ async def test_create_job(client: AsyncClient) -> None:
             "/cutout/jobs",
             headers={"X-Auth-Request-User": "someone"},
             data={
-                "ID": "some:id:value",
+                "ID": "some:id:band:value",
                 "pos": "RANGE 1 1 2 2",
                 "runid": "some-run-id",
             },

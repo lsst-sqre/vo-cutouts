@@ -25,7 +25,7 @@ async def test_sync(client: AsyncClient) -> None:
         r = await client.get(
             "/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
-            params={"ID": "a:sync:id", "Pos": "RANGE 0 360 -2 2"},
+            params={"ID": "a:sync:band:id", "Pos": "RANGE 0 360 -2 2"},
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout-result"
@@ -34,7 +34,7 @@ async def test_sync(client: AsyncClient) -> None:
         r = await client.post(
             "/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
-            data={"ID": "a:other:id", "Pos": "RANGE 0 360 -2 2"},
+            data={"ID": "a:other:band:id", "Pos": "RANGE 0 360 -2 2"},
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout-result"

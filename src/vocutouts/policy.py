@@ -48,10 +48,11 @@ class ImageCutoutPolicy(UWSPolicy):
         agree on a data ID format and more cutout stencils are supported.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
-        visit, detector, instrument = cutout_params.ids[0].split(":")
+        visit, detector, band, instrument = cutout_params.ids[0].split(":")
         data_id = {
             "visit": visit,
             "detector": detector,
+            "band": band,
             "instrument": instrument,
         }
         stencil = cutout_params.stencils[0]

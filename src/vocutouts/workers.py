@@ -104,20 +104,20 @@ def cutout_range(
         "cutout_positions",
         dimensions=data_id.keys(),
         universe=butler.registry.dimensions,
-        storate_class="AstropyQTable",
+        storage_class="AstropyQTable",
     )
     butler.registry.registerDatasetType(dataset_type)
 
     # Store the cutout parameters in the input Butler collection.
     #
-    # Assume HSC data for now, which is 0.17 arcsec/pixel, so that we can use
-    # the current test cutout pipeline.  The eventual cutout pipeline will
-    # accept min/max pairs in ICRS coordinates.
+    # Use a conversion ratio of 0.2 arcsec/pixel so that we can use the
+    # current test cutout pipeline.  The eventual cutout pipeline will accept
+    # min/max pairs in ICRS coordinates.
     if any(math.isinf(v) for v in (ra_min, ra_max, dec_min, dec_max)):
         raise TaskFatalError("UsageError Unbounded ranges not yet supported")
     pos = SkyCoord(ra_min, dec_min, unit="deg")
-    xspan = (ra_max - ra_min) * 3600 / 0.17
-    yspan = (dec_max - dec_min) * 3600 / 0.17
+    xspan = (ra_max - ra_min) * 3600 / 0.2
+    yspan = (dec_max - dec_min) * 3600 / 0.2
     row = 1 * u.dimensionless_unscaled
     input_table = QTable(
         [row, pos, xspan, yspan], names=["id", "position", "xspan", "yspan"]
