@@ -137,10 +137,12 @@ def retry_async_transaction(g: G) -> G:
 
     @wraps(g)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return await g(*args, **kwargs)
-        except (OperationalError, SerializationError):
-            return await g(*args, **kwargs)
+        for _ in range(1, 5):
+            try:
+                return await g(*args, **kwargs)
+            except (OperationalError, SerializationError):
+                continue
+        return await g(*args, **kwargs)
 
     return cast(G, wrapper)
 
@@ -406,21 +408,16 @@ def retry_transaction(f: F) -> F:
     Unfortunately, that isolation level causes the underlying database to
     raise an exception on commit if we raced with another worker.  We
     therefore need to retry if a transaction failed with an exception.
-
-    The only functions that can race for a given job are the frontend setting
-    the job status to ``QUEUED``, the backend setting it to ``EXECUTING``, and
-    the backend setting it to ``COMPLETED`` or ``ERROR``.  Priorities should
-    force the second to always execute before the third, so we should only
-    race with at most one other SQL transaction.  Therefore, retrying once
-    should be sufficient.
     """
 
     @wraps(f)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            return f(*args, **kwargs)
-        except OperationalError:
-            return f(*args, **kwargs)
+        for _ in range(1, 5):
+            try:
+                return f(*args, **kwargs)
+            except OperationalError:
+                continue
+        return f(*args, **kwargs)
 
     return cast(F, wrapper)
 
