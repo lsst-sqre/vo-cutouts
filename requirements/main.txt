@@ -16,6 +16,13 @@ astropy==4.3.1
     #   daf-butler
 asyncpg==0.24.0
     # via -r requirements/main.in
+boto3==1.19.10
+    # via -r requirements/main.in
+botocore==1.22.11
+    # via
+    #   -r requirements/main.in
+    #   boto3
+    #   s3transfer
 cachetools==4.2.4
     # via google-auth
 certifi==2021.10.8
@@ -83,6 +90,10 @@ idna==3.3
     #   rfc3986
 jinja2==3.0.2
     # via -r requirements/main.in
+jmespath==0.10.0
+    # via
+    #   boto3
+    #   botocore
 lsst-sphgeom @ git+https://github.com/lsst/sphgeom@master
     # via
     #   -r requirements/main.in
@@ -121,6 +132,8 @@ pydantic==1.8.2
     #   safir
 pyerfa==2.0.0.1
     # via astropy
+python-dateutil==2.8.2
+    # via botocore
 python-dotenv==0.19.1
     # via uvicorn
 python-multipart==0.0.5
@@ -140,12 +153,15 @@ rfc3986[idna2008]==1.5.0
     # via httpx
 rsa==4.7.2
     # via google-auth
+s3transfer==0.5.0
+    # via boto3
 safir==2.1.1
     # via -r requirements/main.in
 six==1.16.0
     # via
     #   google-auth
     #   google-cloud-storage
+    #   python-dateutil
     #   python-multipart
 sniffio==1.2.0
     # via
@@ -168,7 +184,9 @@ structlog==21.2.0
 typing-extensions==3.10.0.2
     # via pydantic
 urllib3==1.26.7
-    # via requests
+    # via
+    #   botocore
+    #   requests
 uvicorn[standard]==0.15.0
     # via -r requirements/main.in
 uvloop==0.16.0
