@@ -125,9 +125,9 @@ class UWSDependency:
         """
         self._config = config
         self._policy = policy
-        self._session = await create_async_session(self._config, logger)
+        self._session = await create_async_session(config, logger)
         await initialize_database(config, logger, reset=reset_database)
-        self._butler = UWSButler(config.butler_repository)
+        self._butler = UWSButler(config.butler_repository, config)
 
     def override_policy(self, policy: UWSPolicy) -> None:
         """Change the actor used in subsequent invocations.

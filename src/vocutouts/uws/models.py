@@ -131,6 +131,27 @@ class JobResult:
 
 
 @dataclass
+class JobResultURL:
+    """A single result from the job with a signed URL.
+
+    A `JobResult` is converted to a `JobResultURL` before generating the
+    response via templating.
+    """
+
+    result_id: str
+    """Identifier for the result."""
+
+    url: str
+    """Signed URL to retrieve the result."""
+
+    size: Optional[int] = None
+    """Size of the result in bytes."""
+
+    mime_type: Optional[str] = None
+    """MIME type of the result."""
+
+
+@dataclass
 class JobParameter:
     """An input parameter to the job."""
 

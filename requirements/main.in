@@ -17,6 +17,7 @@ astropy
 asyncpg
 click
 dramatiq[redis]
+google-cloud-storage
 jinja2
 psycopg2
 safir

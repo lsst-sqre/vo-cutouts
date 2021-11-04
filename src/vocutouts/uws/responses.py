@@ -53,15 +53,12 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    def job(self, request: Request, job: Job) -> Response:
+    async def job(self, request: Request, job: Job) -> Response:
         """Return a job as an XML response."""
+        results = [await self._butler.url_for_result(r) for r in job.results]
         return _templates.TemplateResponse(
             "job.xml",
-            {
-                "job": job,
-                "request": request,
-                "url_for_result": self._butler.url_for_result,
-            },
+            {"job": job, "results": results, "request": request},
             media_type="application/xml",
         )
 
@@ -83,14 +80,11 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    def results(self, request: Request, job: Job) -> Response:
+    async def results(self, request: Request, job: Job) -> Response:
         """Return the results for a job as an XML response."""
+        results = [await self._butler.url_for_result(r) for r in job.results]
         return _templates.TemplateResponse(
             "results.xml",
-            {
-                "job": job,
-                "request": request,
-                "url_for_result": self._butler.url_for_result,
-            },
+            {"results": results, "request": request},
             media_type="application/xml",
         )

@@ -108,7 +108,7 @@ async def get_job(
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id, wait=wait, wait_phase=phase)
     templates = uws_factory.create_templates()
-    return templates.job(request, job)
+    return await templates.job(request, job)
 
 
 @uws_router.delete(
@@ -419,4 +419,4 @@ async def get_job_results(
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
     templates = uws_factory.create_templates()
-    return templates.results(request, job)
+    return await templates.results(request, job)

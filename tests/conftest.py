@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from unittest.mock import Mock, patch
 
 import dramatiq
 import pytest
@@ -12,8 +11,8 @@ import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
 from httpx import AsyncClient
-from lsst.daf.butler import Butler, ButlerURI
 
+from tests.support.uws import mock_uws_butler
 from vocutouts import main
 from vocutouts.actors import job_started
 from vocutouts.broker import broker
@@ -78,20 +77,6 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
         yield client
 
 
-def _mock_butler_getURI(
-    datatype: str, *, dataId: Dict[str, str], collections: List[str]
-) -> ButlerURI:
-    assert datatype == "calexp_cutouts"
-    assert dataId == {"visit": 903332, "detector": 20, "instrument": "HSC"}
-    assert collections == ["output/collection"]
-    mock = Mock(spec=ButlerURI)
-    mock.geturl.return_value = "https://example.com/cutout-result"
-    return mock
-
-
 @pytest.fixture(autouse=True)
 def mock_butler() -> Iterator[None]:
-    with patch("vocutouts.uws.butler.Butler") as mock:
-        mock.return_value = Mock(spec=Butler)
-        mock.return_value.getURI.side_effect = _mock_butler_getURI
-        yield
+    yield from mock_uws_butler()
