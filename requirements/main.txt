@@ -71,7 +71,7 @@ numpy==1.21.3
     # via
     #   astropy
     #   pyerfa
-prometheus-client==0.11.0
+prometheus-client==0.12.0
     # via dramatiq
 psutil==5.8.0
     # via -r requirements/main.in
@@ -82,7 +82,7 @@ pydantic==1.8.2
     #   -r requirements/main.in
     #   fastapi
     #   safir
-pyerfa==2.0.0
+pyerfa==2.0.0.1
     # via astropy
 python-dotenv==0.19.1
     # via uvicorn
@@ -97,7 +97,7 @@ redis==3.5.3
     # via dramatiq
 rfc3986[idna2008]==1.5.0
     # via httpx
-safir==2.1.0
+safir==2.1.1
     # via -r requirements/main.in
 six==1.16.0
     # via python-multipart
@@ -129,7 +129,7 @@ watchgod==0.7
     # via uvicorn
 websockets==10.0
     # via uvicorn
-wrapt==1.13.2
+wrapt==1.13.3
     # via deprecated
 
 # The following packages are considered to be unsafe in a requirements file:

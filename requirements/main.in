@@ -15,6 +15,7 @@ uvicorn[standard]
 # Other dependencies.
 astropy
 asyncpg
+click
 dramatiq[redis]
 jinja2
 psycopg2
