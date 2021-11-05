@@ -7,9 +7,7 @@ URL of the underlying file.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
-from functools import partial
 from typing import TYPE_CHECKING
 
 from google.cloud import storage
@@ -39,17 +37,26 @@ class UWSButler:
         self._gcs = storage.Client()
 
     async def url_for_result(self, result: JobResult) -> JobResultURL:
-        """Query Butler for the URL for a job result."""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._butler.registry.refresh)
-        uri = await loop.run_in_executor(
-            None,
-            partial(
-                self._butler.getURI,
-                result.datatype,
-                dataId=result.data_id,
-                collections=[result.collection],
-            ),
+        """Query Butler for the URL for a job result.
+
+        Notes
+        -----
+        Currently, this is synchronous, blocking the rest of the cutout
+        frontend, and probably painfully slow (although I've not gotten hard
+        measurements yet).  Butler has to be refreshed to pick up new
+        collections (and, the first time we do a cutout, the new data type),
+        which does synchronous database calls.  Butler is not designed to be
+        used concurrently (so far as I know) so running these calls in a
+        thread pool is probably unsafe.
+
+        This is a stop-gap until we have client/server Butler, so perhaps we
+        can live with it until then.
+        """
+        self._butler.registry.refresh()
+        uri = self._butler.getURI(
+            result.datatype,
+            dataId=result.data_id,
+            collections=[result.collection],
         )
 
         # Generate a signed URL for the result.  Eventually, we may need to
