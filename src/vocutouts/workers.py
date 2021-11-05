@@ -104,7 +104,7 @@ def cutout_range(
         "cutout_positions",
         dimensions=data_id.keys(),
         universe=butler.registry.dimensions,
-        storage_class="AstropyQTable",
+        storageClass="AstropyQTable",
     )
     butler.registry.registerDatasetType(dataset_type)
 
