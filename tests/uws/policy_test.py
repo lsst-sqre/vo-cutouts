@@ -96,7 +96,8 @@ async def test_policy(
     )
     assert r.status_code == 200
     seen = datetime.fromisoformat(r.text[:-1] + "+00:00")
-    assert expected - timedelta(seconds=5) <= seen <= expected
+    assert seen >= expected - timedelta(seconds=5)
+    assert seen <= expected + timedelta(seconds=5)
 
     # Now do the same thing for execution duration.
     r = await client.post(
