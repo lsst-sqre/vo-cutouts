@@ -13,7 +13,7 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from google.cloud import storage
-from lsst.daf.butler import Butler, DatasetType
+from lsst.daf.butler import Butler
 
 from .models import JobResultURL
 
@@ -40,19 +40,8 @@ class UWSButler:
 
     async def url_for_result(self, result: JobResult) -> JobResultURL:
         """Query Butler for the URL for a job result."""
-        # The dataset type shouldn't be registered every time, but that means
-        # we need the dimensions in config.  That will need to be added later.
-        dataset_type = DatasetType(
-            "calexp_cutouts",
-            dimensions=result.data_id.keys(),
-            universe=self._butler.registry.dimensions,
-            storageClass="Stamps",
-        )
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            partial(self._butler.registry.registerDatasetType, dataset_type),
-        )
+        await loop.run_in_executor(None, self._butler.registry.refresh)
         uri = await loop.run_in_executor(
             None,
             partial(
