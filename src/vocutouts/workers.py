@@ -116,11 +116,12 @@ def cutout_range(
     if any(math.isinf(v) for v in (ra_min, ra_max, dec_min, dec_max)):
         raise TaskFatalError("UsageError Unbounded ranges not yet supported")
     pos = SkyCoord(ra_min, dec_min, unit="deg")
-    xspan = (ra_max - ra_min) * 3600 / 0.2
-    yspan = (dec_max - dec_min) * 3600 / 0.2
+    xspan = ((ra_max - ra_min) * 3600 / 0.2) * u.dimensionless_unscaled
+    yspan = ((dec_max - dec_min) * 3600 / 0.2) * u.dimensionless_unscaled
     row = 1 * u.dimensionless_unscaled
     input_table = QTable(
-        [row, pos, xspan, yspan], names=["id", "position", "xspan", "yspan"]
+        [[row], [pos], [xspan], [yspan]],
+        names=["id", "position", "xspan", "yspan"],
     )
     butler.put(input_table, "cutout_positions", **data_id)
 
