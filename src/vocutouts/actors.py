@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict, List
 
 
-@dramatiq.actor(queue_name="cutout")
+@dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout_range(
     job_id: str,
     data_id: Dict[str, str],

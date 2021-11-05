@@ -74,7 +74,7 @@ class TaskTransientError(Exception):
     """Some transient problem occurred."""
 
 
-@dramatiq.actor(queue_name="cutout")
+@dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout_range(
     job_id: str,
     data_id: Dict[str, Union[str, int]],
