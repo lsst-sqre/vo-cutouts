@@ -32,7 +32,7 @@ from dramatiq.results.backends import RedisBackend
 from lsst.daf.butler import Butler, DatasetType
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List
+    from typing import Any, Dict, List, Union
 
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
@@ -77,7 +77,7 @@ class TaskTransientError(Exception):
 @dramatiq.actor(queue_name="cutout")
 def cutout_range(
     job_id: str,
-    data_id: Dict[str, str],
+    data_id: Dict[str, Union[str, int]],
     ra_min: float,
     ra_max: float,
     dec_min: float,
@@ -126,7 +126,13 @@ def cutout_range(
     butler.put(input_table, "cutout_positions", **data_id)
 
     # Perform the cutout.
-    data_query = " AND ".join(f"{k}='{v}'" for k, v in data_id.items())
+    data_query_terms = []
+    for key, value in data_id.items():
+        if isinstance(value, int):
+            data_query_terms.append(f"{key}={value}")
+        else:
+            data_query_terms.append(f"{key}='{value}'")
+    data_query = " AND ".join(data_query_terms)
     result = subprocess.run(
         [
             "pipetask",

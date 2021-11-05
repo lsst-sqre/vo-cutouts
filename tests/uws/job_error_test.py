@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -48,7 +49,7 @@ ERRORED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">bar</uws:parameter>
+    <uws:parameter id="id">1:2:a:b</uws:parameter>
   </uws:parameters>
   <uws:errorSummary type="{}" hasDetail="{}">
     <uws:message>{}</uws:message>
@@ -75,7 +76,7 @@ async def test_temporary_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
-        "user", params=[JobParameter(parameter_id="id", value="bar")]
+        "user", params=[JobParameter(parameter_id="id", value="1:2:a:b")]
     )
 
     # The pending job has no error.
@@ -90,6 +91,7 @@ async def test_temporary_error(
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
         job_started.send(job_id, message.message_id, isodatetime(now))
+        time.sleep(0.5)
         raise TaskTransientError(
             ErrorCode.USAGE_ERROR, "UsageError Something failed"
         )
@@ -145,7 +147,7 @@ async def test_fatal_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
-        "user", params=[JobParameter(parameter_id="id", value="bar")]
+        "user", params=[JobParameter(parameter_id="id", value="1:2:a:b")]
     )
 
     # Create a backend worker that raises a fatal error with detail.
@@ -154,6 +156,7 @@ async def test_fatal_error(
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
         job_started.send(job_id, message.message_id, isodatetime(now))
+        time.sleep(0.5)
         raise TaskFatalError(ErrorCode.ERROR, "Error Whoops\nSome details")
 
     # Start the job.
@@ -207,7 +210,7 @@ async def test_unknown_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
-        "user", params=[JobParameter(parameter_id="id", value="bar")]
+        "user", params=[JobParameter(parameter_id="id", value="1:2:a:b")]
     )
 
     # Create a backend worker that raises a fatal error with detail.
@@ -215,6 +218,7 @@ async def test_unknown_error(
     def error_unknown_job(job_id: str) -> List[Dict[str, Any]]:
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
+        time.sleep(0.5)
         job_started.send(job_id, message.message_id, isodatetime(now))
         raise ValueError("Unknown exception")
 

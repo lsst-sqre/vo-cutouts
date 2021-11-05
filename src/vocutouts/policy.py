@@ -50,8 +50,8 @@ class ImageCutoutPolicy(UWSPolicy):
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
         visit, detector, band, instrument = cutout_params.ids[0].split(":")
         data_id = {
-            "visit": visit,
-            "detector": detector,
+            "visit": int(visit),
+            "detector": int(detector),
             "band": band,
             "instrument": instrument,
         }
