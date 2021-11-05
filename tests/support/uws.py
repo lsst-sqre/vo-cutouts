@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import dramatiq
 import structlog
@@ -209,6 +209,7 @@ class MockStorageClient(Mock):
 def mock_uws_butler() -> Iterator[None]:
     with patch("vocutouts.uws.butler.Butler") as m1:
         m1.return_value = Mock(spec=Butler)
+        m1.return_value.registry = MagicMock()
         m1.return_value.getURI.side_effect = _mock_butler_getURI
         mock_gcs = MockStorageClient
         with patch("google.cloud.storage.Client", side_effect=mock_gcs):
