@@ -47,6 +47,13 @@ from .uws.utils import parse_isodatetime
 if TYPE_CHECKING:
     from typing import Any, Dict, List
 
+__all__ = [
+    "cutout_range",
+    "job_completed",
+    "job_failed",
+    "job_started",
+]
+
 
 @dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout_range(
@@ -62,6 +69,15 @@ def cutout_range(
     This is only a stub, existing to define the actor in the Dramatiq broker
     used by the API frontend.  The actual implementation is in
     :py:mod:`vocutouts.workers` and must have the same signature.
+
+    Notes
+    -----
+    For the time being, retrying cutouts is disabled by setting
+    ``max_retries`` to 1 in the actor definition.  This may not be the
+    behavior we want for the production cutout service, but if we change this,
+    we need to think about the case where the cutout fails, the error is
+    logged in the job, and then the retry succeeds and we end up with a valid
+    result.  The UWS database layer currently will not handle this properly.
     """
     pass
 

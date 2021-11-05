@@ -100,6 +100,11 @@ def cutout_range(
     repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
     collection = os.environ["CUTOUT_BUTLER_COLLECTION"]
     butler = Butler(repository, writeable=True, run=input_collection)
+
+    # This should only need to be done once, but it does have to be done once.
+    # For now, register the dataset type each time, but this is silly so we
+    # should come up with a better initialization process.  (Maybe do this as
+    # part of vo-cutouts init.)
     dataset_type = DatasetType(
         "cutout_positions",
         dimensions=data_id.keys(),
@@ -125,7 +130,13 @@ def cutout_range(
     )
     butler.put(input_table, "cutout_positions", **data_id)
 
-    # Perform the cutout.
+    # Perform the cutout.  This currently uses subprocess to call pipetask.
+    # The long-term plan is for there to be an API for running a pipeline so
+    # that any setup overhead can be incurred once at worker start and then
+    # cutouts can be done with a direct Python call.
+    #
+    # This tells Butler to register data types every time, which as above
+    # should not be necessary, but they do have to be registered once.
     data_query_terms = []
     for key, value in data_id.items():
         if isinstance(value, int):

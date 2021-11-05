@@ -43,9 +43,13 @@ class ImageCutoutPolicy(UWSPolicy):
     def dispatch(self, job: Job) -> Message:
         """Dispatch a cutout request to the backend.
 
+        Notes
+        -----
         Everything about this function is preliminary, just enough to get a
-        proof-of-concept working.  It will become more sophisticated once we
-        agree on a data ID format and more cutout stencils are supported.
+        proof-of-concept working.  The current data ID format will be replaced
+        with Butler UUIDs, which will then need to be validated against the
+        Butler as part of the `validate_params` policy check so that we can
+        reject early if an invalid UUID was specified.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
         visit, detector, band, instrument = cutout_params.ids[0].split(":")
