@@ -151,7 +151,7 @@ def cutout_range(
             "-i",
             f"{input_collection},{collection}",
         ],
-        capture_output=True,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
