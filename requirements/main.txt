@@ -16,9 +16,9 @@ astropy==4.3.1
     #   daf-butler
 asyncpg==0.24.0
     # via -r requirements/main.in
-boto3==1.19.10
+boto3==1.20.4
     # via -r requirements/main.in
-botocore==1.22.11
+botocore==1.23.4
     # via
     #   -r requirements/main.in
     #   boto3
@@ -38,7 +38,7 @@ click==8.0.3
     #   -r requirements/main.in
     #   daf-butler
     #   uvicorn
-daf-butler @ git+https://github.com/lsst/daf_butler@master
+daf-butler @ git+https://github.com/lsst/daf_butler@tickets/DM-32386
     # via -r requirements/main.in
 deprecated==1.2.13
     # via daf-butler
@@ -57,7 +57,7 @@ google-auth==2.3.3
     #   google-api-core
     #   google-cloud-core
     #   google-cloud-storage
-google-cloud-core==2.1.0
+google-cloud-core==2.2.1
     # via google-cloud-storage
 google-cloud-storage==1.42.3
     # via -r requirements/main.in
@@ -88,7 +88,7 @@ idna==3.3
     #   anyio
     #   requests
     #   rfc3986
-jinja2==3.0.2
+jinja2==3.0.3
     # via -r requirements/main.in
 jmespath==0.10.0
     # via
@@ -104,7 +104,7 @@ lsst-utils @ git+https://github.com/lsst/utils@master
     #   daf-butler
 markupsafe==2.0.1
     # via jinja2
-numpy==1.21.3
+numpy==1.21.4
     # via
     #   astropy
     #   pyerfa
@@ -134,7 +134,7 @@ pyerfa==2.0.0.1
     # via astropy
 python-dateutil==2.8.2
     # via botocore
-python-dotenv==0.19.1
+python-dotenv==0.19.2
     # via uvicorn
 python-multipart==0.0.5
     # via -r requirements/main.in
@@ -155,7 +155,7 @@ rsa==4.7.2
     # via google-auth
 s3transfer==0.5.0
     # via boto3
-safir==2.1.1
+safir==2.2.0
     # via -r requirements/main.in
 six==1.16.0
     # via
@@ -168,7 +168,7 @@ sniffio==1.2.0
     #   anyio
     #   httpcore
     #   httpx
-sqlalchemy[asyncio]==1.4.26
+sqlalchemy[asyncio]==1.4.27
     # via
     #   -r requirements/main.in
     #   daf-butler

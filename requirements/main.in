@@ -36,6 +36,6 @@ pyyaml>=5.1
 psutil>=5.7
 
 # Not yet available on PyPI.
-git+https://github.com/lsst/daf_butler@master#egg=daf-butler
+git+https://github.com/lsst/daf_butler@tickets/DM-32386#egg=daf-butler
 git+https://github.com/lsst/sphgeom@master#egg=lsst_sphgeom
 git+https://github.com/lsst/utils@master#egg=lsst_utils
