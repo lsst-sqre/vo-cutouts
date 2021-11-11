@@ -19,10 +19,10 @@ if TYPE_CHECKING:
     from .config import UWSConfig
     from .models import JobResult
 
-__all__ = ["UWSButler"]
+__all__ = ["ResultStore"]
 
 
-class UWSButler:
+class ResultStore:
     """Wrapper around Butler to ask questions of interest to UWS.
 
     Parameters
@@ -64,7 +64,7 @@ class UWSButler:
         # the results.
         assert uri.scheme == "s3"
         bucket = self._gcs.bucket(uri.netloc)
-        blob = bucket.blob(uri.path[1:])
+        blob = bucket.blob(uri.relativeToPathRoot)
         signed_url = blob.generate_signed_url(
             version="v4",
             expiration=timedelta(seconds=self._config.url_lifetime),

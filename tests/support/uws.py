@@ -166,6 +166,7 @@ def _mock_butler_getURI(
     mock.scheme = "s3"
     mock.netloc = "some-bucket"
     mock.path = "/some/path"
+    mock.relativeToPathRoot = "some/path"
     return mock
 
 
@@ -207,7 +208,7 @@ class MockStorageClient(Mock):
 
 
 def mock_uws_butler() -> Iterator[None]:
-    with patch("vocutouts.uws.butler.Butler") as m1:
+    with patch("vocutouts.uws.results.Butler") as m1:
         m1.return_value = Mock(spec=Butler)
         m1.return_value.registry = MagicMock()
         m1.return_value.getURI.side_effect = _mock_butler_getURI

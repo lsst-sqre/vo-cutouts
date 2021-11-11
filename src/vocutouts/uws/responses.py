@@ -14,8 +14,8 @@ if TYPE_CHECKING:
 
     from fastapi import Request, Response
 
-    from .butler import UWSButler
     from .models import Availability, Job, JobDescription, JobError
+    from .results import ResultStore
 
 __all__ = ["UWSTemplates"]
 
@@ -32,8 +32,8 @@ class UWSTemplates:
     This also includes VOSI-Availability since it was convenient to provide.
     """
 
-    def __init__(self, butler: UWSButler) -> None:
-        self._butler = butler
+    def __init__(self, result_store: ResultStore) -> None:
+        self._result_store = result_store
 
     def availability(
         self, request: Request, availability: Availability
@@ -55,7 +55,9 @@ class UWSTemplates:
 
     async def job(self, request: Request, job: Job) -> Response:
         """Return a job as an XML response."""
-        results = [await self._butler.url_for_result(r) for r in job.results]
+        results = [
+            await self._result_store.url_for_result(r) for r in job.results
+        ]
         return _templates.TemplateResponse(
             "job.xml",
             {"job": job, "results": results, "request": request},
@@ -82,7 +84,9 @@ class UWSTemplates:
 
     async def results(self, request: Request, job: Job) -> Response:
         """Return the results for a job as an XML response."""
-        results = [await self._butler.url_for_result(r) for r in job.results]
+        results = [
+            await self._result_store.url_for_result(r) for r in job.results
+        ]
         return _templates.TemplateResponse(
             "results.xml",
             {"results": results, "request": request},
