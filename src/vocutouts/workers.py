@@ -95,11 +95,11 @@ def cutout_range(
     # Butler collection and register the data type.  Also determine the name
     # of the output collection.
     uuid = uuid4()
-    input_collection = f"service/cutouts/positions/{uuid}"
+    positions_collection = f"service/cutouts/positions/{uuid}"
     output_collection = f"service/cutouts/{uuid}"
     repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
     collection = os.environ["CUTOUT_BUTLER_COLLECTION"]
-    butler = Butler(repository, writeable=True, run=input_collection)
+    butler = Butler(repository, run=positions_collection)
 
     # This should only need to be done once, but it does have to be done once.
     # For now, register the dataset type each time, but this is silly so we
@@ -160,7 +160,7 @@ def cutout_range(
             "--output",
             output_collection,
             "-i",
-            f"{input_collection},{collection}",
+            f"{positions_collection},{collection}",
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
