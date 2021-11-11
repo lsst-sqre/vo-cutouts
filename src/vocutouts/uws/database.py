@@ -117,7 +117,7 @@ async def create_async_session(
             async with session.begin():
                 await session.execute(select(Job.id).limit(1))
                 return session
-        except OperationalError:
+        except (ConnectionRefusedError, OperationalError):
             logger.info("database not ready, waiting two seconds")
             time.sleep(2)
             continue

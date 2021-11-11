@@ -25,7 +25,7 @@ async def test_sync(client: AsyncClient) -> None:
         r = await client.get(
             "/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
-            params={"ID": "a:sync:band:id", "Pos": "RANGE 0 360 -2 2"},
+            params={"ID": "1:2:band:id", "Pos": "RANGE 0 360 -2 2"},
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout-result"
@@ -34,7 +34,7 @@ async def test_sync(client: AsyncClient) -> None:
         r = await client.post(
             "/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
-            data={"ID": "a:other:band:id", "Pos": "RANGE 0 360 -2 2"},
+            data={"ID": "3:4:band:id", "Pos": "RANGE 0 360 -2 2"},
         )
         assert r.status_code == 303
         assert r.headers["Location"] == "https://example.com/cutout-result"
@@ -47,16 +47,16 @@ async def test_bad_parameters(client: AsyncClient) -> None:
     bad_params: List[Dict[str, str]] = [
         {},
         {"pos": "RANGE 0 360 -2 2"},
-        {"id": "a:a:foo", "foo": "bar"},
-        {"id": "a:a:foo", "pos": "RANGE 0 360"},
-        {"id": "a:a:foo", "pos": "POLYHEDRON 10"},
-        {"id": "a:a:foo", "pos": "CIRCLE 1 1"},
-        {"id": "a:a:foo", "pos": "POLYGON 1 1"},
-        {"id": "a:a:foo", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
-        {"id": "a:a:foo", "circle": "1"},
-        {"id": "a:a:foo", "polygon": "1 2 3"},
-        {"id": "a:a:foo", "circle": "1 1 1", "phase": "STOP"},
-        {"id": "a:a:foo", "circle": "1 1 1", "PHASE": "STOP"},
+        {"id": "5:6:a:b", "foo": "bar"},
+        {"id": "5:6:a:b", "pos": "RANGE 0 360"},
+        {"id": "5:6:a:b", "pos": "POLYHEDRON 10"},
+        {"id": "5:6:a:b", "pos": "CIRCLE 1 1"},
+        {"id": "5:6:a:b", "pos": "POLYGON 1 1"},
+        {"id": "5:6:a:b", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
+        {"id": "5:6:a:b", "circle": "1"},
+        {"id": "5:6:a:b", "polygon": "1 2 3"},
+        {"id": "5:6:a:b", "circle": "1 1 1", "phase": "STOP"},
+        {"id": "5:6:a:b", "circle": "1 1 1", "PHASE": "STOP"},
     ]
     for params in bad_params:
         r = await client.get(

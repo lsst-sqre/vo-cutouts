@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, Mock, patch
 
 import dramatiq
 import structlog
@@ -13,6 +14,8 @@ from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
+from google.cloud import storage
+from lsst.daf.butler import Butler, ButlerURI
 
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.database import create_sync_session
@@ -27,7 +30,7 @@ from vocutouts.uws.utils import isodatetime, parse_isodatetime
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Dict, Iterator, List, Optional
 
     from dramatiq import Broker, Worker
     from sqlalchemy.orm import scoped_session
@@ -151,6 +154,67 @@ def build_uws_config(tmp_path: Path) -> UWSConfig:
         redis_host=os.getenv("CUTOUT_REDIS_HOST", "127.0.0.1"),
         redis_password=None,
     )
+
+
+def _mock_butler_getURI(
+    datatype: str, *, dataId: Dict[str, str], collections: List[str]
+) -> ButlerURI:
+    assert datatype == "calexp_cutouts"
+    assert dataId == {"visit": 903332, "detector": 20, "instrument": "HSC"}
+    assert collections == ["output/collection"]
+    mock = Mock(spec=ButlerURI)
+    mock.scheme = "s3"
+    mock.netloc = "some-bucket"
+    mock.path = "/some/path"
+    mock.relativeToPathRoot = "some/path"
+    return mock
+
+
+class MockBlob(Mock):
+    def __init__(self) -> None:
+        super().__init__(spec=storage.blob.Blob)
+
+    def generate_signed_url(
+        self,
+        *,
+        version: str,
+        expiration: timedelta,
+        method: str,
+        response_type: str,
+    ) -> str:
+        assert version == "v4"
+        assert expiration == timedelta(seconds=15 * 60)
+        assert method == "GET"
+        assert response_type == "application/fits"
+        return "https://example.com/cutout-result"
+
+
+class MockBucket(Mock):
+    def __init__(self) -> None:
+        super().__init__(spec=storage.bucket.Bucket)
+
+    def blob(self, blob_name: str) -> Mock:
+        assert blob_name == "some/path"
+        return MockBlob()
+
+
+class MockStorageClient(Mock):
+    def __init__(self) -> None:
+        super().__init__(spec=storage.Client)
+
+    def bucket(self, bucket_name: str) -> Mock:
+        assert bucket_name == "some-bucket"
+        return MockBucket()
+
+
+def mock_uws_butler() -> Iterator[None]:
+    with patch("vocutouts.uws.results.Butler") as m1:
+        m1.return_value = Mock(spec=Butler)
+        m1.return_value.registry = MagicMock()
+        m1.return_value.getURI.side_effect = _mock_butler_getURI
+        mock_gcs = MockStorageClient
+        with patch("google.cloud.storage.Client", side_effect=mock_gcs):
+            yield
 
 
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:

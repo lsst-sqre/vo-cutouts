@@ -53,5 +53,8 @@ class UWSConfig:
     redis_password: Optional[str] = None
     """Password for the Redis server used by Dramatiq."""
 
+    url_lifetime: int = 15 * 60
+    """How long result URLs should be valid for in minutes."""
+
     wait_timeout: int = 60
     """Maximum time in seconds a client can wait for a job change."""

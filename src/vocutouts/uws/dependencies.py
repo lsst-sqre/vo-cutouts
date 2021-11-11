@@ -13,12 +13,12 @@ from safir.dependencies.logger import logger_dependency
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
-from .butler import UWSButler
 from .config import UWSConfig
 from .database import create_async_session, initialize_database
 from .models import JobParameter
 from .policy import UWSPolicy
 from .responses import UWSTemplates
+from .results import ResultStore
 from .service import JobService
 from .storage import FrontendJobStore
 
@@ -39,18 +39,18 @@ class UWSFactory:
         config: UWSConfig,
         policy: UWSPolicy,
         session: async_scoped_session,
-        butler: UWSButler,
+        result_store: ResultStore,
         logger: BoundLogger,
     ) -> None:
         self._config = config
         self._policy = policy
         self._session = session
-        self._butler = butler
+        self._result_store = result_store
         self._logger = logger
 
-    def create_butler(self) -> UWSButler:
+    def create_result_store(self) -> ResultStore:
         """Return a wrapper around Butler."""
-        return self._butler
+        return self._result_store
 
     def create_job_service(self) -> JobService:
         """Create a new UWS job metadata service."""
@@ -61,7 +61,7 @@ class UWSFactory:
 
     def create_templates(self) -> UWSTemplates:
         """Create a new XML renderer for responses."""
-        return UWSTemplates(self._butler)
+        return UWSTemplates(self._result_store)
 
 
 class UWSDependency:
@@ -71,7 +71,7 @@ class UWSDependency:
         self._config: Optional[UWSConfig] = None
         self._policy: Optional[UWSPolicy] = None
         self._session: Optional[async_scoped_session] = None
-        self._butler: Optional[UWSButler] = None
+        self._result_store: Optional[ResultStore] = None
 
     async def __call__(
         self, logger: BoundLogger = Depends(logger_dependency)
@@ -82,12 +82,12 @@ class UWSDependency:
         assert self._config, "UWSDependency not initialized"
         assert self._policy, "UWSDependency not initialized"
         assert self._session, "UWSDependency not initialized"
-        assert self._butler, "UWSDependency not initialized"
+        assert self._result_store, "UWSDependency not initialized"
         factory = UWSFactory(
             config=self._config,
             policy=self._policy,
             session=self._session,
-            butler=self._butler,
+            result_store=self._result_store,
             logger=logger,
         )
         yield factory
@@ -125,9 +125,9 @@ class UWSDependency:
         """
         self._config = config
         self._policy = policy
-        self._session = await create_async_session(self._config, logger)
+        self._session = await create_async_session(config, logger)
         await initialize_database(config, logger, reset=reset_database)
-        self._butler = UWSButler(config.butler_repository)
+        self._result_store = ResultStore(config.butler_repository, config)
 
     def override_policy(self, policy: UWSPolicy) -> None:
         """Change the actor used in subsequent invocations.

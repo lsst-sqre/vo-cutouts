@@ -27,8 +27,8 @@
   </uws:parameters>
   {%- if job.results %}
   <uws:results>
-    {%- for result in job.results %}
-    <uws:result id="{{ result.result_id }}" xlink:href="{{ url_for_result(result) }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
+    {%- for result in results %}
+    <uws:result id="{{ result.result_id }}" xlink:href="{{ result.url }}"{% if result.size %} size="{{ result.size }}"{% endif %}{% if result.mime_type %} mime-type="{{ result.mime_type }}"{% endif %}/>
     {%- endfor %}
   </uws:results>
   {%- endif %}

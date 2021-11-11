@@ -32,7 +32,7 @@ from dramatiq.results.backends import RedisBackend
 from lsst.daf.butler import Butler, DatasetType
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List
+    from typing import Any, Dict, List, Union
 
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
@@ -74,10 +74,10 @@ class TaskTransientError(Exception):
     """Some transient problem occurred."""
 
 
-@dramatiq.actor(queue_name="cutout")
+@dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout_range(
     job_id: str,
-    data_id: Dict[str, str],
+    data_id: Dict[str, Union[str, int]],
     ra_min: float,
     ra_max: float,
     dec_min: float,
@@ -95,16 +95,21 @@ def cutout_range(
     # Butler collection and register the data type.  Also determine the name
     # of the output collection.
     uuid = uuid4()
-    input_collection = f"service/cutouts/positions/{uuid}"
+    positions_collection = f"service/cutouts/positions/{uuid}"
     output_collection = f"service/cutouts/{uuid}"
     repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
     collection = os.environ["CUTOUT_BUTLER_COLLECTION"]
-    butler = Butler(repository, writeable=True, run=input_collection)
+    butler = Butler(repository, run=positions_collection)
+
+    # This should only need to be done once, but it does have to be done once.
+    # For now, register the dataset type each time, but this is silly so we
+    # should come up with a better initialization process.  (Maybe do this as
+    # part of vo-cutouts init.)
     dataset_type = DatasetType(
         "cutout_positions",
         dimensions=data_id.keys(),
         universe=butler.registry.dimensions,
-        storage_class="AstropyQTable",
+        storageClass="AstropyQTable",
     )
     butler.registry.registerDatasetType(dataset_type)
 
@@ -116,16 +121,29 @@ def cutout_range(
     if any(math.isinf(v) for v in (ra_min, ra_max, dec_min, dec_max)):
         raise TaskFatalError("UsageError Unbounded ranges not yet supported")
     pos = SkyCoord(ra_min, dec_min, unit="deg")
-    xspan = (ra_max - ra_min) * 3600 / 0.2
-    yspan = (dec_max - dec_min) * 3600 / 0.2
+    xspan = ((ra_max - ra_min) * 3600 / 0.2) * u.dimensionless_unscaled
+    yspan = ((dec_max - dec_min) * 3600 / 0.2) * u.dimensionless_unscaled
     row = 1 * u.dimensionless_unscaled
     input_table = QTable(
-        [row, pos, xspan, yspan], names=["id", "position", "xspan", "yspan"]
+        [[row], [pos], [xspan], [yspan]],
+        names=["id", "position", "xspan", "yspan"],
     )
     butler.put(input_table, "cutout_positions", **data_id)
 
-    # Perform the cutout.
-    data_query = " AND ".join(f"{k}='{v}'" for k, v in data_id.items())
+    # Perform the cutout.  This currently uses subprocess to call pipetask.
+    # The long-term plan is for there to be an API for running a pipeline so
+    # that any setup overhead can be incurred once at worker start and then
+    # cutouts can be done with a direct Python call.
+    #
+    # This tells Butler to register data types every time, which as above
+    # should not be necessary, but they do have to be registered once.
+    data_query_terms = []
+    for key, value in data_id.items():
+        if isinstance(value, int):
+            data_query_terms.append(f"{key}={value}")
+        else:
+            data_query_terms.append(f"{key}='{value}'")
+    data_query = " AND ".join(data_query_terms)
     result = subprocess.run(
         [
             "pipetask",
@@ -142,9 +160,9 @@ def cutout_range(
             "--output",
             output_collection,
             "-i",
-            f"{input_collection},{collection}",
+            f"{positions_collection},{collection}",
         ],
-        capture_output=True,
+        stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:

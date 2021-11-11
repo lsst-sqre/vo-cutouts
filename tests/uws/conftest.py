@@ -12,20 +12,19 @@ to Safir.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import Mock, patch
 
 import pytest
 import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
-from lsst.daf.butler import Butler, ButlerURI
 from safir.dependencies.http_client import http_client_dependency
 
 from tests.support.uws import (
     TrivialPolicy,
     WorkerSession,
     build_uws_config,
+    mock_uws_butler,
     trivial_job,
     uws_broker,
 )
@@ -37,7 +36,7 @@ from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import AsyncIterator, Dict, Iterator, List
+    from typing import AsyncIterator, Iterator
 
     from dramatiq import Broker
     from sqlalchemy.ext.asyncio import async_scoped_session
@@ -93,23 +92,9 @@ def logger() -> BoundLogger:
     return structlog.get_logger("uws")
 
 
-def _mock_butler_getURI(
-    datatype: str, *, dataId: Dict[str, str], collections: List[str]
-) -> ButlerURI:
-    assert datatype == "calexp_cutouts"
-    assert dataId == {"visit": 903332, "detector": 20, "instrument": "HSC"}
-    assert collections == ["output/collection"]
-    mock = Mock(spec=ButlerURI)
-    mock.geturl.return_value = "https://example.com/cutout-result"
-    return mock
-
-
 @pytest.fixture(autouse=True)
 def mock_butler() -> Iterator[None]:
-    with patch("vocutouts.uws.butler.Butler") as mock:
-        mock.return_value = Mock(spec=Butler)
-        mock.return_value.getURI.side_effect = _mock_butler_getURI
-        yield
+    yield from mock_uws_butler()
 
 
 @pytest.fixture

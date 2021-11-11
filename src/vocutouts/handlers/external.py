@@ -148,9 +148,9 @@ async def _sync_request(
         )
 
     # Redirect to the URL of the first result.
-    butler = uws_factory.create_butler()
-    url = butler.url_for_result(job.results[0])
-    return RedirectResponse(url, status_code=303)
+    result_store = uws_factory.create_result_store()
+    result = await result_store.url_for_result(job.results[0])
+    return RedirectResponse(result.url, status_code=303)
 
 
 @external_router.get(

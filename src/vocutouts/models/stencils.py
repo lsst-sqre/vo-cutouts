@@ -80,7 +80,7 @@ class RangeStencil(Stencil):
         ra_min, ra_max, dec_min, dec_max = (float(p) for p in params.split())
         return cls(
             ra=(ra_min, ra_max),
-            dec=(ra_min, ra_max),
+            dec=(dec_min, dec_max),
         )
 
 

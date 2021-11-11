@@ -14,7 +14,7 @@
 #   - Runs a non-root user.
 #   - Sets up the entrypoint and port.
 
-FROM python:3.9.5-slim-buster as base-image
+FROM python:3.9.8-slim-bullseye as base-image
 
 # Update system packages
 COPY scripts/install-base-packages.sh .
@@ -55,6 +55,9 @@ RUN useradd --create-home appuser
 # Copy the virtualenv
 COPY --from=install-image /opt/venv /opt/venv
 
+# Copy the startup script
+COPY scripts/start-frontend.sh /start-frontend.sh
+
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
@@ -64,5 +67,5 @@ USER appuser
 # Expose the port.
 EXPOSE 8080
 
-# Run the application via uvicorn.
-CMD ["uvicorn", "vocutouts.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the application.
+CMD ["/start-frontend.sh"]
