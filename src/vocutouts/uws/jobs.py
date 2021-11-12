@@ -72,7 +72,7 @@ def uws_job_started(
     """
     storage = WorkerJobStore(session)
     try:
-        storage.start_executing(job_id, message_id)
+        storage.start_executing(job_id, message_id, start_time)
     except UnknownJobError:
         pass
 

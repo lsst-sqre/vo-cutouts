@@ -223,7 +223,7 @@ class FrontendJobStore:
         job : `vocutouts.uws.models.Job`
             The internal representation of the newly-created job.
         """
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         destruction_time = now + timedelta(seconds=lifetime)
         sql_params = [
             SQLJobParameter(
@@ -439,10 +439,11 @@ class WorkerJobStore:
     @retry_transaction
     def mark_completed(self, job_id: str, results: List[JobResult]) -> None:
         """Mark a job as completed."""
+        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.COMPLETED
-            job.end_time = datetime.now()
+            job.end_time = now
             for sequence, result in enumerate(results, start=1):
                 sql_result = SQLJobResult(
                     job_id=job.id,
@@ -469,7 +470,9 @@ class WorkerJobStore:
             job.error_detail = error.detail
 
     @retry_transaction
-    def start_executing(self, job_id: str, message_id: str) -> None:
+    def start_executing(
+        self, job_id: str, message_id: str, start_time: datetime
+    ) -> None:
         """Mark a job as executing.
 
         Parameters
@@ -479,12 +482,14 @@ class WorkerJobStore:
         message_id : `str`
             The identifier for the execution of that job in the work queuing
             system.
+        start_time : `datetime`
+            The time at which the job started executing.
         """
         with self._session.begin():
             job = self._get_job(job_id)
             if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
                 job.phase = ExecutionPhase.EXECUTING
-            job.start_time = datetime.now()
+            job.start_time = start_time
             job.message_id = message_id
 
     def _get_job(self, job_id: str) -> SQLJob:
