@@ -21,6 +21,7 @@ backports.entry-points-selectable==1.1.1
 certifi==2021.10.8
     # via
     #   -c requirements/main.txt
+    #   httpcore
     #   httpx
 cfgv==3.3.1
     # via pre-commit
@@ -49,7 +50,7 @@ h11==0.12.0
     #   -c requirements/main.txt
     #   httpcore
     #   uvicorn
-httpcore==0.13.7
+httpcore==0.14.1
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -57,7 +58,7 @@ httptools==0.2.0
     # via
     #   -c requirements/main.txt
     #   uvicorn
-httpx==0.20.0
+httpx==0.21.0
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
@@ -139,7 +140,7 @@ toml==0.10.2
     #   pytest
 tomli==1.2.2
     # via coverage
-typing-extensions==3.10.0.2
+typing-extensions==4.0.0
     # via
     #   -c requirements/main.txt
     #   mypy
@@ -158,7 +159,7 @@ watchgod==0.7
     # via
     #   -c requirements/main.txt
     #   uvicorn
-websockets==10.0
+websockets==10.1
     # via
     #   -c requirements/main.txt
     #   uvicorn
