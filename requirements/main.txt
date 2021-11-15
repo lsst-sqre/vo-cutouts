@@ -16,9 +16,9 @@ astropy==4.3.1
     #   daf-butler
 asyncpg==0.24.0
     # via -r requirements/main.in
-boto3==1.20.4
+boto3==1.20.5
     # via -r requirements/main.in
-botocore==1.23.4
+botocore==1.23.5
     # via
     #   -r requirements/main.in
     #   boto3
@@ -27,6 +27,7 @@ cachetools==4.2.4
     # via google-auth
 certifi==2021.10.8
     # via
+    #   httpcore
     #   httpx
     #   requests
 charset-normalizer==2.0.7
@@ -38,7 +39,7 @@ click==8.0.3
     #   -r requirements/main.in
     #   daf-butler
     #   uvicorn
-daf-butler @ git+https://github.com/lsst/daf_butler@tickets/DM-32386
+daf-butler @ git+https://github.com/lsst/daf_butler@master
     # via -r requirements/main.in
 deprecated==1.2.13
     # via daf-butler
@@ -75,11 +76,11 @@ h11==0.12.0
     # via
     #   httpcore
     #   uvicorn
-httpcore==0.13.7
+httpcore==0.14.1
     # via httpx
 httptools==0.2.0
     # via uvicorn
-httpx==0.20.0
+httpx==0.21.0
     # via
     #   -r requirements/main.in
     #   safir
@@ -117,7 +118,7 @@ protobuf==3.19.1
     #   googleapis-common-protos
 psutil==5.8.0
     # via -r requirements/main.in
-psycopg2==2.9.1
+psycopg2==2.9.2
     # via -r requirements/main.in
 pyasn1==0.4.8
     # via
@@ -181,7 +182,7 @@ structlog==21.2.0
     # via
     #   -r requirements/main.in
     #   safir
-typing-extensions==3.10.0.2
+typing-extensions==4.0.0
     # via pydantic
 urllib3==1.26.7
     # via
@@ -193,7 +194,7 @@ uvloop==0.16.0
     # via uvicorn
 watchgod==0.7
     # via uvicorn
-websockets==10.0
+websockets==10.1
     # via uvicorn
 wrapt==1.13.3
     # via deprecated
