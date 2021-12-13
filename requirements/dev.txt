@@ -37,7 +37,7 @@ coverage[toml]==6.2
     # via
     #   -r requirements/dev.in
     #   pytest-cov
-distlib==0.3.3
+distlib==0.3.4
     # via virtualenv
 filelock==3.4.0
     # via virtualenv
@@ -54,7 +54,7 @@ httpcore==0.14.3
     # via
     #   -c requirements/main.txt
     #   httpx
-httptools==0.2.0
+httptools==0.3.0
     # via
     #   -c requirements/main.txt
     #   uvicorn
@@ -131,7 +131,7 @@ sniffio==1.2.0
     #   asgi-lifespan
     #   httpcore
     #   httpx
-sqlalchemy[asyncio,mypy]==1.4.27
+sqlalchemy[asyncio,mypy]==1.4.28
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
@@ -149,7 +149,7 @@ typing-extensions==4.0.1
     #   -c requirements/main.txt
     #   mypy
     #   sqlalchemy2-stubs
-uvicorn[standard]==0.15.0
+uvicorn[standard]==0.16.0
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
