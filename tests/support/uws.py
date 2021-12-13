@@ -230,8 +230,10 @@ async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:
     # where the completion message is processed before the start message, so
     # the job is seen as complete but the start time is not populated.  Wait
     # for the start time to show up as well.
-    while job.start_time is None:
+    count = 0
+    while job.start_time is None and count < 10:
         await asyncio.sleep(0.5)
+        count += 1
         job = await job_service.get("user", "1")
 
     return job
