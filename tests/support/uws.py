@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
@@ -224,4 +225,13 @@ async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:
     )
     while job.phase in (ExecutionPhase.QUEUED, ExecutionPhase.EXECUTING):
         job = await job_service.get("user", "1", wait=5, wait_phase=job.phase)
+
+    # Despite prioritization of messages, there can still be a race condition
+    # where the completion message is processed before the start message, so
+    # the job is seen as complete but the start time is not populated.  Wait
+    # for the start time to show up as well.
+    while job.start_time is None:
+        await asyncio.sleep(0.5)
+        job = await job_service.get("user", "1")
+
     return job
