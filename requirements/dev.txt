@@ -39,7 +39,7 @@ coverage[toml]==6.2
     #   pytest-cov
 distlib==0.3.4
     # via virtualenv
-filelock==3.4.0
+filelock==3.4.2
     # via virtualenv
 greenlet==1.1.2
     # via
@@ -71,7 +71,7 @@ idna==3.3
     #   rfc3986
 iniconfig==1.1.1
     # via pytest
-mypy==0.920
+mypy==0.930
     # via
     #   -r requirements/dev.in
     #   sqlalchemy
@@ -83,7 +83,7 @@ packaging==21.3
     # via
     #   -c requirements/main.txt
     #   pytest
-platformdirs==2.4.0
+platformdirs==2.4.1
     # via virtualenv
 pluggy==1.0.0
     # via pytest
@@ -131,7 +131,7 @@ sniffio==1.2.0
     #   asgi-lifespan
     #   httpcore
     #   httpx
-sqlalchemy[asyncio,mypy]==1.4.28
+sqlalchemy[asyncio,mypy]==1.4.29
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
