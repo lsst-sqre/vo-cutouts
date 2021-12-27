@@ -16,9 +16,9 @@ astropy==5.0
     #   daf-butler
 asyncpg==0.25.0
     # via -r requirements/main.in
-boto3==1.20.24
+boto3==1.20.26
     # via -r requirements/main.in
-botocore==1.23.24
+botocore==1.23.26
     # via
     #   -r requirements/main.in
     #   boto3
@@ -115,7 +115,9 @@ numpy==1.21.5
     #   astropy
     #   pyerfa
 packaging==21.3
-    # via astropy
+    # via
+    #   astropy
+    #   redis
 prometheus-client==0.12.0
     # via dramatiq
 protobuf==3.19.1
@@ -154,7 +156,7 @@ pyyaml==6.0
     #   astropy
     #   daf-butler
     #   uvicorn
-redis==4.0.2
+redis==4.1.0
     # via dramatiq
 requests==2.26.0
     # via
@@ -179,7 +181,7 @@ sniffio==1.2.0
     #   anyio
     #   httpcore
     #   httpx
-sqlalchemy[asyncio]==1.4.28
+sqlalchemy[asyncio]==1.4.29
     # via
     #   -r requirements/main.in
     #   daf-butler
