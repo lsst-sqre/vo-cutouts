@@ -14,10 +14,8 @@ asgiref==3.4.1
     # via
     #   -c requirements/main.txt
     #   uvicorn
-attrs==21.2.0
+attrs==21.4.0
     # via pytest
-backports.entry-points-selectable==1.1.1
-    # via virtualenv
 certifi==2021.10.8
     # via
     #   -c requirements/main.txt
@@ -62,7 +60,7 @@ httpx==0.21.1
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
-identify==2.4.0
+identify==2.4.1
     # via pre-commit
 idna==3.3
     # via
@@ -158,7 +156,7 @@ uvloop==0.16.0
     # via
     #   -c requirements/main.txt
     #   uvicorn
-virtualenv==20.10.0
+virtualenv==20.13.0
     # via pre-commit
 watchgod==0.7
     # via
