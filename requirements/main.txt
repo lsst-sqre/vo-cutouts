@@ -16,9 +16,9 @@ astropy==5.0
     #   daf-butler
 asyncpg==0.25.0
     # via -r requirements/main.in
-boto3==1.20.26
+boto3==1.20.31
     # via -r requirements/main.in
-botocore==1.23.26
+botocore==1.23.31
     # via
     #   -r requirements/main.in
     #   boto3
@@ -30,7 +30,7 @@ certifi==2021.10.8
     #   httpcore
     #   httpx
     #   requests
-charset-normalizer==2.0.9
+charset-normalizer==2.0.10
     # via
     #   httpx
     #   requests
@@ -47,7 +47,7 @@ deprecated==1.2.13
     #   redis
 dramatiq[redis]==1.12.1
     # via -r requirements/main.in
-fastapi==0.70.1
+fastapi==0.71.0
     # via
     #   -r requirements/main.in
     #   safir
@@ -62,7 +62,7 @@ google-auth==2.3.3
     #   google-cloud-storage
 google-cloud-core==2.2.1
     # via google-cloud-storage
-google-cloud-storage==1.43.0
+google-cloud-storage==1.44.0
     # via -r requirements/main.in
 google-crc32c==1.3.0
     # via google-resumable-media
@@ -78,11 +78,11 @@ h11==0.12.0
     # via
     #   httpcore
     #   uvicorn
-httpcore==0.14.3
+httpcore==0.14.4
     # via httpx
 httptools==0.3.0
     # via uvicorn
-httpx==0.21.1
+httpx==0.21.3
     # via
     #   -r requirements/main.in
     #   safir
@@ -158,7 +158,7 @@ pyyaml==6.0
     #   uvicorn
 redis==4.1.0
     # via dramatiq
-requests==2.26.0
+requests==2.27.1
     # via
     #   google-api-core
     #   google-cloud-storage
@@ -185,7 +185,7 @@ sqlalchemy[asyncio]==1.4.29
     # via
     #   -r requirements/main.in
     #   daf-butler
-starlette==0.16.0
+starlette==0.17.1
     # via
     #   -r requirements/main.in
     #   fastapi
@@ -196,7 +196,7 @@ structlog==21.5.0
     #   safir
 typing-extensions==4.0.1
     # via pydantic
-urllib3==1.26.7
+urllib3==1.26.8
     # via
     #   botocore
     #   requests
