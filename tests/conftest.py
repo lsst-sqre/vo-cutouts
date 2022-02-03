@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import dramatiq
 import pytest
+import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
@@ -51,7 +52,7 @@ def cutout_test(
     ]
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def app() -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
@@ -70,7 +71,7 @@ async def app() -> AsyncIterator[FastAPI]:
         yield main.app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:

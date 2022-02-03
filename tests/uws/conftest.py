@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
@@ -45,7 +46,7 @@ if TYPE_CHECKING:
     from vocutouts.uws.config import UWSConfig
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def app(
     stub_broker: Broker,
     uws_config: UWSConfig,
@@ -80,7 +81,7 @@ async def app(
         yield uws_app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:
@@ -97,7 +98,7 @@ def mock_butler() -> Iterator[None]:
     yield from mock_uws_butler()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def session(
     uws_config: UWSConfig, logger: BoundLogger
 ) -> async_scoped_session:
@@ -116,7 +117,7 @@ def uws_config(tmp_path: Path) -> UWSConfig:
     return build_uws_config(tmp_path)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def uws_factory(app: FastAPI) -> AsyncIterator[UWSFactory]:
     async for factory in uws_dependency():
         yield factory
