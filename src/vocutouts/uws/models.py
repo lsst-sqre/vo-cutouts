@@ -12,7 +12,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
+    from typing import Dict, List, Optional, Union
 
 
 @dataclass
@@ -163,6 +163,14 @@ class JobParameter:
 
     is_post: bool = False
     """Whether the parameter was provided via POST."""
+
+    def to_dict(self) -> Dict[str, Union[str, bool]]:
+        """Convert to a dictionary, primarily for logging."""
+        return {
+            "parameter_id": self.parameter_id,
+            "value": self.value,
+            "is_post": self.is_post,
+        }
 
 
 @dataclass

@@ -9,7 +9,9 @@ from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
+from safir.dependencies.logger import logger_dependency
 from safir.metadata import get_metadata
+from structlog.stdlib import BoundLogger
 
 from ..config import config
 from ..dependencies.auth import auth_dependency
@@ -380,6 +382,7 @@ async def create_job(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(logger_dependency),
 ) -> str:
     runid = None
     for param in params:
@@ -390,8 +393,17 @@ async def create_job(
     # Create the job and optionally start it.
     job_service = uws_factory.create_job_service()
     job = await job_service.create(user, run_id=runid, params=params)
+    if runid:
+        logger = logger.bind(run_id=runid)
+    logger.info(
+        "Created job",
+        user=user,
+        job_id=job.job_id,
+        params=[p.to_dict() for p in params],
+    )
     if phase == "RUN":
         await job_service.start(user, job.job_id)
+        logger.info("Started job", user=user, job_id=job.job_id)
 
     # Redirect to the new job.
     return request.url_for("get_job", job_id=job.job_id)
