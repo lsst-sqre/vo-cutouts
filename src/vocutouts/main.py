@@ -15,7 +15,7 @@ from safir.dependencies.http_client import http_client_dependency
 from safir.logging import configure_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
-from .actors import cutout_range
+from .actors import cutout
 from .config import config
 from .handlers.external import external_router
 from .handlers.internal import internal_router
@@ -60,7 +60,7 @@ async def startup_event() -> None:
     install_error_handlers(_subapp)
     await uws_dependency.initialize(
         config=config.uws_config(),
-        policy=ImageCutoutPolicy(cutout_range),
+        policy=ImageCutoutPolicy(cutout, logger),
         logger=logger,
     )
 

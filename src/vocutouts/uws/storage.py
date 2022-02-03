@@ -100,9 +100,7 @@ def _convert_job(job: SQLJob) -> Job:
         results=[
             JobResult(
                 result_id=r.result_id,
-                collection=r.collection,
-                data_id=dict(r.data_id),
-                datatype=r.datatype,
+                url=r.url,
                 size=r.size,
                 mime_type=r.mime_type,
             )
@@ -180,11 +178,6 @@ class FrontendJobStore:
     database (making the assumption that all datetimes will use UTC, which is
     maintained by the rest of the UWS layer), and adding the UTC timezone back
     to datetimes when retrieved from the database.
-
-    The ``data_id`` column of the ``job_result`` table is an arbitrary set of
-    key/value pairs.  We just store this JSON-encoded rather than bothering
-    with another database table, since the value is opaque to all database
-    operations we care about.
     """
 
     def __init__(self, session: async_scoped_session) -> None:
@@ -449,9 +442,7 @@ class WorkerJobStore:
                     job_id=job.id,
                     result_id=result.result_id,
                     sequence=sequence,
-                    collection=result.collection,
-                    data_id=result.data_id,
-                    datatype=result.datatype,
+                    url=result.url,
                     size=result.size,
                     mime_type=result.mime_type,
                 )

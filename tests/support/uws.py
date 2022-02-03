@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import dramatiq
 import structlog
@@ -16,7 +17,6 @@ from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
 from google.cloud import storage
-from lsst.daf.butler import Butler, ButlerURI
 
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.database import create_sync_session
@@ -38,6 +38,9 @@ if TYPE_CHECKING:
 
     from vocutouts.uws.models import Job, JobParameter
     from vocutouts.uws.service import JobService
+
+SOURCE_UUID = str(uuid.uuid4())
+"""UUID of the source for a cutout."""
 
 uws_broker = StubBroker()
 """Dramatiq broker for use in tests."""
@@ -79,9 +82,7 @@ def trivial_job(job_id: str) -> List[Dict[str, Any]]:
     return [
         {
             "result_id": "cutout",
-            "collection": "output/collection",
-            "data_id": {"visit": 903332, "detector": 20, "instrument": "HSC"},
-            "datatype": "calexp_cutouts",
+            "url": "s3://some-bucket/some/path",
             "mime_type": "application/fits",
         }
     ]
@@ -147,7 +148,6 @@ def build_uws_config(tmp_path: Path) -> UWSConfig:
     environment, which is done as part of running the test with tox-docker.
     """
     return UWSConfig(
-        butler_repository="some-imaginary-repository-url",
         execution_duration=10 * 60,
         lifetime=24 * 60 * 60,
         database_url=os.environ["CUTOUT_DATABASE_URL"],
@@ -155,20 +155,6 @@ def build_uws_config(tmp_path: Path) -> UWSConfig:
         redis_host=os.getenv("CUTOUT_REDIS_HOST", "127.0.0.1"),
         redis_password=None,
     )
-
-
-def _mock_butler_getURI(
-    datatype: str, *, dataId: Dict[str, str], collections: List[str]
-) -> ButlerURI:
-    assert datatype == "calexp_cutouts"
-    assert dataId == {"visit": 903332, "detector": 20, "instrument": "HSC"}
-    assert collections == ["output/collection"]
-    mock = Mock(spec=ButlerURI)
-    mock.scheme = "s3"
-    mock.netloc = "some-bucket"
-    mock.path = "/some/path"
-    mock.relativeToPathRoot = "some/path"
-    return mock
 
 
 class MockBlob(Mock):
@@ -208,14 +194,10 @@ class MockStorageClient(Mock):
         return MockBucket()
 
 
-def mock_uws_butler() -> Iterator[None]:
-    with patch("vocutouts.uws.results.Butler") as m1:
-        m1.return_value = Mock(spec=Butler)
-        m1.return_value.registry = MagicMock()
-        m1.return_value.getURI.side_effect = _mock_butler_getURI
-        mock_gcs = MockStorageClient
-        with patch("google.cloud.storage.Client", side_effect=mock_gcs):
-            yield
+def mock_uws_google_storage() -> Iterator[None]:
+    mock_gcs = MockStorageClient
+    with patch("google.cloud.storage.Client", side_effect=mock_gcs):
+        yield
 
 
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:

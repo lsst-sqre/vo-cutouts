@@ -21,19 +21,20 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
 
-from tests.support.uws import (
-    TrivialPolicy,
-    WorkerSession,
-    build_uws_config,
-    mock_uws_butler,
-    trivial_job,
-    uws_broker,
-)
 from vocutouts.uws.database import create_async_session, initialize_database
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
+
+from ..support.uws import (
+    TrivialPolicy,
+    WorkerSession,
+    build_uws_config,
+    mock_uws_google_storage,
+    trivial_job,
+    uws_broker,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,8 +95,8 @@ def logger() -> BoundLogger:
 
 
 @pytest.fixture(autouse=True)
-def mock_butler() -> Iterator[None]:
-    yield from mock_uws_butler()
+def mock_google_storage() -> Iterator[None]:
+    yield from mock_uws_google_storage()
 
 
 @pytest_asyncio.fixture

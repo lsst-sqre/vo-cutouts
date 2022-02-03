@@ -114,14 +114,8 @@ class JobResult:
     result_id: str
     """Identifier for the result."""
 
-    collection: str
-    """The Butler collection in which the result is stored."""
-
-    data_id: Dict[str, str]
-    """The data ID for the result (as JSON)."""
-
-    datatype: str
-    """The Datatype of the result."""
+    url: str
+    """The URL for the result, which must point into a GCS bucket."""
 
     size: Optional[int] = None
     """Size of the result in bytes."""

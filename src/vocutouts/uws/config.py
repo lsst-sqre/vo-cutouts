@@ -23,9 +23,6 @@ class UWSConfig:
     `vocutouts.uws.dependencies.UWSDependency` object.
     """
 
-    butler_repository: str
-    """The Butler repository to query for results."""
-
     execution_duration: int
     """Maximum execution time in seconds.
 

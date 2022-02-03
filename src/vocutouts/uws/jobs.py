@@ -8,8 +8,8 @@ A UWS job will have four associated classes of actors:
 #. An actor that marks the UWS job as executing, invoked by the first type of
    actor as soon as they start working on a job.
 
-#. An actor that marks the UWS job as complete and saves a pointer to the
-   Butler output collection.
+#. An actor that marks the UWS job as complete and saves the metadata about
+   the result to the UWS database.
 
 #. An actor that marks the UWS job as failed and saves the error message in
    the UWS database.
