@@ -120,6 +120,7 @@ async def _sync_request(
     user: str,
     runid: Optional[str],
     uws_factory: UWSFactory,
+    logger: BoundLogger,
 ) -> Response:
     """Process a sync request.
 
@@ -128,23 +129,42 @@ async def _sync_request(
     # Create the job, start it, and wait for it to complete.
     job_service = uws_factory.create_job_service()
     job = await job_service.create(user, run_id=runid, params=params)
+    if runid:
+        logger = logger.bind(run_id=runid)
+    logger.info(
+        "Created job",
+        user=user,
+        job_id=job.job_id,
+        params=[p.to_dict() for p in params],
+    )
     await job_service.start(user, job.job_id)
+    logger.info("Started job", user=user, job_id=job.job_id)
     job = await job_service.get(
         user, job.job_id, wait=config.sync_timeout, wait_for_completion=True
     )
 
     # Check for error states.
     if job.phase not in (ExecutionPhase.COMPLETED, ExecutionPhase.ERROR):
+        logger.warning("Job timed out", user=user, job_id=job.job_id)
         return PlainTextResponse(
             f"Error Cutout did not complete in {config.sync_timeout}s",
             status_code=400,
         )
     if job.error:
+        logger.warning(
+            "Job failed",
+            user=user,
+            job_id=job.job_id,
+            error_code=job.error.error_code.value,
+            error=job.error.message,
+            error_detail=job.error.detail,
+        )
         response = f"{job.error.error_code.value} {job.error.message}\n"
         if job.error.detail:
             response += f"\n{job.error.detail}"
         return PlainTextResponse(response, status_code=400)
     if not job.results:
+        logger.warning("Job returned no results", user=user, job_id=job.job_id)
         return PlainTextResponse(
             "Error Job did not return any results", status_code=400
         )
@@ -227,12 +247,13 @@ async def get_sync(
     ),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(logger_dependency),
 ) -> Response:
     params = [
         JobParameter(parameter_id=k.lower(), value=v, is_post=False)
         for k, v in request.query_params.items()
     ]
-    return await _sync_request(params, user, runid, uws_factory)
+    return await _sync_request(params, user, runid, uws_factory, logger)
 
 
 @external_router.post(
@@ -308,13 +329,14 @@ async def post_sync(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(logger_dependency),
 ) -> Response:
     runid = None
     for param in params:
         if param.parameter_id == "runid":
             runid = param.value
     params = [p for p in params if p.parameter_id != "runid"]
-    return await _sync_request(params, user, runid, uws_factory)
+    return await _sync_request(params, user, runid, uws_factory, logger)
 
 
 @uws_router.post(
