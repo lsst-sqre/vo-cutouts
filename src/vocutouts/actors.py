@@ -58,7 +58,7 @@ __all__ = [
 @dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout(
     job_id: str,
-    data_ids: List[str],
+    dataset_ids: List[str],
     stencils: List[Dict[str, Any]],
 ) -> List[Dict[str, str]]:
     """Stub for a circle cutout.
@@ -71,7 +71,7 @@ def cutout(
     ----------
     job_id : `str`
         The UWS job ID, used as the key for storing results.
-    data_ids : List[`str`]
+    dataset_ids : List[`str`]
         The data objects on which to perform cutouts.  These are opaque
         identifiers passed as-is to the backend.  The user will normally
         discover them via some service such as ObsTAP.

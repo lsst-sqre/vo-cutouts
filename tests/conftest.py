@@ -33,13 +33,13 @@ if TYPE_CHECKING:
 @dramatiq.actor(queue_name="cutout", store_results=True)
 def cutout_test(
     job_id: str,
-    data_ids: List[str],
+    dataset_ids: List[str],
     stencils: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     message = CurrentMessage.get_current_message()
     now = isodatetime(datetime.now(tz=timezone.utc))
     job_started.send(job_id, message.message_id, now)
-    assert len(data_ids) == 1
+    assert len(dataset_ids) == 1
     return [
         {
             "result_id": "cutout",

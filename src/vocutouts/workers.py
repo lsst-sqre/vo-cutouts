@@ -87,9 +87,9 @@ class TaskTransientError(Exception):
 @dramatiq.actor(queue_name="cutout", max_retries=1)
 def cutout(
     job_id: str,
-    data_ids: List[str],
+    dataset_ids: List[str],
     stencils: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+) -> List[Dict[str, str]]:
     """Perform a cutout.
 
     This is a queue worker for the vo-cutouts service.  It takes a serialized
@@ -102,7 +102,7 @@ def cutout(
     ----------
     job_id : `str`
         The UWS job ID, used as the key for storing results.
-    data_ids : List[`str`]
+    dataset_ids : List[`str`]
         The data objects on which to perform cutouts.  These are opaque
         identifiers passed as-is to the backend.  The user will normally
         discover them via some service such as ObsTAP.
@@ -124,7 +124,7 @@ def cutout(
     job_started.send(job_id, message.message_id, now)
 
     # Currently, only a single data ID and a single stencil are supported.
-    assert len(data_ids) == 1
+    assert len(dataset_ids) == 1
     assert len(stencils) == 1
 
     # Convert the stencils to SkyStencils.
@@ -150,7 +150,7 @@ def cutout(
 
     # Perform the cutout.
     try:
-        result = backend.process_uuid(UUID(data_ids[0]), sky_stencils[0])
+        result = backend.process_uuid(UUID(dataset_ids[0]), sky_stencils[0])
     except Exception as e:
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
