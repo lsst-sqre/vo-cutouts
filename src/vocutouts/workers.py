@@ -150,7 +150,7 @@ def cutout(
 
     # Perform the cutout.
     try:
-        result = backend.process_uuid(UUID(dataset_ids[0]), sky_stencils[0])
+        result = backend.process_uuid(sky_stencils[0], UUID(dataset_ids[0]))
     except Exception as e:
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
