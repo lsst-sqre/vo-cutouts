@@ -33,23 +33,23 @@ configure_logging(
     name=config.logger_name,
 )
 
-app = FastAPI()
-"""The main FastAPI application for vo-cutouts."""
-
-# Define the external routes in a subapp so that it will serve its own OpenAPI
-# interface definition and documentation URLs under the external URL.
-_subapp = FastAPI(
+app = FastAPI(
     title="vo-cutouts",
     description=metadata("vo-cutouts").get("Summary", ""),
     version=metadata("vo-cutouts").get("Version", "0.0.0"),
+    openapi_url=f"/{config.name}/openapi.json",
+    docs_url=f"/{config.name}/docs",
+    redoc_url=f"/{config.name}/redoc",
 )
-_subapp.include_router(
-    external_router, responses={401: {"description": "Unauthenticated"}}
-)
+"""The main FastAPI application for vo-cutouts."""
 
-# Attach the internal routes and subapp to the main application.
+# Attach the routers.
 app.include_router(internal_router)
-app.mount(f"/{config.name}", _subapp)
+app.include_router(
+    external_router,
+    prefix=f"/{config.name}",
+    responses={401: {"description": "Unauthenticated"}},
+)
 
 
 @app.on_event("startup")
@@ -57,7 +57,7 @@ async def startup_event() -> None:
     app.add_middleware(XForwardedMiddleware)
     app.add_middleware(CaseInsensitiveQueryMiddleware)
     logger = structlog.get_logger(config.logger_name)
-    install_error_handlers(_subapp)
+    install_error_handlers(app)
     await uws_dependency.initialize(
         config=config.uws_config(),
         policy=ImageCutoutPolicy(cutout, logger),
