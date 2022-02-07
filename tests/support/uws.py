@@ -168,6 +168,7 @@ class MockBlob(Mock):
         expiration: timedelta,
         method: str,
         response_type: str,
+        credentials: Any,
     ) -> str:
         assert version == "v4"
         assert expiration == timedelta(seconds=15 * 60)
@@ -197,7 +198,8 @@ class MockStorageClient(Mock):
 def mock_uws_google_storage() -> Iterator[None]:
     mock_gcs = MockStorageClient
     with patch("google.cloud.storage.Client", side_effect=mock_gcs):
-        yield
+        with patch("google.auth.compute_engine.IDTokenCredentials"):
+            yield
 
 
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:
