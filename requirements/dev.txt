@@ -23,7 +23,7 @@ certifi==2021.10.8
     #   httpx
 cfgv==3.3.1
     # via pre-commit
-charset-normalizer==2.0.10
+charset-normalizer==2.0.11
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -31,7 +31,7 @@ click==8.0.3
     # via
     #   -c requirements/main.txt
     #   uvicorn
-coverage[toml]==6.2
+coverage[toml]==6.3.1
     # via
     #   -r requirements/dev.in
     #   pytest-cov
@@ -48,7 +48,7 @@ h11==0.12.0
     #   -c requirements/main.txt
     #   httpcore
     #   uvicorn
-httpcore==0.14.5
+httpcore==0.14.7
     # via
     #   -c requirements/main.txt
     #   httpx
@@ -56,11 +56,11 @@ httptools==0.3.0
     # via
     #   -c requirements/main.txt
     #   uvicorn
-httpx==0.21.3
+httpx==0.22.0
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
-identify==2.4.5
+identify==2.4.8
     # via pre-commit
 idna==3.3
     # via
@@ -93,7 +93,7 @@ pyparsing==3.0.7
     # via
     #   -c requirements/main.txt
     #   packaging
-pytest==6.2.5
+pytest==7.0.0
     # via
     #   -r requirements/dev.in
     #   pytest-asyncio
@@ -136,19 +136,18 @@ sqlalchemy[asyncio,mypy]==1.4.31
 sqlalchemy2-stubs==0.0.2a19
     # via sqlalchemy
 toml==0.10.2
-    # via
-    #   pre-commit
-    #   pytest
+    # via pre-commit
 tomli==2.0.0
     # via
     #   coverage
     #   mypy
+    #   pytest
 typing-extensions==4.0.1
     # via
     #   -c requirements/main.txt
     #   mypy
     #   sqlalchemy2-stubs
-uvicorn[standard]==0.17.0
+uvicorn[standard]==0.17.4
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
@@ -156,7 +155,7 @@ uvloop==0.16.0
     # via
     #   -c requirements/main.txt
     #   uvicorn
-virtualenv==20.13.0
+virtualenv==20.13.1
     # via pre-commit
 watchgod==0.7
     # via
