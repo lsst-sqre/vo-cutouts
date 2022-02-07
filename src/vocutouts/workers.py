@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 from uuid import UUID
 
 import astropy.units as u
@@ -157,7 +158,8 @@ def cutout(
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.
-    result_scheme = result.geturl().scheme
+    result_url = result.geturl()
+    result_scheme = urlparse(result_url).scheme
     if result_scheme != "s3":
         msg = f"Error Backend returned URL with scheme {result_scheme}, not s3"
         raise TaskTransientError(msg)
@@ -165,6 +167,6 @@ def cutout(
         {
             "result_id": "cutout",
             "mime_type": "application/fits",
-            "url": result.geturl(),
+            "url": result_url,
         }
     ]
