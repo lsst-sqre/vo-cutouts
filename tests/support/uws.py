@@ -154,6 +154,7 @@ def build_uws_config(tmp_path: Path) -> UWSConfig:
         database_password=os.getenv("CUTOUT_DATABASE_PASSWORD"),
         redis_host=os.getenv("CUTOUT_REDIS_HOST", "127.0.0.1"),
         redis_password=None,
+        signing_service_account="",
     )
 
 
@@ -197,9 +198,10 @@ class MockStorageClient(Mock):
 
 def mock_uws_google_storage() -> Iterator[None]:
     mock_gcs = MockStorageClient
-    with patch("google.cloud.storage.Client", side_effect=mock_gcs):
-        with patch("google.auth.compute_engine.IDTokenCredentials"):
-            yield
+    with patch("google.auth.impersonated_credentials.Credentials"):
+        with patch("google.auth.default", return_value=(None, None)):
+            with patch("google.cloud.storage.Client", side_effect=mock_gcs):
+                yield
 
 
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:

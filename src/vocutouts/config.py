@@ -45,6 +45,14 @@ class Configuration:
     Set with the ``CUTOUT_DATABASE_PASSWORD`` environment variable.
     """
 
+    signing_service_account: str = os.getenv("CUTOUT_SERVICE_ACCOUNT", "")
+    """Email of service account to use for signed URLs.
+
+    The default credentials that the application frontend runs with must have
+    the ``roles/iam.serviceAccountTokenCreator`` role on the service account
+    with this email.
+    """
+
     execution_duration: int = int(os.getenv("CUTOUT_TIMEOUT", "600"))
     """The timeout for a single cutout job.
 
@@ -115,6 +123,7 @@ class Configuration:
             database_password=self.database_password,
             redis_host=self.redis_host,
             redis_password=self.redis_password,
+            signing_service_account=self.signing_service_account,
         )
 
 

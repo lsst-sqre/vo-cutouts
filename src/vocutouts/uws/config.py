@@ -44,6 +44,14 @@ class UWSConfig:
     redis_host: str
     """Hostname of the Redis server used by Dramatiq."""
 
+    signing_service_account: str
+    """Email of service account to use for signed URLs.
+
+    The default credentials that the application frontend runs with must have
+    the ``roles/iam.serviceAccountTokenCreator`` role on the service account
+    with this email.
+    """
+
     database_password: Optional[str] = None
     """Password for the database."""
 

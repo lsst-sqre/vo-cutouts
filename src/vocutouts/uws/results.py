@@ -11,8 +11,8 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
-from google.auth import compute_engine
-from google.auth.transport import requests
+import google.auth
+from google.auth import impersonated_credentials
 from google.cloud import storage
 
 from .models import JobResultURL
@@ -35,7 +35,7 @@ class ResultStore:
 
     def __init__(self, config: UWSConfig) -> None:
         self._config = config
-        self._auth_request = requests.Request()
+        self._credentials, _ = google.auth.default()
         self._gcs = storage.Client()
 
     async def url_for_result(self, result: JobResult) -> JobResultURL:
@@ -46,19 +46,32 @@ class ResultStore:
         This uses custom credentials so that it will work with a GKE service
         account without having to export the secret key as a JSON blob and
         manage it as a secret.  For more information, see
-        https://gist.github.com/jezhumble/91051485db4462add82045ef9ac2a0ec
+        `gcs_signedurl <https://github.com/salrashid123/gcs_signedurl>`__.
+
+        This is probably too inefficient, since it gets new signing
+        credentials each time it generates a signed URL.  Doing better will
+        require figuring out the lifetime and refreshing the credentials when
+        the lifetime has expired, which in turn will probably require a
+        longer-lived object to hold the credentials.
         """
         uri = urlparse(result.url)
         assert uri.scheme == "s3"
         bucket = self._gcs.bucket(uri.netloc)
         blob = bucket.blob(uri.path[1:])
-        credentials = compute_engine.IDTokenCredentials(self._auth_request, "")
+        signing_credentials = impersonated_credentials.Credentials(
+            source_credentials=self._credentials,
+            target_principal=self._config.signing_service_account,
+            target_scopes=(
+                "https://www.googleapis.com/auth/devstorage.read_only"
+            ),
+            lifetime=2,
+        )
         signed_url = blob.generate_signed_url(
             version="v4",
             expiration=timedelta(seconds=self._config.url_lifetime),
             method="GET",
             response_type=result.mime_type,
-            credentials=credentials,
+            credentials=signing_credentials,
         )
 
         # Return the JobResultURL representation of this result.
