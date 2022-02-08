@@ -63,24 +63,16 @@ class ImageCutoutPolicy(UWSPolicy):
         limitation is expected to be relaxed in a later version.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
-        try:
-            return self._actor.send_with_options(
-                args=(
-                    job.job_id,
-                    cutout_params.ids,
-                    [s.to_dict() for s in cutout_params.stencils],
-                ),
-                time_limit=job.execution_duration * 1000,
-                on_success=job_completed,
-                on_failure=job_failed,
-            )
-        except Exception:
-            self._logger.exception(
-                "Error dispatching job",
-                job_id=job.job_id,
-                params=[p.to_dict() for p in job.parameters],
-            )
-            raise
+        return self._actor.send_with_options(
+            args=(
+                job.job_id,
+                cutout_params.ids,
+                [s.to_dict() for s in cutout_params.stencils],
+            ),
+            time_limit=job.execution_duration * 1000,
+            on_success=job_completed,
+            on_failure=job_failed,
+        )
 
     def validate_destruction(
         self, destruction: datetime, job: Job
