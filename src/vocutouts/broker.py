@@ -11,24 +11,19 @@ or those tasks will be associated with a RabbitMQ broker.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Optional
 
 import dramatiq
 import structlog
-from dramatiq import Middleware
+from dramatiq import Broker, Middleware, Worker
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
+from sqlalchemy.orm import scoped_session
 
 from .config import config
 from .uws.database import create_sync_session
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-    from dramatiq import Broker, Worker
-    from sqlalchemy.orm import scoped_session
 
 broker = RedisBroker(host=config.redis_host, password=config.redis_password)
 """Broker used by UWS."""

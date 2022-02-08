@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
+from httpx import AsyncClient
 
 from vocutouts.config import config
-
-if TYPE_CHECKING:
-    from httpx import AsyncClient
 
 AVAILABILITY = """
 <vosi:availability xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">

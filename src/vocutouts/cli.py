@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, TypeVar
 
 import click
 import structlog
@@ -13,10 +13,7 @@ import uvicorn
 from .config import config
 from .uws.database import initialize_database
 
-if TYPE_CHECKING:
-    from typing import Any, Awaitable, Callable, Optional, TypeVar
-
-    T = TypeVar("T")
+T = TypeVar("T")
 
 
 def coroutine(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:

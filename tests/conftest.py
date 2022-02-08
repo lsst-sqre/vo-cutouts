@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Any, AsyncIterator, Dict, Iterator, List
 
 import dramatiq
 import pytest
@@ -11,6 +11,7 @@ import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
+from fastapi import FastAPI
 from httpx import AsyncClient
 
 from vocutouts import main
@@ -23,11 +24,6 @@ from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.utils import isodatetime
 
 from .support.uws import mock_uws_google_storage
-
-if TYPE_CHECKING:
-    from typing import Any, AsyncIterator, Dict, Iterator, List
-
-    from fastapi import FastAPI
 
 
 @dramatiq.actor(queue_name="cutout", store_results=True)

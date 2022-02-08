@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import Dict, List
 
 import pytest
 from dramatiq import Worker
+from httpx import AsyncClient
 
 from vocutouts.broker import broker
-
-if TYPE_CHECKING:
-    from typing import Dict, List
-
-    from httpx import AsyncClient
-
 
 PENDING_JOB = """
 <uws:job

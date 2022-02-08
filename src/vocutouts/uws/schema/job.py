@@ -8,20 +8,16 @@ and sharp edges.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import List, Optional
 
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from ..models import ErrorCode, ErrorType, ExecutionPhase
 from .base import Base
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import List, Optional
-
-    from .job_parameter import JobParameter
-    from .job_result import JobResult
+from .job_parameter import JobParameter
+from .job_result import JobResult
 
 __all__ = ["Job"]
 

@@ -34,7 +34,7 @@ always appear to be `None` because the import won't pick up changes from the
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
 
 import dramatiq
 import structlog
@@ -43,9 +43,6 @@ from . import broker
 from .config import config
 from .uws.jobs import uws_job_completed, uws_job_failed, uws_job_started
 from .uws.utils import parse_isodatetime
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
 
 __all__ = [
     "cutout",

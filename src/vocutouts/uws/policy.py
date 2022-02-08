@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import List
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import List
+from dramatiq import Message
 
-    from dramatiq import Message
-
-    from .models import Job, JobParameter
+from .models import Job, JobParameter
 
 __all__ = ["UWSPolicy"]
 

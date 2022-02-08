@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import (
-    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
+    List,
+    Optional,
     TypeVar,
     cast,
     overload,
@@ -17,7 +18,9 @@ from typing import (
 from asyncpg.exceptions import SerializationError
 from sqlalchemy import delete
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.future import select
+from sqlalchemy.orm import scoped_session
 
 from .exceptions import UnknownJobError
 from .models import (
@@ -32,12 +35,6 @@ from .models import (
 from .schema.job import Job as SQLJob
 from .schema.job_parameter import JobParameter as SQLJobParameter
 from .schema.job_result import JobResult as SQLJobResult
-
-if TYPE_CHECKING:
-    from typing import List, Optional
-
-    from sqlalchemy.ext.asyncio import async_scoped_session
-    from sqlalchemy.orm import scoped_session
 
 F = TypeVar("F", bound=Callable[..., Any])
 G = TypeVar("G", bound=Callable[..., Awaitable[Any]])

@@ -7,15 +7,11 @@ may be a better choice, but revision 1.0 of the SODA standard only allows
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import PlainTextResponse
 
 from .exceptions import UWSError
-
-if TYPE_CHECKING:
-    from fastapi import FastAPI, Request
 
 __all__ = ["install_error_handlers"]
 

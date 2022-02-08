@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Dict
 
 import pytest
+from httpx import AsyncClient
 
+from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import JobParameter
-
-if TYPE_CHECKING:
-    from typing import Dict
-
-    from httpx import AsyncClient
-
-    from vocutouts.uws.dependencies import UWSFactory
 
 
 @dataclass

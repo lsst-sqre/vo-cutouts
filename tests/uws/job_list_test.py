@@ -7,21 +7,16 @@ API to create a job, instead inserting it directly via the UWSService.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import update
+from sqlalchemy.ext.asyncio import async_scoped_session
 
+from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.schema import Job as SQLJob
 from vocutouts.uws.utils import isodatetime
-
-if TYPE_CHECKING:
-    from httpx import AsyncClient
-    from sqlalchemy.ext.asyncio import async_scoped_session
-
-    from vocutouts.uws.dependencies import UWSFactory
-
 
 FULL_JOB_LIST = """
 <uws:jobs

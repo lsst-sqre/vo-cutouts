@@ -6,12 +6,9 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Dict, Optional
 
 from .models import ErrorCode, ErrorType, JobError
-
-if TYPE_CHECKING:
-    from typing import Dict, Optional
 
 __all__ = [
     "DataMissingError",

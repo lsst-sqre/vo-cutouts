@@ -3,16 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import List
 
 from ..exceptions import InvalidCutoutParameterError
-from .stencils import parse_stencil
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from .models.stencils import Stencil
-    from .uws.models import JobParameter
+from ..uws.models import JobParameter
+from .stencils import Stencil, parse_stencil
 
 
 @dataclass

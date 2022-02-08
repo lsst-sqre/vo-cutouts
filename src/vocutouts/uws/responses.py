@@ -3,19 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import List
 
+from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 
+from .models import Availability, Job, JobDescription, JobError
+from .results import ResultStore
 from .utils import isodatetime
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from fastapi import Request, Response
-
-    from .models import Availability, Job, JobDescription, JobError
-    from .results import ResultStore
 
 __all__ = ["UWSTemplates"]
 
