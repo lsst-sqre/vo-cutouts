@@ -6,7 +6,7 @@ Descriptive language here is paraphrased from this standard.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -160,11 +160,7 @@ class JobParameter:
 
     def to_dict(self) -> Dict[str, Union[str, bool]]:
         """Convert to a dictionary, primarily for logging."""
-        return {
-            "parameter_id": self.parameter_id,
-            "value": self.value,
-            "is_post": self.is_post,
-        }
+        return asdict(self)
 
 
 @dataclass
