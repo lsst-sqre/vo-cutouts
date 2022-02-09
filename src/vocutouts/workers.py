@@ -125,8 +125,10 @@ def cutout(
     job_started.send(job_id, message.message_id, now)
 
     # Currently, only a single data ID and a single stencil are supported.
-    assert len(dataset_ids) == 1
-    assert len(stencils) == 1
+    if len(dataset_ids) != 1:
+        raise TaskFatalError("UsageError Only one data ID supported")
+    if len(stencils) != 1:
+        raise TaskFatalError("UsageError Only one stencil supported")
 
     # Convert the stencils to SkyStencils.
     sky_stencils: List[SkyStencil] = []
