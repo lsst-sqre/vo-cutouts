@@ -66,8 +66,11 @@ def run(port: int) -> None:
 
 
 @main.command()
+@click.option(
+    "--reset", is_flag=True, help="Delete all existing database data."
+)
 @coroutine
-async def init() -> None:
+async def init(reset: bool) -> None:
     """Initialize the database storage."""
     logger = structlog.get_logger(config.logger_name)
-    await initialize_database(config.uws_config(), logger)
+    await initialize_database(config.uws_config(), logger, reset)

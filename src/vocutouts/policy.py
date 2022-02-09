@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from typing import List
 
     from dramatiq import Actor, Message
+    from structlog.stdlib import BoundLogger
 
     from .uws.models import Job, JobParameter
 
@@ -34,37 +35,40 @@ class ImageCutoutPolicy(UWSPolicy):
          The actor to call for a job.  This simple mapping is temporary;
          eventually different types of cutouts will dispatch to different
          actors.
+    logger : ``structlog.stdlib.BoundLogger``
+         Logger to use to report errors when dispatching the request.
     """
 
-    def __init__(self, actor: Actor) -> None:
+    def __init__(self, actor: Actor, logger: BoundLogger) -> None:
         super().__init__()
         self._actor = actor
+        self._logger = logger
 
     def dispatch(self, job: Job) -> Message:
         """Dispatch a cutout request to the backend.
 
+        Parameters
+        ----------
+        job : `vocutouts.uws.models.Job`
+            The submitted job description.
+
+        Returns
+        -------
+        message : `dramatiq.Message`
+            The dispatched message to the backend.
+
         Notes
         -----
-        Everything about this function is preliminary, just enough to get a
-        proof-of-concept working.  The current data ID format will be replaced
-        with Butler UUIDs, which will then need to be validated against the
-        Butler as part of the `validate_params` policy check so that we can
-        reject early if an invalid UUID was specified.
+        Currently, only one data ID and only one stencil are supported.  This
+        limitation is expected to be relaxed in a later version.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
-        visit, detector, band, instrument = cutout_params.ids[0].split(":")
-        data_id = {
-            "visit": int(visit),
-            "detector": int(detector),
-            "band": band,
-            "instrument": instrument,
-        }
-        stencil = cutout_params.stencils[0]
-        assert isinstance(stencil, RangeStencil)
-        ra_min, ra_max = stencil.ra
-        dec_min, dec_max = stencil.dec
         return self._actor.send_with_options(
-            args=(job.job_id, data_id, ra_min, ra_max, dec_min, dec_max),
+            args=(
+                job.job_id,
+                cutout_params.ids,
+                [s.to_dict() for s in cutout_params.stencils],
+            ),
             time_limit=job.execution_duration * 1000,
             on_success=job_completed,
             on_failure=job_failed,
@@ -92,7 +96,7 @@ class ImageCutoutPolicy(UWSPolicy):
         if len(cutout_params.stencils) != 1:
             raise MultiValuedParameterError("Only one stencil is supported")
 
-        # For now, only range stencils are supported.
+        # For now, range stencils are not supported.
         stencil = cutout_params.stencils[0]
-        if not isinstance(stencil, RangeStencil):
-            raise ParameterError("Only RANGE stencils are supported")
+        if isinstance(stencil, RangeStencil):
+            raise ParameterError("RANGE stencils are not supported")

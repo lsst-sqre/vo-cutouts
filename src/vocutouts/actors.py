@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict, List
 
 __all__ = [
-    "cutout_range",
+    "cutout",
     "job_completed",
     "job_failed",
     "job_started",
@@ -56,19 +56,36 @@ __all__ = [
 
 
 @dramatiq.actor(queue_name="cutout", max_retries=1)
-def cutout_range(
+def cutout(
     job_id: str,
-    data_id: Dict[str, str],
-    ra_min: float,
-    ra_max: float,
-    dec_min: float,
-    dec_max: float,
-) -> List[Dict[str, Any]]:
-    """Stub for a range cutout.
+    dataset_ids: List[str],
+    stencils: List[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    """Stub for a circle cutout.
 
     This is only a stub, existing to define the actor in the Dramatiq broker
     used by the API frontend.  The actual implementation is in
     :py:mod:`vocutouts.workers` and must have the same signature.
+
+    Parameters
+    ----------
+    job_id : `str`
+        The UWS job ID, used as the key for storing results.
+    dataset_ids : List[`str`]
+        The data objects on which to perform cutouts.  These are opaque
+        identifiers passed as-is to the backend.  The user will normally
+        discover them via some service such as ObsTAP.
+    stencils : List[Dict[`str`, Any]]
+        Serialized stencils for the cutouts to perform.  These are
+        JSON-serializable (a requirement for Dramatiq) representations of the
+        `~vocutouts.models.stencils.Stencil` objects corresponding to the
+        user's request.
+
+    Returns
+    -------
+    result : List[Dict[`str`, `str`]]
+        The results of the job.  This must be a list of dict representations
+        of `~vocutouts.uws.models.JobResult` objects.
 
     Notes
     -----

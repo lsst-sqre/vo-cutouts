@@ -14,25 +14,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
 
-from tests.support.uws import (
-    TrivialPolicy,
-    WorkerSession,
-    build_uws_config,
-    mock_uws_butler,
-    trivial_job,
-    uws_broker,
-)
 from vocutouts.uws.database import create_async_session, initialize_database
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
+
+from ..support.uws import (
+    TrivialPolicy,
+    WorkerSession,
+    build_uws_config,
+    mock_uws_google_storage,
+    trivial_job,
+    uws_broker,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -45,7 +47,7 @@ if TYPE_CHECKING:
     from vocutouts.uws.config import UWSConfig
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def app(
     stub_broker: Broker,
     uws_config: UWSConfig,
@@ -80,7 +82,7 @@ async def app(
         yield uws_app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:
@@ -93,11 +95,11 @@ def logger() -> BoundLogger:
 
 
 @pytest.fixture(autouse=True)
-def mock_butler() -> Iterator[None]:
-    yield from mock_uws_butler()
+def mock_google_storage() -> Iterator[None]:
+    yield from mock_uws_google_storage()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def session(
     uws_config: UWSConfig, logger: BoundLogger
 ) -> async_scoped_session:
@@ -116,7 +118,7 @@ def uws_config(tmp_path: Path) -> UWSConfig:
     return build_uws_config(tmp_path)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def uws_factory(app: FastAPI) -> AsyncIterator[UWSFactory]:
     async for factory in uws_dependency():
         yield factory

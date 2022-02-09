@@ -19,10 +19,17 @@ class Configuration:
     """Configuration for vocutouts."""
 
     butler_repository: str = os.getenv("CUTOUT_BUTLER_REPOSITORY", "")
-    """The Butler repository to use for results.
+    """The Butler repository holding source images for cutouts.
 
     Set with the ``CUTOUT_BUTLER_REPOSITORY`` environment variable.  Setting
     this is mandatory.
+    """
+
+    storage_url: str = os.getenv("CUTOUT_STORAGE_URL", "")
+    """The root URL to use to store cutout results.
+
+    This must be an ``s3`` URL pointing to a Google Cloud Storage bucket that
+    is writable by the backend and readable by the frontend.
     """
 
     database_url: str = os.getenv("CUTOUT_DATABASE_URL", "")
@@ -36,6 +43,14 @@ class Configuration:
     """The password for the UWS job database.
 
     Set with the ``CUTOUT_DATABASE_PASSWORD`` environment variable.
+    """
+
+    signing_service_account: str = os.getenv("CUTOUT_SERVICE_ACCOUNT", "")
+    """Email of service account to use for signed URLs.
+
+    The default credentials that the application frontend runs with must have
+    the ``roles/iam.serviceAccountTokenCreator`` role on the service account
+    with this email.
     """
 
     execution_duration: int = int(os.getenv("CUTOUT_TIMEOUT", "600"))
@@ -72,6 +87,9 @@ class Configuration:
     one minute.
     """
 
+    tmpdir: str = os.getenv("CUTOUT_TMPDIR", "/tmp")
+    """Temporary directory to use for cutouts before uploading them to GCS."""
+
     name: str = os.getenv("SAFIR_NAME", "cutout")
     """The application's name, which doubles as the root HTTP endpoint path.
 
@@ -99,13 +117,13 @@ class Configuration:
     def uws_config(self) -> UWSConfig:
         """Convert to configuration for the UWS subsystem."""
         return UWSConfig(
-            butler_repository=self.butler_repository,
             execution_duration=self.execution_duration,
             lifetime=self.lifetime,
             database_url=self.database_url,
             database_password=self.database_password,
             redis_host=self.redis_host,
             redis_password=self.redis_password,
+            signing_service_account=self.signing_service_account,
         )
 
 

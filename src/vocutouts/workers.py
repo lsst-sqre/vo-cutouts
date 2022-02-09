@@ -14,25 +14,29 @@ API frontend to dispatch jobs.
 
 from __future__ import annotations
 
-import math
 import os
-import subprocess
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from urllib.parse import urlparse
+from uuid import UUID
 
 import astropy.units as u
 import dramatiq
-from astropy.coordinates import SkyCoord
-from astropy.table import QTable
+from astropy.coordinates import Angle, SkyCoord
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
-from lsst.daf.butler import Butler, DatasetType
+from lsst.daf.butler import Butler
+from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
+from lsst.image_cutout_backend.stencils import (
+    SkyCircle,
+    SkyPolygon,
+    SkyStencil,
+)
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Union
+    from typing import Any, Dict, List
 
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
@@ -41,6 +45,13 @@ results = RedisBackend(host=redis_host, password=redis_password)
 dramatiq.set_broker(broker)
 broker.add_middleware(CurrentMessage())
 broker.add_middleware(Results(backend=results))
+
+repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
+output_root = os.environ["CUTOUT_STORAGE_URL"]
+tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
+butler = Butler(repository)
+projection_finder = projection_finders.ProjectionFinder.make_default()
+backend = ImageCutoutBackend(butler, projection_finder, output_root, tmpdir)
 
 
 # Stubs for other actors implemented elsewhere that workers may call.
@@ -75,111 +86,89 @@ class TaskTransientError(Exception):
 
 
 @dramatiq.actor(queue_name="cutout", max_retries=1)
-def cutout_range(
+def cutout(
     job_id: str,
-    data_id: Dict[str, Union[str, int]],
-    ra_min: float,
-    ra_max: float,
-    dec_min: float,
-    dec_max: float,
-) -> List[Dict[str, Any]]:
-    """Implement a cutout for a specified range."""
+    dataset_ids: List[str],
+    stencils: List[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    """Perform a cutout.
+
+    This is a queue worker for the vo-cutouts service.  It takes a serialized
+    cutout request, converts it into a suitable in-memory format, and then
+    dispatches it to the scientific code that performs the cutout.  The
+    results are stored in a GCS bucket, and the details of the output are
+    returned as the result of the worker.
+
+    Parameters
+    ----------
+    job_id : `str`
+        The UWS job ID, used as the key for storing results.
+    dataset_ids : List[`str`]
+        The data objects on which to perform cutouts.  These are opaque
+        identifiers passed as-is to the backend.  The user will normally
+        discover them via some service such as ObsTAP.
+    stencils : List[Dict[`str`, Any]]
+        Serialized stencils for the cutouts to perform.  These are
+        JSON-serializable (a requirement for Dramatiq) representations of the
+        `~vocutouts.models.stencils.Stencil` objects corresponding to the
+        user's request.
+
+    Returns
+    -------
+    result : List[Dict[`str`, `str`]]
+        The results of the job.  This must be a list of dict representations
+        of `~vocutouts.uws.models.JobResult` objects.
+    """
     # Tell UWS that we have started executing.
     message = CurrentMessage.get_current_message()
     now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     job_started.send(job_id, message.message_id, now)
 
-    # Input parameters to the pipeline will be provided as a Butler repository
-    # containing a dataset of type cutout_positions and a data ID matching the
-    # image to which the cutout stencil is being applied.  Create that input
-    # Butler collection and register the data type.  Also determine the name
-    # of the output collection.
-    uuid = uuid4()
-    positions_collection = f"service/cutouts/positions/{uuid}"
-    output_collection = f"service/cutouts/{uuid}"
-    repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
-    collection = os.environ["CUTOUT_BUTLER_COLLECTION"]
-    butler = Butler(repository, run=positions_collection)
+    # Currently, only a single data ID and a single stencil are supported.
+    if len(dataset_ids) != 1:
+        raise TaskFatalError("UsageError Only one data ID supported")
+    if len(stencils) != 1:
+        raise TaskFatalError("UsageError Only one stencil supported")
 
-    # This should only need to be done once, but it does have to be done once.
-    # For now, register the dataset type each time, but this is silly so we
-    # should come up with a better initialization process.  (Maybe do this as
-    # part of vo-cutouts init.)
-    dataset_type = DatasetType(
-        "cutout_positions",
-        dimensions=data_id.keys(),
-        universe=butler.registry.dimensions,
-        storageClass="AstropyQTable",
-    )
-    butler.registry.registerDatasetType(dataset_type)
-
-    # Store the cutout parameters in the input Butler collection.
-    #
-    # Use a conversion ratio of 0.2 arcsec/pixel so that we can use the
-    # current test cutout pipeline.  The eventual cutout pipeline will accept
-    # min/max pairs in ICRS coordinates.
-    if any(math.isinf(v) for v in (ra_min, ra_max, dec_min, dec_max)):
-        raise TaskFatalError("UsageError Unbounded ranges not yet supported")
-    pos = SkyCoord(ra_min, dec_min, unit="deg")
-    xspan = ((ra_max - ra_min) * 3600 / 0.2) * u.dimensionless_unscaled
-    yspan = ((dec_max - dec_min) * 3600 / 0.2) * u.dimensionless_unscaled
-    row = 1 * u.dimensionless_unscaled
-    input_table = QTable(
-        [[row], [pos], [xspan], [yspan]],
-        names=["id", "position", "xspan", "yspan"],
-    )
-    butler.put(input_table, "cutout_positions", **data_id)
-
-    # Perform the cutout.  This currently uses subprocess to call pipetask.
-    # The long-term plan is for there to be an API for running a pipeline so
-    # that any setup overhead can be incurred once at worker start and then
-    # cutouts can be done with a direct Python call.
-    #
-    # This tells Butler to register data types every time, which as above
-    # should not be necessary, but they do have to be registered once.
-    data_query_terms = []
-    for key, value in data_id.items():
-        if isinstance(value, int):
-            data_query_terms.append(f"{key}={value}")
+    # Convert the stencils to SkyStencils.
+    sky_stencils: List[SkyStencil] = []
+    for stencil_dict in stencils:
+        if stencil_dict["type"] == "circle":
+            center = SkyCoord(
+                stencil_dict["center"]["ra"] * u.degree,
+                stencil_dict["center"]["dec"] * u.degree,
+                frame="icrs",
+            )
+            radius = Angle(stencil_dict["radius"] * u.degree)
+            stencil = SkyCircle.from_astropy(center, radius)
+        elif stencil_dict["type"] == "polygon":
+            ras = [v[0] for v in stencil_dict["vertices"]]
+            decs = [v[1] for v in stencil_dict["vertices"]]
+            vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
+            stencil = SkyPolygon.from_astropy(vertices)
         else:
-            data_query_terms.append(f"{key}='{value}'")
-    data_query = " AND ".join(data_query_terms)
-    result = subprocess.run(
-        [
-            "pipetask",
-            "run",
-            "-j",
-            "1",
-            "-b",
-            repository,
-            "--register-dataset-types",
-            "-t",
-            "lsst.pipe.tasks.calexpCutout.CalexpCutoutTask",
-            "-d",
-            data_query,
-            "--output",
-            output_collection,
-            "-i",
-            f"{positions_collection},{collection}",
-        ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    if result.returncode != 0:
-        msg = (
-            f"Error Cutout failed with status {result.returncode}\n"
-            f"{result.stdout.decode()}"
-        )
+            msg = f'UsageError Unknown stencil type {stencil_dict["type"]}'
+            raise TaskFatalError(msg)
+        sky_stencils.append(stencil)
+
+    # Perform the cutout.
+    try:
+        result = backend.process_uuid(sky_stencils[0], UUID(dataset_ids[0]))
+    except Exception as e:
+        msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
 
-    # Return a pointer to the result Butler collection.  This must be a dict
-    # representation of a vocutouts.uws.models.JobResult.
+    # Return the result URL.  This must be a dict representation of a
+    # vocutouts.uws.models.JobResult.
+    result_url = result.geturl()
+    result_scheme = urlparse(result_url).scheme
+    if result_scheme != "s3":
+        msg = f"Error Backend returned URL with scheme {result_scheme}, not s3"
+        raise TaskTransientError(msg)
     return [
         {
             "result_id": "cutout",
-            "collection": output_collection,
-            "data_id": data_id,
-            "datatype": "calexp_cutouts",
             "mime_type": "application/fits",
+            "url": result_url,
         }
     ]

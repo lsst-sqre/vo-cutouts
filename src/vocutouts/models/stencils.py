@@ -10,7 +10,7 @@ from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 
 if TYPE_CHECKING:
-    from typing import Tuple
+    from typing import Any, Dict, Tuple
 
     Range = Tuple[float, float]
 
@@ -23,13 +23,17 @@ class Stencil(ABC):
     def from_string(cls, params: str) -> Stencil:
         """Parse a string representation of stencil parameters to an object."""
 
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the stencil to a JSON-serializable form for queuing."""
+
 
 @dataclass
 class CircleStencil(Stencil):
     """Represents a ``CIRCLE`` or ``POS=CIRCLE`` stencil."""
 
     center: SkyCoord
-    radius: float
+    radius: Angle
 
     @classmethod
     def from_string(cls, params: str) -> CircleStencil:
@@ -38,6 +42,16 @@ class CircleStencil(Stencil):
             center=SkyCoord(ra * u.degree, dec * u.degree, frame="icrs"),
             radius=Angle(radius * u.degree),
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "circle",
+            "center": {
+                "ra": self.center.ra.degree,
+                "dec": self.center.dec.degree,
+            },
+            "radius": self.radius.degree,
+        }
 
 
 @dataclass
@@ -67,6 +81,12 @@ class PolygonStencil(Stencil):
         vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
         return cls(vertices=vertices)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "polygon",
+            "vertices": [(v.ra.degree, v.dec.degree) for v in self.vertices],
+        }
+
 
 @dataclass
 class RangeStencil(Stencil):
@@ -82,6 +102,13 @@ class RangeStencil(Stencil):
             ra=(ra_min, ra_max),
             dec=(dec_min, dec_max),
         )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "type": "range",
+            "ra": self.ra,
+            "dec": self.dec,
+        }
 
 
 def parse_stencil(stencil_type: str, params: str) -> Stencil:

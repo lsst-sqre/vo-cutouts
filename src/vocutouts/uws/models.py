@@ -6,13 +6,13 @@ Descriptive language here is paraphrased from this standard.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
+    from typing import Dict, List, Optional, Union
 
 
 @dataclass
@@ -114,14 +114,8 @@ class JobResult:
     result_id: str
     """Identifier for the result."""
 
-    collection: str
-    """The Butler collection in which the result is stored."""
-
-    data_id: Dict[str, str]
-    """The data ID for the result (as JSON)."""
-
-    datatype: str
-    """The Datatype of the result."""
+    url: str
+    """The URL for the result, which must point into a GCS bucket."""
 
     size: Optional[int] = None
     """Size of the result in bytes."""
@@ -163,6 +157,10 @@ class JobParameter:
 
     is_post: bool = False
     """Whether the parameter was provided via POST."""
+
+    def to_dict(self) -> Dict[str, Union[str, bool]]:
+        """Convert to a dictionary, primarily for logging."""
+        return asdict(self)
 
 
 @dataclass

@@ -54,7 +54,7 @@ jobs:
             tox-${{ matrix.python }}-${{ hashFiles('requirements/*.txt') }}-
 
       - name: Run tox
-        run: tox -e docker,coverage-report,typing
+        run: tox -e py,coverage-report,typing
 
   build:
     runs-on: ubuntu-latest

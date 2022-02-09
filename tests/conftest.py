@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 
 import dramatiq
 import pytest
+import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
 from httpx import AsyncClient
 
-from tests.support.uws import mock_uws_butler
 from vocutouts import main
 from vocutouts.actors import job_started
 from vocutouts.broker import broker
@@ -21,6 +21,8 @@ from vocutouts.policy import ImageCutoutPolicy
 from vocutouts.uws.database import initialize_database
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.utils import isodatetime
+
+from .support.uws import mock_uws_google_storage
 
 if TYPE_CHECKING:
     from typing import Any, AsyncIterator, Dict, Iterator, List
@@ -31,27 +33,23 @@ if TYPE_CHECKING:
 @dramatiq.actor(queue_name="cutout", store_results=True)
 def cutout_test(
     job_id: str,
-    data_id: Dict[str, str],
-    ra_min: float,
-    ra_max: float,
-    dec_min: float,
-    dec_max: float,
+    dataset_ids: List[str],
+    stencils: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
     message = CurrentMessage.get_current_message()
     now = isodatetime(datetime.now(tz=timezone.utc))
     job_started.send(job_id, message.message_id, now)
+    assert len(dataset_ids) == 1
     return [
         {
             "result_id": "cutout",
-            "collection": "output/collection",
-            "data_id": {"visit": 903332, "detector": 20, "instrument": "HSC"},
-            "datatype": "calexp_cutouts",
+            "url": "s3://some-bucket/some/path",
             "mime_type": "application/fits",
         }
     ]
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def app() -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
@@ -66,11 +64,11 @@ async def app() -> AsyncIterator[FastAPI]:
     broker.emit_after("process_boot")
     await initialize_database(uws_config, logger, reset=True)
     async with LifespanManager(main.app):
-        uws_dependency.override_policy(ImageCutoutPolicy(cutout_test))
+        uws_dependency.override_policy(ImageCutoutPolicy(cutout_test, logger))
         yield main.app
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(app=app, base_url="https://example.com/") as client:
@@ -78,5 +76,5 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture(autouse=True)
-def mock_butler() -> Iterator[None]:
-    yield from mock_uws_butler()
+def mock_google_storage() -> Iterator[None]:
+    yield from mock_uws_google_storage()

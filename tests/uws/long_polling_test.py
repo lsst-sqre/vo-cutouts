@@ -134,13 +134,7 @@ async def test_poll(
         return [
             {
                 "result_id": "cutout",
-                "collection": "output/collection",
-                "data_id": {
-                    "visit": 903332,
-                    "detector": 20,
-                    "instrument": "HSC",
-                },
-                "datatype": "calexp_cutouts",
+                "url": "s3://some-bucket/some/path",
                 "mime_type": "application/fits",
             }
         ]

@@ -49,7 +49,7 @@ class UWSFactory:
         self._logger = logger
 
     def create_result_store(self) -> ResultStore:
-        """Return a wrapper around Butler."""
+        """Return a wrapper around the result storage."""
         return self._result_store
 
     def create_job_service(self) -> JobService:
@@ -127,7 +127,7 @@ class UWSDependency:
         self._policy = policy
         self._session = await create_async_session(config, logger)
         await initialize_database(config, logger, reset=reset_database)
-        self._result_store = ResultStore(config.butler_repository, config)
+        self._result_store = ResultStore(config)
 
     def override_policy(self, policy: UWSPolicy) -> None:
         """Change the actor used in subsequent invocations.
