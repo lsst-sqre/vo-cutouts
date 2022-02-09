@@ -21,8 +21,9 @@ from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
+from structlog.stdlib import BoundLogger
 
-from ..dependencies.auth import auth_dependency
+from ..dependencies.auth import auth_dependency, auth_logger_dependency
 from .dependencies import (
     UWSFactory,
     uws_dependency,
@@ -122,9 +123,11 @@ async def delete_job(
     request: Request,
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
+    logger.info("Deleted job", job_id=job_id)
     return request.url_for("get_job_list")
 
 
@@ -148,6 +151,7 @@ async def delete_job_via_post(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters,
     # which is also why the action parameter is declared as optional (but is
@@ -165,6 +169,7 @@ async def delete_job_via_post(
     # Do the actual deletion.
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
+    logger.info("Deleted job", job_id=job_id)
     return request.url_for("get_job_list")
 
 
@@ -201,6 +206,7 @@ async def post_job_destruction(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -217,6 +223,11 @@ async def post_job_destruction(
     # destruction time, so the time set may not match the input.
     job_service = uws_factory.create_job_service()
     await job_service.update_destruction(user, job_id, destruction)
+    logger.info(
+        "Changed job destruction time",
+        job_id=job_id,
+        destruction=isodatetime(destruction),
+    )
     return request.url_for("get_job", job_id=job_id)
 
 
@@ -275,6 +286,7 @@ async def post_job_execution_duration(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -295,6 +307,11 @@ async def post_job_execution_duration(
     job_service = uws_factory.create_job_service()
     await job_service.update_execution_duration(
         user, job_id, executionduration
+    )
+    logger.info(
+        "Changed job execution duration",
+        job_id=job_id,
+        duration=f"{executionduration}s",
     )
     return request.url_for("get_job", job_id=job_id)
 
@@ -363,6 +380,7 @@ async def post_job_phase(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -382,6 +400,7 @@ async def post_job_phase(
     # The only remaining case is starting the job.
     job_service = uws_factory.create_job_service()
     await job_service.start(user, job_id)
+    logger.info("Started job", job_id=job_id)
     return request.url_for("get_job", job_id=job_id)
 
 

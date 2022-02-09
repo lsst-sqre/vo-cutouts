@@ -9,12 +9,11 @@ from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
-from safir.dependencies.logger import logger_dependency
 from safir.metadata import get_metadata
 from structlog.stdlib import BoundLogger
 
 from ..config import config
-from ..dependencies.auth import auth_dependency
+from ..dependencies.auth import auth_dependency, auth_logger_dependency
 from ..models.index import Index
 from ..uws.dependencies import (
     UWSFactory,
@@ -132,20 +131,17 @@ async def _sync_request(
     if runid:
         logger = logger.bind(run_id=runid)
     logger.info(
-        "Created job",
-        user=user,
-        job_id=job.job_id,
-        params=[p.to_dict() for p in params],
+        "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
     )
     await job_service.start(user, job.job_id)
-    logger.info("Started job", user=user, job_id=job.job_id)
+    logger.info("Started job", job_id=job.job_id)
     job = await job_service.get(
         user, job.job_id, wait=config.sync_timeout, wait_for_completion=True
     )
 
     # Check for error states.
     if job.phase not in (ExecutionPhase.COMPLETED, ExecutionPhase.ERROR):
-        logger.warning("Job timed out", user=user, job_id=job.job_id)
+        logger.warning("Job timed out", job_id=job.job_id)
         return PlainTextResponse(
             f"Error Cutout did not complete in {config.sync_timeout}s",
             status_code=400,
@@ -153,7 +149,6 @@ async def _sync_request(
     if job.error:
         logger.warning(
             "Job failed",
-            user=user,
             job_id=job.job_id,
             error_code=job.error.error_code.value,
             error=job.error.message,
@@ -164,7 +159,7 @@ async def _sync_request(
             response += f"\n{job.error.detail}"
         return PlainTextResponse(response, status_code=400)
     if not job.results:
-        logger.warning("Job returned no results", user=user, job_id=job.job_id)
+        logger.warning("Job returned no results", job_id=job.job_id)
         return PlainTextResponse(
             "Error Job did not return any results", status_code=400
         )
@@ -247,7 +242,7 @@ async def get_sync(
     ),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(logger_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> Response:
     params = [
         JobParameter(parameter_id=k.lower(), value=v, is_post=False)
@@ -329,7 +324,7 @@ async def post_sync(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(logger_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> Response:
     runid = None
     for param in params:
@@ -404,7 +399,7 @@ async def create_job(
     params: List[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(logger_dependency),
+    logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
     runid = None
     for param in params:
@@ -418,14 +413,11 @@ async def create_job(
     if runid:
         logger = logger.bind(run_id=runid)
     logger.info(
-        "Created job",
-        user=user,
-        job_id=job.job_id,
-        params=[p.to_dict() for p in params],
+        "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
     )
     if phase == "RUN":
         await job_service.start(user, job.job_id)
-        logger.info("Started job", user=user, job_id=job.job_id)
+        logger.info("Started job", job_id=job.job_id)
 
     # Redirect to the new job.
     return request.url_for("get_job", job_id=job.job_id)

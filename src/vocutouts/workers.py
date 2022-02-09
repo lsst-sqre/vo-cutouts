@@ -22,6 +22,7 @@ from uuid import UUID
 
 import astropy.units as u
 import dramatiq
+import structlog
 from astropy.coordinates import Angle, SkyCoord
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import CurrentMessage
@@ -116,6 +117,11 @@ def cutout(
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
     """
+    logger = structlog.get_logger(os.getenv("SAFIR_LOGGER", "vocutouts"))
+    logger = logger.bind(
+        job_id=job_id, dataset_ids=dataset_ids, stencils=stencils
+    )
+
     # Tell UWS that we have started executing.
     message = CurrentMessage.get_current_message()
     now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -144,14 +150,16 @@ def cutout(
             vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
             stencil = SkyPolygon.from_astropy(vertices)
         else:
-            msg = f'UsageError Unknown stencil type {stencil_dict["type"]}'
-            raise TaskFatalError(msg)
+            msg = f'Unknown stencil type {stencil_dict["type"]}'
+            logger.warning(msg)
+            raise TaskFatalError(f"UsageError {msg}")
         sky_stencils.append(stencil)
 
     # Perform the cutout.
     try:
         result = backend.process_uuid(sky_stencils[0], UUID(dataset_ids[0]))
     except Exception as e:
+        logger.exception("Cutout processing failed")
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
 
@@ -160,8 +168,10 @@ def cutout(
     result_url = result.geturl()
     result_scheme = urlparse(result_url).scheme
     if result_scheme != "s3":
-        msg = f"Error Backend returned URL with scheme {result_scheme}, not s3"
-        raise TaskTransientError(msg)
+        msg = f"Backend returned URL with scheme {result_scheme}, not s3"
+        logger.error(msg)
+        raise TaskTransientError(f"Error {msg}")
+    logger.info("Cutout successful")
     return [
         {
             "result_id": "cutout",
