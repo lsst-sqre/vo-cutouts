@@ -7,6 +7,7 @@ from typing import Dict, List
 
 import pytest
 from dramatiq import Worker
+from fastapi import FastAPI
 from httpx import AsyncClient
 
 from vocutouts.broker import broker
@@ -112,6 +113,31 @@ async def test_create_job(client: AsyncClient) -> None:
         assert result == COMPLETED_JOB.strip()
     finally:
         worker.stop()
+
+
+@pytest.mark.asyncio
+async def test_redirect(app: FastAPI) -> None:
+    """Test the scheme in the redirect after creating a job.
+
+    When running in a Kubernetes cluster behind an ingress that terminates
+    TLS, the request as seen by the application will be ``http``, but we want
+    the redirect to honor ``X-Forwarded-Proto`` and thus use ``https``.  Also
+    test that the correct hostname is used if it is different.
+    """
+    async with AsyncClient(app=app, base_url="http://foo.com/") as client:
+        r = await client.post(
+            "/api/cutout/jobs",
+            headers={
+                "Host": "example.com",
+                "X-Forwarded-For": "10.10.10.10",
+                "X-Forwarded-Host": "example.com",
+                "X-Forwarded-Proto": "https",
+                "X-Auth-Request-User": "someone",
+            },
+            data={"ID": "1:2:band:value", "Pos": "CIRCLE 0 1 2"},
+        )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/api/cutout/jobs/1"
 
 
 @pytest.mark.asyncio

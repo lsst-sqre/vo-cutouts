@@ -22,6 +22,7 @@ from dramatiq import Broker
 from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
+from safir.middleware.x_forwarded import XForwardedMiddleware
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
@@ -63,6 +64,7 @@ async def app(
     async def startup_event() -> None:
         install_error_handlers(uws_app)
         uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
+        uws_app.add_middleware(XForwardedMiddleware)
         await uws_dependency.initialize(
             config=uws_config,
             policy=TrivialPolicy(trivial_job),
