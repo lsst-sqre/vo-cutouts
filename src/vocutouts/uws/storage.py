@@ -213,7 +213,7 @@ class FrontendJobStore:
         job : `vocutouts.uws.models.Job`
             The internal representation of the newly-created job.
         """
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        now = datetime.now(tz=timezone.utc).replace(tzinfo=None, microsecond=0)
         destruction_time = now + timedelta(seconds=lifetime)
         sql_params = [
             SQLJobParameter(
