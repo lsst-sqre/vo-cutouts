@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
 
 import dramatiq
 import pytest
 from dramatiq import Worker
 from dramatiq.middleware import CurrentMessage
+from httpx import AsyncClient
+from structlog.stdlib import BoundLogger
 
 from tests.support.uws import (
     TrivialPolicy,
@@ -17,20 +19,11 @@ from tests.support.uws import (
     uws_broker,
     wait_for_job,
 )
-from vocutouts.uws.dependencies import uws_dependency
+from vocutouts.uws.config import UWSConfig
+from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
 from vocutouts.uws.models import ErrorCode, JobParameter
 from vocutouts.uws.utils import isodatetime
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
-
-    from httpx import AsyncClient
-    from structlog.stdlib import BoundLogger
-
-    from vocutouts.uws.config import UWSConfig
-    from vocutouts.uws.dependencies import UWSFactory
-
 
 ERRORED_JOB = """
 <uws:job

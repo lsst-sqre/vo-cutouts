@@ -3,24 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import List
 
 import pytest
+from httpx import AsyncClient
 
 from tests.support.uws import TrivialPolicy
-from vocutouts.uws.dependencies import uws_dependency
+from vocutouts.uws.config import UWSConfig
+from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.exceptions import ParameterError
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.models import Job, JobParameter
 from vocutouts.uws.utils import isodatetime
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from httpx import AsyncClient
-
-    from vocutouts.uws.config import UWSConfig
-    from vocutouts.uws.dependencies import UWSFactory
-    from vocutouts.uws.models import Job
 
 
 class Policy(TrivialPolicy):

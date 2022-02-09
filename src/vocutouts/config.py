@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Optional
 
 from .uws.config import UWSConfig
-
-if TYPE_CHECKING:
-    from typing import Optional
 
 __all__ = ["Configuration", "config"]
 

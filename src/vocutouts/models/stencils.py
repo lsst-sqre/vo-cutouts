@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Any, Dict, Tuple
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 
-if TYPE_CHECKING:
-    from typing import Any, Dict, Tuple
-
-    Range = Tuple[float, float]
+Range = Tuple[float, float]
 
 
 class Stencil(ABC):

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -34,9 +34,6 @@ from lsst.image_cutout_backend.stencils import (
     SkyPolygon,
     SkyStencil,
 )
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
 
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")

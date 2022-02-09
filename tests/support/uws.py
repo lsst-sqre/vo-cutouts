@@ -6,17 +6,19 @@ import asyncio
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional
 from unittest.mock import Mock, patch
 
 import dramatiq
 import structlog
-from dramatiq import Actor, Message
+from dramatiq import Actor, Broker, Message, Worker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
 from google.cloud import storage
+from sqlalchemy.orm import scoped_session
 
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.database import create_sync_session
@@ -25,19 +27,10 @@ from vocutouts.uws.jobs import (
     uws_job_failed,
     uws_job_started,
 )
-from vocutouts.uws.models import ExecutionPhase
+from vocutouts.uws.models import ExecutionPhase, Job, JobParameter
 from vocutouts.uws.policy import UWSPolicy
+from vocutouts.uws.service import JobService
 from vocutouts.uws.utils import isodatetime, parse_isodatetime
-
-if TYPE_CHECKING:
-    from pathlib import Path
-    from typing import Any, Dict, Iterator, List, Optional
-
-    from dramatiq import Broker, Worker
-    from sqlalchemy.orm import scoped_session
-
-    from vocutouts.uws.models import Job, JobParameter
-    from vocutouts.uws.service import JobService
 
 SOURCE_UUID = str(uuid.uuid4())
 """UUID of the source for a cutout."""

@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import List
 
 from .uws.exceptions import ParameterError
-
-if TYPE_CHECKING:
-    from typing import List
-
-    from .uws.models import JobParameter
+from .uws.models import JobParameter
 
 __all__ = ["InvalidCutoutParameterError"]
 

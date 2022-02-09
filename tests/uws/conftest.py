@@ -11,16 +11,21 @@ to Safir.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import AsyncIterator, Iterator
 
 import pytest
 import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
+from dramatiq import Broker
 from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.dependencies.http_client import http_client_dependency
+from sqlalchemy.ext.asyncio import async_scoped_session
+from structlog.stdlib import BoundLogger
 
+from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.database import create_async_session, initialize_database
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
@@ -35,16 +40,6 @@ from ..support.uws import (
     trivial_job,
     uws_broker,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
-    from typing import AsyncIterator, Iterator
-
-    from dramatiq import Broker
-    from sqlalchemy.ext.asyncio import async_scoped_session
-    from structlog.stdlib import BoundLogger
-
-    from vocutouts.uws.config import UWSConfig
 
 
 @pytest_asyncio.fixture

@@ -2,23 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import List
+
+from dramatiq import Actor, Message
+from structlog.stdlib import BoundLogger
 
 from .actors import job_completed, job_failed
 from .exceptions import InvalidCutoutParameterError
 from .models.parameters import CutoutParameters
 from .models.stencils import RangeStencil
 from .uws.exceptions import MultiValuedParameterError, ParameterError
+from .uws.models import Job, JobParameter
 from .uws.policy import UWSPolicy
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import List
-
-    from dramatiq import Actor, Message
-    from structlog.stdlib import BoundLogger
-
-    from .uws.models import Job, JobParameter
 
 __all__ = ["ImageCutoutPolicy"]
 

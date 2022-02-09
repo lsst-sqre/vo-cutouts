@@ -7,22 +7,17 @@ API to create a job, instead inserting it directly via the UWSService.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING
 
 import pytest
 from dramatiq import Worker
+from httpx import AsyncClient
+from structlog.stdlib import BoundLogger
 
 from tests.support.uws import uws_broker, wait_for_job
+from vocutouts.uws.config import UWSConfig
+from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.utils import isodatetime
-
-if TYPE_CHECKING:
-    from httpx import AsyncClient
-    from structlog.stdlib import BoundLogger
-
-    from vocutouts.uws.config import UWSConfig
-    from vocutouts.uws.dependencies import UWSFactory
-
 
 PENDING_JOB = """
 <uws:job

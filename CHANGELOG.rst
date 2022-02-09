@@ -23,6 +23,7 @@ The database must be wiped and recreated during the upgrade.
 - Add new ``--reset`` flag to ``vo-cutouts init`` to wipe the existing database.
 - Stop using a FastAPI subapp.
   This was causing problems for error handling, leading to exceptions thrown in the UWS handlers to turn into 500 errors with no logged exception and no error details.
+- Update dependencies.
 
 0.1.0 (2021-11-11)
 ==================

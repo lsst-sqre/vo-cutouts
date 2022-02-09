@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import List, Optional
 
+from dramatiq import Message
+
+from .config import UWSConfig
 from .exceptions import InvalidPhaseError, PermissionDeniedError
-from .models import ACTIVE_PHASES, ExecutionPhase
-
-if TYPE_CHECKING:
-    from typing import List, Optional
-
-    from dramatiq import Message
-
-    from .config import UWSConfig
-    from .models import Availability, Job, JobDescription, JobParameter
-    from .policy import UWSPolicy
-    from .storage import FrontendJobStore
+from .models import (
+    ACTIVE_PHASES,
+    Availability,
+    ExecutionPhase,
+    Job,
+    JobDescription,
+    JobParameter,
+)
+from .policy import UWSPolicy
+from .storage import FrontendJobStore
 
 __all__ = ["JobService"]
 

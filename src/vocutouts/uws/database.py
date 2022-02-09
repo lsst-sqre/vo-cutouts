@@ -20,25 +20,21 @@ from __future__ import annotations
 
 import time
 from asyncio import current_task
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
     AsyncSession,
     async_scoped_session,
     create_async_engine,
 )
 from sqlalchemy.orm import scoped_session, sessionmaker
+from structlog.stdlib import BoundLogger
 
+from .config import UWSConfig
 from .schema import Job, drop_schema, initialize_schema
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncEngine
-    from structlog.stdlib import BoundLogger
-
-    from .config import UWSConfig
 
 __all__ = [
     "create_async_session",

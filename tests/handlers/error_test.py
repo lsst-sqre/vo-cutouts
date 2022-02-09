@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 from dramatiq import Worker
+from httpx import AsyncClient
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -13,9 +12,6 @@ from vocutouts.broker import broker
 from vocutouts.config import config
 from vocutouts.uws.database import _build_database_url
 from vocutouts.uws.schema import drop_schema
-
-if TYPE_CHECKING:
-    from httpx import AsyncClient
 
 
 @pytest.mark.asyncio

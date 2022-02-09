@@ -29,17 +29,14 @@ or receive their own infrastructure objects.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
+
+from sqlalchemy.orm import scoped_session
+from structlog.stdlib import BoundLogger
 
 from .exceptions import TaskError, UnknownJobError
 from .models import JobResult
 from .storage import WorkerJobStore
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
-
-    from sqlalchemy.orm import scoped_session
-    from structlog.stdlib import BoundLogger
 
 __all__ = [
     "uws_job_started",

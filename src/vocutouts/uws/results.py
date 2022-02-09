@@ -8,18 +8,14 @@ URL to a signed URL suitable for returning to a client of the service.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import google.auth
 from google.auth import impersonated_credentials
 from google.cloud import storage
 
-from .models import JobResultURL
-
-if TYPE_CHECKING:
-    from .config import UWSConfig
-    from .models import JobResult
+from .config import UWSConfig
+from .models import JobResult, JobResultURL
 
 __all__ = ["ResultStore"]
 

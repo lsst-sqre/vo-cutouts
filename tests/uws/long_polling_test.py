@@ -4,27 +4,20 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List
 
 import dramatiq
 import pytest
 from dramatiq import Worker
 from dramatiq.middleware import CurrentMessage
+from httpx import AsyncClient
+from structlog.stdlib import BoundLogger
 
 from tests.support.uws import TrivialPolicy, job_started, uws_broker
-from vocutouts.uws.dependencies import uws_dependency
+from vocutouts.uws.config import UWSConfig
+from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.utils import isodatetime
-
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
-
-    from httpx import AsyncClient
-    from structlog.stdlib import BoundLogger
-
-    from vocutouts.uws.config import UWSConfig
-    from vocutouts.uws.dependencies import UWSFactory
-
 
 PENDING_JOB = """
 <uws:job
