@@ -15,9 +15,8 @@ from typing import (
     overload,
 )
 
-from asyncpg.exceptions import SerializationError
 from sqlalchemy import delete
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.future import select
 from sqlalchemy.orm import scoped_session
@@ -135,7 +134,7 @@ def retry_async_transaction(g: G) -> G:
         for _ in range(1, 5):
             try:
                 return await g(*args, **kwargs)
-            except (OperationalError, SerializationError):
+            except (DBAPIError, OperationalError):
                 continue
         return await g(*args, **kwargs)
 
