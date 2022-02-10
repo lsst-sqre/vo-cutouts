@@ -275,7 +275,7 @@ class JobService:
 
     async def update_destruction(
         self, user: str, job_id: str, destruction: datetime
-    ) -> None:
+    ) -> Optional[datetime]:
         """Update the destruction time of a job.
 
         Parameters
@@ -288,6 +288,13 @@ class JobService:
             The new job destruction time.  This may be arbitrarily modified
             by the policy layer.
 
+        Returns
+        -------
+        destruction : `datetime.datetime` or `None`
+            The new destruction time of the job (possibly modified by the
+            policy layer), or `None` if the destruction time of the job was
+            not changed.
+
         Raises
         ------
         vocutouts.uws.exceptions.PermissionDeniedError
@@ -298,12 +305,15 @@ class JobService:
         if job.owner != user:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         destruction = self._policy.validate_destruction(destruction, job)
-        if destruction != job.destruction_time:
+        if destruction == job.destruction_time:
+            return None
+        else:
             await self._storage.update_destruction(job_id, destruction)
+            return destruction
 
     async def update_execution_duration(
         self, user: str, job_id: str, duration: int
-    ) -> None:
+    ) -> Optional[int]:
         """Update the execution duration time of a job.
 
         Parameters
@@ -316,6 +326,13 @@ class JobService:
             The new job execution duration.  This may be arbitrarily modified
             by the policy layer.
 
+        Returns
+        -------
+        duration : `int` or `None`
+            The new execution duration of the job (possibly modified by the
+            policy layer), or `None` if the execution duration of the job was
+            not changed.
+
         Raises
         ------
         vocutouts.uws.exceptions.PermissionDeniedError
@@ -326,5 +343,8 @@ class JobService:
         if job.owner != user:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         duration = self._policy.validate_execution_duration(duration, job)
-        if duration != job.execution_duration:
+        if duration == job.execution_duration:
+            return None
+        else:
             await self._storage.update_execution_duration(job_id, duration)
+            return duration

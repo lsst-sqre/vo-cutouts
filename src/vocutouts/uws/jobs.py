@@ -70,6 +70,7 @@ def uws_job_started(
     storage = WorkerJobStore(session)
     try:
         storage.start_executing(job_id, message_id, start_time)
+        logger.info("Marked job as started", job_id=job_id)
     except UnknownJobError:
         pass
 
@@ -98,6 +99,7 @@ def uws_job_completed(
     job_results = [JobResult(**r) for r in result]
     try:
         storage.mark_completed(job_id, job_results)
+        logger.info("Marked job as completed", job_id=job_id)
     except UnknownJobError:
         pass
 
@@ -125,5 +127,13 @@ def uws_job_failed(
     error = TaskError.from_callback(exception).to_job_error()
     try:
         storage.mark_errored(job_id, error)
+        logger.info(
+            "Marked job as failed",
+            job_id=job_id,
+            error_type=error.error_type.value,
+            error_code=error.error_code.value,
+            message=error.message,
+            detail=error.detail,
+        )
     except UnknownJobError:
         pass
