@@ -129,9 +129,13 @@ def cutout(
 
     # Currently, only a single data ID and a single stencil are supported.
     if len(dataset_ids) != 1:
-        raise TaskFatalError("UsageError Only one data ID supported")
+        msg = "Only one data ID supported"
+        logger.warning(msg)
+        raise TaskFatalError(f"UsageError {msg}")
     if len(stencils) != 1:
-        raise TaskFatalError("UsageError Only one stencil supported")
+        msg = "Only one stencil supported"
+        logger.warning(msg)
+        raise TaskFatalError(f"UsageError {msg}")
 
     # Convert the stencils to SkyStencils.
     sky_stencils: List[SkyStencil] = []
