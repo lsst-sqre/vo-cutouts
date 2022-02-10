@@ -221,13 +221,18 @@ async def post_job_destruction(
 
     # Update the destruction time.  Note that the policy layer may modify the
     # destruction time, so the time set may not match the input.
+    # update_destruction returns the actual time set, or None if the time was
+    # not changed.
     job_service = uws_factory.create_job_service()
-    await job_service.update_destruction(user, job_id, destruction)
-    logger.info(
-        "Changed job destruction time",
-        job_id=job_id,
-        destruction=isodatetime(destruction),
+    new_destruction = await job_service.update_destruction(
+        user, job_id, destruction
     )
+    if new_destruction:
+        logger.info(
+            "Changed job destruction time",
+            job_id=job_id,
+            destruction=isodatetime(new_destruction),
+        )
     return request.url_for("get_job", job_id=job_id)
 
 
@@ -304,15 +309,18 @@ async def post_job_execution_duration(
 
     # Update the execution duration.  Note that the policy layer may modify
     # the execution duration, so the duration set may not match the input.
+    # update_execution_duration returns the new execution duration set, or
+    # None if it was not changed.
     job_service = uws_factory.create_job_service()
-    await job_service.update_execution_duration(
+    new_executionduration = await job_service.update_execution_duration(
         user, job_id, executionduration
     )
-    logger.info(
-        "Changed job execution duration",
-        job_id=job_id,
-        duration=f"{executionduration}s",
-    )
+    if new_executionduration is not None:
+        logger.info(
+            "Changed job execution duration",
+            job_id=job_id,
+            duration=f"{new_executionduration}s",
+        )
     return request.url_for("get_job", job_id=job_id)
 
 
