@@ -20,10 +20,12 @@ from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
+from safir.database import create_sync_session
+from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
 
 from .config import config
-from .uws.database import create_sync_session
+from .uws.schema import Job
 
 broker = RedisBroker(host=config.redis_host, password=config.redis_password)
 """Broker used by UWS."""
@@ -48,7 +50,13 @@ class WorkerSession(Middleware):
         global worker_session
         if worker_session is None:
             logger = structlog.get_logger(config.logger_name)
-            worker_session = create_sync_session(config.uws_config(), logger)
+            worker_session = create_sync_session(
+                config.database_url,
+                config.database_password,
+                logger,
+                isolation_level="REPEATABLE READ",
+                statement=select(Job.id),
+            )
 
 
 # This must be done as early as possible so that actors are registered with

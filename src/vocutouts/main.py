@@ -68,3 +68,4 @@ async def startup_event() -> None:
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     await http_client_dependency.aclose()
+    await uws_dependency.aclose()

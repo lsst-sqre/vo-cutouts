@@ -9,9 +9,10 @@ from typing import Any, Awaitable, Callable, Optional, TypeVar
 import click
 import structlog
 import uvicorn
+from safir.database import create_database_engine, initialize_database
 
 from .config import config
-from .uws.database import initialize_database
+from .uws.schema import Base
 
 T = TypeVar("T")
 
@@ -70,4 +71,11 @@ def run(port: int) -> None:
 async def init(reset: bool) -> None:
     """Initialize the database storage."""
     logger = structlog.get_logger(config.logger_name)
-    await initialize_database(config.uws_config(), logger, reset)
+    engine = create_database_engine(
+        config.database_url,
+        config.database_password,
+    )
+    await initialize_database(
+        engine, logger, schema=Base.metadata, reset=reset
+    )
+    await engine.dispose()

@@ -6,7 +6,6 @@ import asyncio
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 from unittest.mock import Mock, patch
 
@@ -18,10 +17,11 @@ from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
 from google.cloud import storage
+from safir.database import create_sync_session
+from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
 
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.database import create_sync_session
 from vocutouts.uws.jobs import (
     uws_job_completed,
     uws_job_failed,
@@ -29,6 +29,7 @@ from vocutouts.uws.jobs import (
 )
 from vocutouts.uws.models import ExecutionPhase, Job, JobParameter
 from vocutouts.uws.policy import UWSPolicy
+from vocutouts.uws.schema import Job as SQLJob
 from vocutouts.uws.service import JobService
 from vocutouts.uws.utils import isodatetime, parse_isodatetime
 
@@ -61,10 +62,16 @@ class WorkerSession(Middleware):
         starting the worker threads, so it should run in a single-threaded
         context.
         """
-        logger = structlog.get_logger("uws")
         global worker_session
         if worker_session is None:
-            worker_session = create_sync_session(self._config, logger)
+            logger = structlog.get_logger("uws")
+            worker_session = create_sync_session(
+                self._config.database_url,
+                self._config.database_password,
+                logger,
+                isolation_level="REPEATABLE READ",
+                statement=select(SQLJob.id),
+            )
 
 
 @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
@@ -134,10 +141,10 @@ class TrivialPolicy(UWSPolicy):
         pass
 
 
-def build_uws_config(tmp_path: Path) -> UWSConfig:
+def build_uws_config() -> UWSConfig:
     """Set up a test configuration.
 
-    This currently requires the database URL and Redis hostname be set in the
+    This currently the database URL and Redis hostname be set in the
     environment, which is done as part of running the test with tox-docker.
     """
     return UWSConfig(

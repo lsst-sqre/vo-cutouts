@@ -5,13 +5,12 @@ from __future__ import annotations
 import pytest
 from dramatiq import Worker
 from httpx import AsyncClient
+from safir.database import create_database_engine
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from vocutouts.broker import broker
 from vocutouts.config import config
-from vocutouts.uws.database import _build_database_url
-from vocutouts.uws.schema import drop_schema
+from vocutouts.uws.schema import Base
 
 
 @pytest.mark.asyncio
@@ -23,9 +22,11 @@ async def test_uncaught_error(client: AsyncClient) -> None:
     # SQLAlchemy exception.  Previously this would result in a 500 error with
     # no meaningful information and no exception traceback due a bug in
     # swallowing errors in subapps.
-    url = _build_database_url(config.uws_config(), is_async=True)
-    engine = create_async_engine(url)
-    await drop_schema(engine)
+    engine = create_database_engine(
+        config.database_url, config.database_password
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
     # Now try to start a job, which should throw a meaningful exception.
     with pytest.raises(ProgrammingError):
