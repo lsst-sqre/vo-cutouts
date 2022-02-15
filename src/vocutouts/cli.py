@@ -2,27 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
-from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from typing import Optional
 
 import click
 import structlog
 import uvicorn
+from safir.asyncio import run_with_asyncio
 from safir.database import create_database_engine, initialize_database
 
 from .config import config
 from .uws.schema import Base
-
-T = TypeVar("T")
-
-
-def coroutine(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
-    @wraps(f)
-    def async_wrapper(*args: Any, **kwargs: Any) -> T:
-        return asyncio.run(f(*args, **kwargs))
-
-    return async_wrapper
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -67,7 +56,7 @@ def run(port: int) -> None:
 @click.option(
     "--reset", is_flag=True, help="Delete all existing database data."
 )
-@coroutine
+@run_with_asyncio
 async def init(reset: bool) -> None:
     """Initialize the database storage."""
     logger = structlog.get_logger(config.logger_name)
