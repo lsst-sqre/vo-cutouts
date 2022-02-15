@@ -19,7 +19,7 @@ async def test_sync(client: AsyncClient) -> None:
     try:
         # GET request.
         r = await client.get(
-            "/cutout/sync",
+            "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
             params={"ID": "1:2:band:id", "Pos": "CIRCLE 0 -2 2"},
         )
@@ -28,7 +28,7 @@ async def test_sync(client: AsyncClient) -> None:
 
         # POST request.
         r = await client.post(
-            "/cutout/sync",
+            "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
             data={"ID": "3:4:band:id", "Pos": "CIRCLE 0 -2 2"},
         )
@@ -56,14 +56,14 @@ async def test_bad_parameters(client: AsyncClient) -> None:
     ]
     for params in bad_params:
         r = await client.get(
-            "/cutout/sync",
+            "/api/cutout/sync",
             headers={"X-Auth-Request-User": "user"},
             params=params,
         )
         assert r.status_code == 422, f"Parameters {params}"
         assert r.text.startswith("UsageError")
         r = await client.post(
-            "/cutout/sync",
+            "/api/cutout/sync",
             headers={"X-Auth-Request-User": "user"},
             data=params,
         )

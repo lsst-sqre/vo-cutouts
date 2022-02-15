@@ -1,4 +1,4 @@
-"""Handlers for the app's external root, ``/utout``.
+"""Handlers for the app's external root, ``/api/cutout``.
 
 UWS provides general handlers for everything it can, but POST at the top level
 to create a new job has to be provided by the application since only the
@@ -65,7 +65,7 @@ _CAPABILITIES_TEMPLATE = """
     summary="Application metadata",
 )
 async def get_index() -> Index:
-    """GET ``/cutout/`` (the app's external root).
+    """GET ``/api/cutout/`` (the app's external root).
 
     Customize this handler to return whatever the top-level resource of your
     application should return. For example, consider listing key API URLs.

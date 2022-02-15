@@ -21,22 +21,24 @@ CAPABILITIES = """
     xmlns:vod="http://www.ivoa.net/xml/VODataService/v1.1">
   <capability standardID="ivo://ivoa.net/std/VOSI#capabilities">
     <interface xsi:type="vod:ParamHTTP" version="1.0">
-      <accessURL use="full">https://example.com/cutout/capabilities</accessURL>
+      <accessURL use="full">https://example.com/api/cutout/capabilities\
+</accessURL>
     </interface>
   </capability>
   <capability standardID="ivo://ivoa.net/std/VOSI#availability">
     <interface xsi:type="vod:ParamHTTP" version="1.0">
-      <accessURL use="full">https://example.com/cutout/availability</accessURL>
+      <accessURL use="full">https://example.com/api/cutout/availability\
+</accessURL>
     </interface>
   </capability>
   <capability standardid="ivo://ivoa.net/std/SODA#sync-1.0">
     <interface xsi:type="vod:ParamHTTP" role="std" version="1.0">
-      <accessURL use="full">https://example.com/cutout/sync</accessURL>
+      <accessURL use="full">https://example.com/api/cutout/sync</accessURL>
     </interface>
   </capability>
   <capability standardid="ivo://ivoa.net/std/SODA#async-1.0">
     <interface xsi:type="vod:ParamHTTP" role="std" version="1.0">
-      <accessURL use="full">https://example.com/cutout/jobs</accessURL>
+      <accessURL use="full">https://example.com/api/cutout/jobs</accessURL>
     </interface>
   </capability>
 </capabilities>
@@ -45,8 +47,8 @@ CAPABILITIES = """
 
 @pytest.mark.asyncio
 async def test_get_index(client: AsyncClient) -> None:
-    """Test ``GET /cutout/``"""
-    response = await client.get("/cutout/")
+    """Test ``GET /api/cutout/``"""
+    response = await client.get("/api/cutout/")
     assert response.status_code == 200
     data = response.json()
     metadata = data["metadata"]
@@ -59,13 +61,13 @@ async def test_get_index(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_availability(client: AsyncClient) -> None:
-    r = await client.get("/cutout/availability")
+    r = await client.get("/api/cutout/availability")
     assert r.status_code == 200
     assert r.text == AVAILABILITY.strip()
 
 
 @pytest.mark.asyncio
 async def test_capabilities(client: AsyncClient) -> None:
-    r = await client.get("/cutout/capabilities")
+    r = await client.get("/api/cutout/capabilities")
     assert r.status_code == 200
     assert r.text == CAPABILITIES.strip()
