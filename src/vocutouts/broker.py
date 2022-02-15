@@ -21,7 +21,7 @@ from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
 from safir.database import create_sync_session
-from sqlalchemy import select
+from sqlalchemy.future import select
 from sqlalchemy.orm import scoped_session
 
 from .config import config

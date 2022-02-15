@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterator, List, Optional
 from unittest.mock import Mock, patch
@@ -18,7 +17,7 @@ from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
 from google.cloud import storage
 from safir.database import create_sync_session
-from sqlalchemy import select
+from sqlalchemy.future import select
 from sqlalchemy.orm import scoped_session
 
 from vocutouts.uws.config import UWSConfig
@@ -32,9 +31,6 @@ from vocutouts.uws.policy import UWSPolicy
 from vocutouts.uws.schema import Job as SQLJob
 from vocutouts.uws.service import JobService
 from vocutouts.uws.utils import isodatetime, parse_isodatetime
-
-SOURCE_UUID = str(uuid.uuid4())
-"""UUID of the source for a cutout."""
 
 uws_broker = StubBroker()
 """Dramatiq broker for use in tests."""
