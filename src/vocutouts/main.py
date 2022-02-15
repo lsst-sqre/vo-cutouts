@@ -37,9 +37,9 @@ app = FastAPI(
     title="vo-cutouts",
     description=metadata("vo-cutouts").get("Summary", ""),
     version=metadata("vo-cutouts").get("Version", "0.0.0"),
-    openapi_url=f"/{config.name}/openapi.json",
-    docs_url=f"/{config.name}/docs",
-    redoc_url=f"/{config.name}/redoc",
+    openapi_url=f"/api/{config.name}/openapi.json",
+    docs_url=f"/api/{config.name}/docs",
+    redoc_url=f"/api/{config.name}/redoc",
 )
 """The main FastAPI application for vo-cutouts."""
 
@@ -47,7 +47,7 @@ app = FastAPI(
 app.include_router(internal_router)
 app.include_router(
     external_router,
-    prefix=f"/{config.name}",
+    prefix=f"/api/{config.name}",
     responses={401: {"description": "Unauthenticated"}},
 )
 

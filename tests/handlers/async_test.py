@@ -64,14 +64,14 @@ COMPLETED_JOB = """
 @pytest.mark.asyncio
 async def test_create_job(client: AsyncClient) -> None:
     r = await client.post(
-        "/cutout/jobs",
+        "/api/cutout/jobs",
         headers={"X-Auth-Request-User": "someone"},
         data={"ID": "1:2:band:value", "Pos": "CIRCLE 0 1 2"},
     )
     assert r.status_code == 303
-    assert r.headers["Location"] == "https://example.com/cutout/jobs/1"
+    assert r.headers["Location"] == "https://example.com/api/cutout/jobs/1"
     r = await client.get(
-        "/cutout/jobs/1", headers={"X-Auth-Request-User": "someone"}
+        "/api/cutout/jobs/1", headers={"X-Auth-Request-User": "someone"}
     )
     assert r.status_code == 200
     result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
@@ -84,7 +84,7 @@ async def test_create_job(client: AsyncClient) -> None:
     # Try again but immediately queuing the job to run.
     try:
         r = await client.post(
-            "/cutout/jobs",
+            "/api/cutout/jobs",
             headers={"X-Auth-Request-User": "someone"},
             data={
                 "ID": "1:2:band:value",
@@ -94,16 +94,16 @@ async def test_create_job(client: AsyncClient) -> None:
             params={"phase": "RUN"},
         )
         assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/cutout/jobs/2"
+        assert r.headers["Location"] == "https://example.com/api/cutout/jobs/2"
         r = await client.get(
-            "/cutout/jobs/2",
+            "/api/cutout/jobs/2",
             headers={"X-Auth-Request-User": "someone"},
             params={"wait": 2, "phase": "QUEUED"},
         )
         assert r.status_code == 200
         if "EXECUTING" in r.text:
             r = await client.get(
-                "/cutout/jobs/2",
+                "/api/cutout/jobs/2",
                 headers={"X-Auth-Request-User": "someone"},
                 params={"wait": 10, "phase": "EXECUTING"},
             )
@@ -133,7 +133,7 @@ async def test_bad_parameters(client: AsyncClient) -> None:
     ]
     for params in bad_params:
         r = await client.post(
-            "/cutout/jobs",
+            "/api/cutout/jobs",
             headers={"X-Auth-Request-User": "user"},
             data=params,
         )
