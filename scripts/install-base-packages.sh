@@ -26,9 +26,8 @@ apt-get update
 # Install security updates:
 apt-get -y upgrade
 
-# git is required by setuptools-scm.  libcfitsio-dev is required by
-# daf-butler.  libpq-dev is required by psycopg2.
-apt-get -y install --no-install-recommends git libcfitsio-dev libpq-dev
+# git is required by setuptools-scm.  libpq-dev is required by psycopg2.
+apt-get -y install --no-install-recommends git libpq-dev
 
 # Delete cached files we don't need anymore:
 apt-get clean
