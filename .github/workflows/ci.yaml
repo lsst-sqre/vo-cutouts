@@ -97,8 +97,8 @@ jobs:
           context: .
           push: true
           tags: lsstsqre/vo-cutouts:${{ steps.vars.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
       - name: Build and push the worker image
         uses: docker/build-push-action@v2
@@ -107,5 +107,5 @@ jobs:
           push: true
           file: ./Dockerfile.worker
           tags: lsstsqre/vo-cutouts-worker:${{ steps.vars.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
