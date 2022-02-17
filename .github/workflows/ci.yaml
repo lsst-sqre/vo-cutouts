@@ -33,9 +33,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install extra packages
-        run: sudo apt install libcfitsio-dev
-
       - name: Run pre-commit
         uses: pre-commit/action@v2.0.3
 

@@ -2,6 +2,19 @@
 Change log
 ##########
 
+0.3.0 (unreleased)
+==================
+
+- Build a Docker image (as ``lsstsqre/vo-cutouts-worker``) for the backend worker, based on a Rubin stack container.
+- Use ``/api/cutout`` as the prefix for all public routes.
+  This was previously done via a rewrite in the ingress.
+  Making the application's internal understanding of its routes match the exposed user-facing routes simplifies the logic and fixes the URLs shown in the ``/api/cutout/capabilities`` endpoint.
+- Add logging to every state-changing route and for each Dramatiq worker operation.
+- Record all times in the database to second granularity, rather than storing microseconds for some times and not others.
+- Fix retries of async database transactions when the database saw a simultaneous write to the same row from another worker.
+- Enable results storage for the cutout worker to suppress a Dramatiq warning.
+- Update dependencies.
+
 0.2.0 (2022-02-09)
 ==================
 
