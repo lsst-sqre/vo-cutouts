@@ -52,7 +52,7 @@ __all__ = [
 ]
 
 
-@dramatiq.actor(queue_name="cutout", max_retries=1)
+@dramatiq.actor(queue_name="cutout", max_retries=1, store_results=True)
 def cutout(
     job_id: str,
     dataset_ids: List[str],
