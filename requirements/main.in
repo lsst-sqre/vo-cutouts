@@ -7,7 +7,6 @@
 
 # These dependencies are for fastapi including some optional features.
 fastapi
-gunicorn
 python-multipart
 starlette
 uvicorn[standard]
