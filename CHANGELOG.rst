@@ -2,7 +2,7 @@
 Change log
 ##########
 
-0.3.0 (unreleased)
+0.3.0 (2022-02-23)
 ==================
 
 - Build a Docker image (as ``lsstsqre/vo-cutouts-worker``) for the backend worker, based on a Rubin stack container.

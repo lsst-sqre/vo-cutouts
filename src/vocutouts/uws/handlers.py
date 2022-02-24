@@ -21,9 +21,12 @@ from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
+from safir.dependencies.gafaelfawr import (
+    auth_dependency,
+    auth_logger_dependency,
+)
 from structlog.stdlib import BoundLogger
 
-from ..dependencies.auth import auth_dependency, auth_logger_dependency
 from .dependencies import (
     UWSFactory,
     uws_dependency,

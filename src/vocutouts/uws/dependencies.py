@@ -6,15 +6,15 @@ request to individual route handlers, which in turn can create other needed
 objects.
 """
 
-from typing import AsyncIterator, List, Optional
+from typing import List, Optional
 
 from fastapi import Depends, Request
+from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.logger import logger_dependency
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
-from .database import create_async_session, initialize_database
 from .models import JobParameter
 from .policy import UWSPolicy
 from .responses import UWSTemplates
@@ -70,33 +70,30 @@ class UWSDependency:
     def __init__(self) -> None:
         self._config: Optional[UWSConfig] = None
         self._policy: Optional[UWSPolicy] = None
-        self._session: Optional[async_scoped_session] = None
         self._result_store: Optional[ResultStore] = None
 
     async def __call__(
-        self, logger: BoundLogger = Depends(logger_dependency)
-    ) -> AsyncIterator[UWSFactory]:
+        self,
+        session: async_scoped_session = Depends(db_session_dependency),
+        logger: BoundLogger = Depends(logger_dependency),
+    ) -> UWSFactory:
         # Tell mypy that not calling initialize first is an error.  This would
         # fail anyway without the asserts when something tried to use the None
         # value.
         assert self._config, "UWSDependency not initialized"
         assert self._policy, "UWSDependency not initialized"
-        assert self._session, "UWSDependency not initialized"
         assert self._result_store, "UWSDependency not initialized"
-        factory = UWSFactory(
+        return UWSFactory(
             config=self._config,
             policy=self._policy,
-            session=self._session,
+            session=session,
             result_store=self._result_store,
             logger=logger,
         )
-        yield factory
 
-        # Following the recommendations in the SQLAlchemy documentation, each
-        # session is scoped to a single web request.  However, this all uses
-        # the same async_scoped_session object, so should share an underlying
-        # engine and connection pool.
-        await self._session.remove()
+    async def aclose(self) -> None:
+        """Shut down the UWS subsystem."""
+        await db_session_dependency.aclose()
 
     async def initialize(
         self,
@@ -104,7 +101,6 @@ class UWSDependency:
         config: UWSConfig,
         policy: UWSPolicy,
         logger: BoundLogger,
-        reset_database: bool = False,
     ) -> None:
         """Initialize the UWS subsystem.
 
@@ -118,16 +114,15 @@ class UWSDependency:
             Logger to use during database initialization.  This is not saved;
             subsequent invocations as a dependency will create a new logger
             from the triggering request.
-        reset_database : `bool`
-            If set to `True`, drop all tables and reprovision the database.
-            Useful when running the test suite with an external database.
-            Default is `False`.
         """
         self._config = config
         self._policy = policy
-        self._session = await create_async_session(config, logger)
-        await initialize_database(config, logger, reset=reset_database)
         self._result_store = ResultStore(config)
+        await db_session_dependency.initialize(
+            config.database_url,
+            config.database_password,
+            isolation_level="REPEATABLE READ",
+        )
 
     def override_policy(self, policy: UWSPolicy) -> None:
         """Change the actor used in subsequent invocations.

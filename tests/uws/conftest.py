@@ -11,7 +11,6 @@ to Safir.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import AsyncIterator, Iterator
 
 import pytest
@@ -21,16 +20,19 @@ from asgi_lifespan import LifespanManager
 from dramatiq import Broker
 from fastapi import FastAPI
 from httpx import AsyncClient
+from safir.database import create_database_engine, initialize_database
+from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.http_client import http_client_dependency
+from safir.middleware.x_forwarded import XForwardedMiddleware
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.database import create_async_session, initialize_database
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
+from vocutouts.uws.schema import Base
 
 from ..support.uws import (
     TrivialPolicy,
@@ -54,7 +56,11 @@ async def app(
     application so that the UWS routes can be tested without reference to
     the pieces added by an application.
     """
-    await initialize_database(uws_config, logger, reset=True)
+    engine = create_database_engine(
+        uws_config.database_url, uws_config.database_password
+    )
+    await initialize_database(engine, logger, schema=Base.metadata, reset=True)
+    await engine.dispose()
     uws_app = FastAPI()
     uws_app.include_router(uws_router, prefix="/jobs")
     uws_broker.add_middleware(WorkerSession(uws_config))
@@ -63,6 +69,7 @@ async def app(
     async def startup_event() -> None:
         install_error_handlers(uws_app)
         uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
+        uws_app.add_middleware(XForwardedMiddleware)
         await uws_dependency.initialize(
             config=uws_config,
             policy=TrivialPolicy(trivial_job),
@@ -72,6 +79,7 @@ async def app(
     @uws_app.on_event("shutdown")
     async def shutdown_event() -> None:
         await http_client_dependency.aclose()
+        await uws_dependency.aclose()
 
     async with LifespanManager(uws_app):
         yield uws_app
@@ -95,10 +103,14 @@ def mock_google_storage() -> Iterator[None]:
 
 
 @pytest_asyncio.fixture
-async def session(
-    uws_config: UWSConfig, logger: BoundLogger
-) -> async_scoped_session:
-    return await create_async_session(uws_config, logger)
+async def session(app: FastAPI) -> AsyncIterator[async_scoped_session]:
+    """Return a database session with no transaction open.
+
+    Depends on the ``app`` fixture to ensure that the database layer has
+    already been initialized.
+    """
+    async for session in db_session_dependency():
+        yield session
 
 
 @pytest.fixture
@@ -109,11 +121,12 @@ def stub_broker() -> Broker:
 
 
 @pytest.fixture
-def uws_config(tmp_path: Path) -> UWSConfig:
-    return build_uws_config(tmp_path)
+def uws_config() -> UWSConfig:
+    return build_uws_config()
 
 
 @pytest_asyncio.fixture
-async def uws_factory(app: FastAPI) -> AsyncIterator[UWSFactory]:
-    async for factory in uws_dependency():
-        yield factory
+async def uws_factory(
+    session: async_scoped_session, logger: BoundLogger
+) -> UWSFactory:
+    return await uws_dependency(session, logger)

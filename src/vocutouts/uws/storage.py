@@ -4,17 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    List,
-    Optional,
-    TypeVar,
-    cast,
-    overload,
-)
+from typing import Any, Awaitable, Callable, List, Optional, TypeVar, cast
 
+from safir.database import datetime_from_db, datetime_to_db
 from sqlalchemy import delete
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
@@ -41,23 +33,6 @@ G = TypeVar("G", bound=Callable[..., Awaitable[Any]])
 __all__ = ["FrontendJobStore", "WorkerJobStore"]
 
 
-@overload
-def _add_tz(time: datetime) -> datetime:
-    ...
-
-
-@overload
-def _add_tz(time: None) -> None:
-    ...
-
-
-def _add_tz(time: Optional[datetime]) -> Optional[datetime]:
-    """Add the UTC time zone to a naive datetime from the database."""
-    if not time:
-        return None
-    return time.replace(tzinfo=timezone.utc)
-
-
 def _convert_job(job: SQLJob) -> Job:
     """Convert the SQL representation of a job to its dataclass.
 
@@ -81,10 +56,10 @@ def _convert_job(job: SQLJob) -> Job:
         owner=job.owner,
         phase=job.phase,
         run_id=job.run_id,
-        creation_time=_add_tz(job.creation_time),
-        start_time=_add_tz(job.start_time),
-        end_time=_add_tz(job.end_time),
-        destruction_time=_add_tz(job.destruction_time),
+        creation_time=datetime_from_db(job.creation_time),
+        start_time=datetime_from_db(job.start_time),
+        end_time=datetime_from_db(job.end_time),
+        destruction_time=datetime_from_db(job.destruction_time),
         execution_duration=job.execution_duration,
         quote=job.quote,
         parameters=[
@@ -212,7 +187,7 @@ class FrontendJobStore:
         job : `vocutouts.uws.models.Job`
             The internal representation of the newly-created job.
         """
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None, microsecond=0)
+        now = datetime.now(tz=timezone.utc).replace(microsecond=0)
         destruction_time = now + timedelta(seconds=lifetime)
         sql_params = [
             SQLJobParameter(
@@ -226,8 +201,8 @@ class FrontendJobStore:
             owner=owner,
             phase=ExecutionPhase.PENDING,
             run_id=run_id,
-            creation_time=now,
-            destruction_time=destruction_time,
+            creation_time=datetime_to_db(now),
+            destruction_time=datetime_to_db(destruction_time),
             execution_duration=execution_duration,
             parameters=sql_params,
             results=[],
@@ -289,8 +264,6 @@ class FrontendJobStore:
         descriptions : List[`vocutouts.uws.models.JobDescription`]
             List of job descriptions matching the search criteria.
         """
-        if after:
-            after = after.replace(tzinfo=None)
         stmt = select(
             SQLJob.id,
             SQLJob.owner,
@@ -301,7 +274,7 @@ class FrontendJobStore:
         if phases:
             stmt = stmt.where(SQLJob.phase.in_(phases))
         if after:
-            stmt = stmt.where(SQLJob.creation_time > after)
+            stmt = stmt.where(SQLJob.creation_time > datetime_to_db(after))
         stmt = stmt.order_by(SQLJob.creation_time.desc())
         if count:
             stmt = stmt.limit(count)
@@ -353,10 +326,9 @@ class FrontendJobStore:
         destruction : `datetime.datetime`
             The new destruction time.
         """
-        destruction = destruction.replace(tzinfo=None)
         async with self._session.begin():
             job = await self._get_job(job_id)
-            job.destruction_time = destruction
+            job.destruction_time = datetime_to_db(destruction)
 
     async def update_execution_duration(
         self, job_id: str, execution_duration: int
@@ -428,11 +400,10 @@ class WorkerJobStore:
     @retry_transaction
     def mark_completed(self, job_id: str, results: List[JobResult]) -> None:
         """Mark a job as completed."""
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.COMPLETED
-            job.end_time = now
+            job.end_time = datetime_to_db(datetime.now(tz=timezone.utc))
             for sequence, result in enumerate(results, start=1):
                 sql_result = SQLJobResult(
                     job_id=job.id,
@@ -450,7 +421,7 @@ class WorkerJobStore:
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.ERROR
-            job.end_time = datetime.now()
+            job.end_time = datetime_to_db(datetime.now(tz=timezone.utc))
             job.error_type = error.error_type
             job.error_code = error.error_code
             job.error_message = error.message
@@ -476,7 +447,7 @@ class WorkerJobStore:
             job = self._get_job(job_id)
             if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
                 job.phase = ExecutionPhase.EXECUTING
-            job.start_time = start_time
+            job.start_time = datetime_to_db(start_time)
             job.message_id = message_id
 
     def _get_job(self, job_id: str) -> SQLJob:

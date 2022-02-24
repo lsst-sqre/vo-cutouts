@@ -10,6 +10,7 @@ from datetime import timedelta
 
 import pytest
 from dramatiq import Worker
+from fastapi import FastAPI
 from httpx import AsyncClient
 from structlog.stdlib import BoundLogger
 
@@ -341,3 +342,70 @@ async def test_job_api(
     assert r.headers["Location"] == "https://example.com/jobs"
     r = await client.get("/jobs/2", headers={"X-Auth-Request-User": "user"})
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_redirects(
+    app: FastAPI,
+    uws_factory: UWSFactory,
+) -> None:
+    """Test the scheme in the redirect URLs.
+
+    When running in a Kubernetes cluster behind an ingress that terminates
+    TLS, the request as seen by the application will be ``http``, but we want
+    the redirect URLs to honor ``X-Forwarded-Proto`` and thus use ``https``.
+    We also want to honor the ``Host`` header.
+    """
+    job_service = uws_factory.create_job_service()
+    await job_service.create(
+        "user",
+        run_id="some-run-id",
+        params=[
+            JobParameter(parameter_id="id", value="bar"),
+            JobParameter(parameter_id="circle", value="1 1 1"),
+        ],
+    )
+
+    # Try various actions that result in redirects and ensure the redirect is
+    # correct.
+    async with AsyncClient(app=app, base_url="http://foo.com/") as client:
+        r = await client.post(
+            "/jobs/1/destruction",
+            headers={
+                "X-Auth-Request-User": "user",
+                "Host": "example.com",
+                "X-Forwarded-For": "10.10.10.10",
+                "X-Forwarded-Proto": "https",
+                "X-Forwarded-Host": "foo.com",
+            },
+            data={"DESTRUCTION": "2021-09-10T10:01:02Z"},
+        )
+        assert r.status_code == 303
+        assert r.headers["Location"] == "https://example.com/jobs/1"
+
+        r = await client.post(
+            "/jobs/1/executionduration",
+            headers={
+                "X-Auth-Request-User": "user",
+                "Host": "example.com",
+                "X-Forwarded-For": "10.10.10.10",
+                "X-Forwarded-Proto": "https",
+                "X-Forwarded-Host": "foo.com",
+            },
+            data={"ExecutionDuration": 1200},
+        )
+        assert r.status_code == 303
+        assert r.headers["Location"] == "https://example.com/jobs/1"
+
+        r = await client.delete(
+            "/jobs/1",
+            headers={
+                "X-Auth-Request-User": "user",
+                "Host": "example.com",
+                "X-Forwarded-For": "10.10.10.10",
+                "X-Forwarded-Proto": "https",
+                "X-Forwarded-Host": "foo.com",
+            },
+        )
+        assert r.status_code == 303
+        assert r.headers["Location"] == "https://example.com/jobs"

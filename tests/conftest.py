@@ -13,14 +13,15 @@ from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
 from fastapi import FastAPI
 from httpx import AsyncClient
+from safir.database import create_database_engine, initialize_database
 
 from vocutouts import main
 from vocutouts.actors import job_started
 from vocutouts.broker import broker
 from vocutouts.config import config
 from vocutouts.policy import ImageCutoutPolicy
-from vocutouts.uws.database import initialize_database
 from vocutouts.uws.dependencies import uws_dependency
+from vocutouts.uws.schema import Base
 from vocutouts.uws.utils import isodatetime
 
 from .support.uws import mock_uws_google_storage
@@ -55,10 +56,13 @@ async def app() -> AsyncIterator[FastAPI]:
     between test cases.
     """
     logger = structlog.get_logger(config.logger_name)
-    uws_config = config.uws_config()
     broker.flush_all()
     broker.emit_after("process_boot")
-    await initialize_database(uws_config, logger, reset=True)
+    engine = create_database_engine(
+        config.database_url, config.database_password
+    )
+    await initialize_database(engine, logger, schema=Base.metadata, reset=True)
+    await engine.dispose()
     async with LifespanManager(main.app):
         uws_dependency.override_policy(ImageCutoutPolicy(cutout_test, logger))
         yield main.app
