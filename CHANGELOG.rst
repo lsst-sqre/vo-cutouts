@@ -2,6 +2,12 @@
 Change log
 ##########
 
+0.3.1 (unreleased)
+==================
+
+- Drop support for Python 3.8.
+- Update dependencies.
+
 0.3.0 (2022-02-23)
 ==================
 
