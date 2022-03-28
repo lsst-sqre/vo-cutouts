@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Dict, List
 
@@ -109,6 +110,19 @@ async def test_create_job(client: AsyncClient) -> None:
                 params={"wait": 10, "phase": "EXECUTING"},
             )
             assert r.status_code == 200
+
+        # Depending on sequencing, it's possible that the start time of the
+        # job has not yet been recorded.  If that is the case, wait a bit for
+        # that to happen and then request the job again.
+        if "startTime" not in r.text:
+            await asyncio.sleep(2.0)
+            r = await client.get(
+                "/api/cutout/jobs/2",
+                headers={"X-Auth-Request-User": "someone"},
+                params={"wait": 10, "phase": "EXECUTING"},
+            )
+            assert r.status_code == 200
+
         result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
         assert result == COMPLETED_JOB.strip()
     finally:
