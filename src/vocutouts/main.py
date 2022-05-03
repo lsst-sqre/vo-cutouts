@@ -7,7 +7,7 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
-from importlib.metadata import metadata
+from importlib.metadata import metadata, version
 
 import structlog
 from fastapi import FastAPI
@@ -35,8 +35,8 @@ configure_logging(
 
 app = FastAPI(
     title="vo-cutouts",
-    description=metadata("vo-cutouts").get("Summary", ""),
-    version=metadata("vo-cutouts").get("Version", "0.0.0"),
+    description=metadata("vo-cutouts")["Summary"],
+    version=version("vo-cutouts"),
     openapi_url=f"/api/{config.name}/openapi.json",
     docs_url=f"/api/{config.name}/docs",
     redoc_url=f"/api/{config.name}/redoc",
