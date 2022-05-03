@@ -93,7 +93,9 @@ jobs:
         with:
           context: .
           push: true
-          tags: lsstsqre/vo-cutouts:${{ steps.vars.outputs.tag }}
+          tags: |
+            lsstsqre/vo-cutouts:${{ steps.vars.outputs.tag }}
+            ghcr.io/lsst-sqre/vo-cutouts:${{ steps.vars.outputs.tag }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -103,6 +105,8 @@ jobs:
           context: .
           push: true
           file: ./Dockerfile.worker
-          tags: lsstsqre/vo-cutouts-worker:${{ steps.vars.outputs.tag }}
+          tags: |
+            lsstsqre/vo-cutouts-worker:${{ steps.vars.outputs.tag }}
+            ghcr.io/lsst-sqre/vo-cutouts-worker:${{ steps.vars.outputs.tag }}
           cache-from: type=gha,scope=worker
           cache-to: type=gha,mode=max,scope=worker
