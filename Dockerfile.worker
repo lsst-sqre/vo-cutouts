@@ -2,7 +2,7 @@
 # are based on stack containers and install any required supporting code
 # for the image cutout backend, Dramatiq, and the backend worker definition.
 
-FROM lsstsqre/centos:7-stack-lsst_distrib-w_2022_06
+FROM lsstsqre/centos:7-stack-lsst_distrib-w_2022_12
 
 # Reset the user to root since we need to do system install tasks.
 USER root
