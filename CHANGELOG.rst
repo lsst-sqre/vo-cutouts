@@ -2,9 +2,12 @@
 Change log
 ##########
 
-0.3.1 (unreleased)
+0.4.0 (unreleased)
 ==================
 
+- Data IDs are now Butler URIs instead of just the bare UUID.
+  The ``CUTOUT_BUTLER_REPOSITORY`` configuration setting is no longer used.
+  Instead, the backend maintains one instance of a Butler and corresponding cutout backend per named Butler repository, taken from the first component of the Butler URI.
 - Drop support for Python 3.8.
 - Update dependencies.
 

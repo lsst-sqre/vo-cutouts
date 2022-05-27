@@ -15,13 +15,6 @@ __all__ = ["Configuration", "config"]
 class Configuration:
     """Configuration for vocutouts."""
 
-    butler_repository: str = os.getenv("CUTOUT_BUTLER_REPOSITORY", "")
-    """The Butler repository holding source images for cutouts.
-
-    Set with the ``CUTOUT_BUTLER_REPOSITORY`` environment variable.  Setting
-    this is mandatory.
-    """
-
     storage_url: str = os.getenv("CUTOUT_STORAGE_URL", "")
     """The root URL to use to store cutout results.
 
