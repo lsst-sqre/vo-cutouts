@@ -51,13 +51,17 @@ app.include_router(
     responses={401: {"description": "Unauthenticated"}},
 )
 
+# Install middleware.
+app.add_middleware(XForwardedMiddleware)
+app.add_middleware(CaseInsensitiveQueryMiddleware)
+
+# Install error handlers.
+install_error_handlers(app)
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    app.add_middleware(XForwardedMiddleware)
-    app.add_middleware(CaseInsensitiveQueryMiddleware)
     logger = structlog.get_logger(config.logger_name)
-    install_error_handlers(app)
     await uws_dependency.initialize(
         config=config.uws_config(),
         policy=ImageCutoutPolicy(cutout, logger),
