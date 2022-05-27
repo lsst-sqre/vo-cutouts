@@ -35,10 +35,16 @@ from lsst.image_cutout_backend.stencils import (
     SkyPolygon,
     SkyStencil,
 )
+from safir.logging import configure_logging
 
 BACKENDS: Dict[str, ImageCutoutBackend] = {}
 """Cache of image cutout backends by Butler repository label."""
 
+configure_logging(
+    name=os.getenv("SAFIR_LOGGER", "vocutouts"),
+    profile=os.getenv("SAFIR_PROFILE", "production"),
+    log_level=os.getenv("SAFIR_LOG_LEVEL", "INFO"),
+)
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
 broker = RedisBroker(host=redis_host, password=redis_password)
@@ -205,12 +211,14 @@ def cutout(
         sky_stencils.append(stencil)
 
     # Perform the cutout.
+    logger.info("Starting cutout request")
     try:
         result = backend.process_uuid(sky_stencils[0], uuid)
     except Exception as e:
         logger.exception("Cutout processing failed")
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
+    logger.info("Cutout request completed")
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.

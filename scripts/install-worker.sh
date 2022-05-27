@@ -29,5 +29,5 @@ cd image_cutout_backend
 setup -r .
 scons install declare -t current
 
-# Install Dramatiq.
-pip install --no-cache-dir 'dramatiq[redis]' structlog
+# Install Python dependencies.
+pip install --no-cache-dir 'dramatiq[redis]' safir structlog
