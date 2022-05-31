@@ -55,8 +55,8 @@ class ImageCutoutPolicy(UWSPolicy):
 
         Notes
         -----
-        Currently, only one data ID and only one stencil are supported.  This
-        limitation is expected to be relaxed in a later version.
+        Currently, only one dataset ID and only one stencil are supported.
+        This limitation is expected to be relaxed in a later version.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
         return self._actor.send_with_options(

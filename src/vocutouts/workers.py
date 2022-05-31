@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -35,7 +35,17 @@ from lsst.image_cutout_backend.stencils import (
     SkyPolygon,
     SkyStencil,
 )
+from safir.logging import configure_logging
 
+BACKENDS: Dict[str, ImageCutoutBackend] = {}
+"""Cache of image cutout backends by Butler repository label."""
+
+configure_logging(
+    name=os.getenv("SAFIR_LOGGER", "vocutouts"),
+    profile=os.getenv("SAFIR_PROFILE", "production"),
+    log_level=os.getenv("SAFIR_LOG_LEVEL", "INFO"),
+    add_timestamp=True,
+)
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
 broker = RedisBroker(host=redis_host, password=redis_password)
@@ -43,13 +53,6 @@ results = RedisBackend(host=redis_host, password=redis_password)
 dramatiq.set_broker(broker)
 broker.add_middleware(CurrentMessage())
 broker.add_middleware(Results(backend=results))
-
-repository = os.environ["CUTOUT_BUTLER_REPOSITORY"]
-output_root = os.environ["CUTOUT_STORAGE_URL"]
-tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
-butler = Butler(repository)
-projection_finder = projection_finders.ProjectionFinder.make_default()
-backend = ImageCutoutBackend(butler, projection_finder, output_root, tmpdir)
 
 
 # Stubs for other actors implemented elsewhere that workers may call.
@@ -81,6 +84,51 @@ class TaskFatalError(Exception):
 
 class TaskTransientError(Exception):
     """Some transient problem occurred."""
+
+
+def get_backend(butler_label: str) -> ImageCutoutBackend:
+    """Given the Butler label, retrieve or build a backend.
+
+    The dataset ID will be a URI of the form ``butler://<label>/<uuid>``.
+    Each label corresponds to a different Butler and thus a different backend,
+    which are cached in `BACKENDS`.
+
+    Parameters
+    ----------
+    butler_label : `str`
+        The label portion fo the Butler URI.
+
+    Returns
+    -------
+    backend : `lsst.image_cutout_backend.ImageCutoutBackend`
+        Backend to use.
+    """
+    if butler_label in BACKENDS:
+        return BACKENDS[butler_label]
+    butler = Butler(butler_label)
+    projection_finder = projection_finders.ProjectionFinder.make_default()
+    output = os.environ["CUTOUT_STORAGE_URL"]
+    tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
+    backend = ImageCutoutBackend(butler, projection_finder, output, tmpdir)
+    BACKENDS[butler_label] = backend
+    return backend
+
+
+def parse_uri(uri: str) -> Tuple[str, UUID]:
+    """Parse a Butler URI.
+
+    Parameters
+    ----------
+    uri : `str`
+        URI to a Butler object.
+
+    Returns
+    -------
+    data : Tuple[`str`, `uuid.UUID`]
+        The Butler label and the object UUID.
+    """
+    parsed_uri = urlparse(uri)
+    return parsed_uri.netloc, UUID(parsed_uri.path[1:])
 
 
 @dramatiq.actor(queue_name="cutout", max_retries=1, store_results=True)
@@ -127,15 +175,19 @@ def cutout(
     now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     job_started.send(job_id, message.message_id, now)
 
-    # Currently, only a single data ID and a single stencil are supported.
+    # Currently, only a single dataset ID and a single stencil are supported.
     if len(dataset_ids) != 1:
-        msg = "Only one data ID supported"
+        msg = "Only one dataset ID supported"
         logger.warning(msg)
         raise TaskFatalError(f"UsageError {msg}")
     if len(stencils) != 1:
         msg = "Only one stencil supported"
         logger.warning(msg)
         raise TaskFatalError(f"UsageError {msg}")
+
+    # Parse the dataset ID and retrieve an appropriate backend.
+    butler_label, uuid = parse_uri(dataset_ids[0])
+    backend = get_backend(butler_label)
 
     # Convert the stencils to SkyStencils.
     sky_stencils: List[SkyStencil] = []
@@ -160,12 +212,14 @@ def cutout(
         sky_stencils.append(stencil)
 
     # Perform the cutout.
+    logger.info("Starting cutout request")
     try:
-        result = backend.process_uuid(sky_stencils[0], UUID(dataset_ids[0]))
+        result = backend.process_uuid(sky_stencils[0], uuid)
     except Exception as e:
         logger.exception("Cutout processing failed")
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
+    logger.info("Cutout request completed")
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.
