@@ -5,7 +5,7 @@ Change log
 0.4.0 (unreleased)
 ==================
 
-- Data IDs are now Butler URIs instead of just the bare UUID.
+- Dataset IDs are now Butler URIs instead of just the bare UUID.
   The ``CUTOUT_BUTLER_REPOSITORY`` configuration setting is no longer used.
   Instead, the backend maintains one instance of a Butler and corresponding cutout backend per named Butler repository, taken from the first component of the Butler URI.
 - Drop support for Python 3.8.
@@ -34,7 +34,7 @@ The database schema of this version is incompatible with 0.1.0.
 The database must be wiped and recreated during the upgrade.
 
 - Use ``lsst.image_cutout_backend`` as the backend instead of ``pipetask`` without conversion of coordinates to pixels.
-- Data IDs are now Butler UUIDs instead of colon-separated tuples.
+- Dataset IDs are now Butler UUIDs instead of colon-separated tuples.
 - Support POLYGON and CIRCLE stencils and stop supporting POS RANGE, matching the capabilities of the new backend.
 - Use a separate S3 bucket to store the output rather than a Butler collection.
   Eliminate use of Butler in the frontend, in favor of using that S3 bucket directly.

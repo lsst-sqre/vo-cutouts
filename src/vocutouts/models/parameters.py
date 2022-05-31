@@ -15,7 +15,7 @@ class CutoutParameters:
     """The parameters to a cutout request."""
 
     ids: List[str]
-    """The data IDs on which to operate."""
+    """The dataset IDs on which to operate."""
 
     stencils: List[Stencil]
     """The cutout stencils to apply."""
@@ -54,7 +54,7 @@ class CutoutParameters:
             msg = f"Invalid cutout parameter: {type(e).__name__}: {str(e)}"
             raise InvalidCutoutParameterError(msg, params) from e
         if not ids:
-            raise InvalidCutoutParameterError("No data ID given", params)
+            raise InvalidCutoutParameterError("No dataset ID given", params)
         if not stencils:
             raise InvalidCutoutParameterError(
                 "No cutout stencil given", params

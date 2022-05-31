@@ -175,9 +175,9 @@ def cutout(
     now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     job_started.send(job_id, message.message_id, now)
 
-    # Currently, only a single data ID and a single stencil are supported.
+    # Currently, only a single dataset ID and a single stencil are supported.
     if len(dataset_ids) != 1:
-        msg = "Only one data ID supported"
+        msg = "Only one dataset ID supported"
         logger.warning(msg)
         raise TaskFatalError(f"UsageError {msg}")
     if len(stencils) != 1:
