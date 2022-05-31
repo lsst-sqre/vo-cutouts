@@ -2,7 +2,7 @@
 Change log
 ##########
 
-0.4.0 (unreleased)
+0.4.0 (2022-05-31)
 ==================
 
 - Dataset IDs are now Butler URIs instead of just the bare UUID.
