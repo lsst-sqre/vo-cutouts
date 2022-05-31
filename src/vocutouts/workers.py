@@ -44,6 +44,7 @@ configure_logging(
     name=os.getenv("SAFIR_LOGGER", "vocutouts"),
     profile=os.getenv("SAFIR_PROFILE", "production"),
     log_level=os.getenv("SAFIR_LOG_LEVEL", "INFO"),
+    add_timestamp=True,
 )
 redis_host = os.environ["CUTOUT_REDIS_HOST"]
 redis_password = os.getenv("CUTOUT_REDIS_PASSWORD")
