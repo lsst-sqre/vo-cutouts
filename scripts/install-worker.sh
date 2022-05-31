@@ -18,7 +18,8 @@ setup lsst_distrib
 set -x
 
 # Download the image cutout backend.  This can be removed if RFC-828 is
-# accepted, since that will include the image cutout backend in lsst-distrib.
+# implemented, since that will include the image cutout backend in
+# lsst-distrib.
 #
 # Currently, this uses the main branch because there appears to be no
 # alternative (no releases and no tags).
