@@ -13,6 +13,7 @@ import structlog
 from fastapi import FastAPI
 from safir.dependencies.http_client import http_client_dependency
 from safir.logging import configure_logging
+from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
 from .actors import cutout
@@ -22,7 +23,6 @@ from .handlers.internal import internal_router
 from .policy import ImageCutoutPolicy
 from .uws.dependencies import uws_dependency
 from .uws.errors import install_error_handlers
-from .uws.middleware import CaseInsensitiveQueryMiddleware
 
 __all__ = ["app", "config"]
 

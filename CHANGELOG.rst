@@ -2,12 +2,13 @@
 Change log
 ##########
 
-0.4.1 (unreleased)
+0.4.1 (2022-06-01)
 ==================
 
 - Stop masking pixels outside the cutout stencil.
   The current performance of masking is unreasonably slow for ``CIRCLE`` cutouts, and masking isn't required by the SODA standard.
   We may revisit this later with a faster algorithm.
+- Update dependencies.
 
 0.4.0 (2022-05-31)
 ==================
