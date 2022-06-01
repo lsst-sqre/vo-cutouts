@@ -23,6 +23,7 @@ from httpx import AsyncClient
 from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.http_client import http_client_dependency
+from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
@@ -31,7 +32,6 @@ from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
-from vocutouts.uws.middleware import CaseInsensitiveQueryMiddleware
 from vocutouts.uws.schema import Base
 
 from ..support.uws import (
