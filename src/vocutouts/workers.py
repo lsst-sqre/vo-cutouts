@@ -214,12 +214,11 @@ def cutout(
     # Perform the cutout.
     logger.info("Starting cutout request")
     try:
-        result = backend.process_uuid(sky_stencils[0], uuid)
+        result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
     except Exception as e:
         logger.exception("Cutout processing failed")
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
-    logger.info("Cutout request completed")
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.
