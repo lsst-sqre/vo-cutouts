@@ -219,7 +219,6 @@ def cutout(
         logger.exception("Cutout processing failed")
         msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
         raise TaskTransientError(msg)
-    logger.info("Cutout request completed")
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.
