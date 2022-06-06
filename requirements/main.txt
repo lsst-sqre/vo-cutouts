@@ -545,9 +545,9 @@ pyyaml==6.0 \
     # via
     #   astropy
     #   uvicorn
-redis==4.3.2 \
-    --hash=sha256:b30a2dc3f27cab69284829d6d423643beee88f279967c42e9014a2ffb7c2a84c \
-    --hash=sha256:b989406ea786a9d151066a683b32a437a48f043c3ffd3795ec5ad9d344ee9e8c
+redis==4.3.3 \
+    --hash=sha256:2f7a57cf4af15cd543c4394bcbe2b9148db2606a37edba755368836e3a1d053e \
+    --hash=sha256:f57f8df5d238a8ecf92f499b6b21467bfee6c13d89953c27edf1e2bc673622e7
     # via dramatiq
 requests==2.27.1 \
     --hash=sha256:68d7c56fd5a8999887728ef304a6d12edc7be74f1cfa47714fc8b414525c9a61 \
