@@ -73,9 +73,9 @@ cachetools==5.2.0 \
     --hash=sha256:6a94c6402995a99c3970cc7e4884bb60b4a8639938157eeed436098bf9831757 \
     --hash=sha256:f9f17d2aec496a9aa6b76f53e3b614c965223c061982d434d160f930c698a9db
     # via google-auth
-certifi==2022.5.18.1 \
-    --hash=sha256:9c5705e395cd70084351dd8ad5c41e65655e08ce46f2ec9cf6c2c08390f71eb7 \
-    --hash=sha256:f1d53542ee8cbedbe2118b5686372fb33c297fcd6379b050cca0ef13a597382a
+certifi==2022.6.15 \
+    --hash=sha256:84c85a9078b11105f04f3036a9482ae10e4621616db313fe045dd24743a0820d \
+    --hash=sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412
     # via
     #   httpcore
     #   httpx
@@ -104,15 +104,15 @@ fastapi==0.78.0 \
     # via
     #   -r requirements/main.in
     #   safir
-google-api-core==2.8.1 \
-    --hash=sha256:958024c6aa3460b08f35741231076a4dd9a4c819a6a39d44da9627febe8b28f0 \
-    --hash=sha256:ce1daa49644b50398093d2a9ad886501aa845e2602af70c3001b9f402a9d7359
+google-api-core==2.8.2 \
+    --hash=sha256:06f7244c640322b508b125903bb5701bebabce8832f85aba9335ec00b3d02edc \
+    --hash=sha256:93c6a91ccac79079ac6bbf8b74ee75db970cc899278b97d53bc012f35908cf50
     # via
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.7.0 \
-    --hash=sha256:8a954960f852d5f19e6af14dd8e75c20159609e85d8db37e4013cc8c3824a7e1 \
-    --hash=sha256:df549a1433108801b11bdcc0e312eaf0d5f0500db42f0523e4d65c78722e8475
+google-auth==2.8.0 \
+    --hash=sha256:819b70140d05501739e1387291d39f0de3b4dff3b00ae4aff8e7a05369957f89 \
+    --hash=sha256:9b1da39ab8731c3061f36fefde9f8bb902dbee9eb28e3a67e8cfa7dc1be76227
     # via
     #   -r requirements/main.in
     #   google-api-core
@@ -562,9 +562,9 @@ rsa==4.8 \
     --hash=sha256:5c6bd9dc7a543b7fe4304a631f8a8a3b674e2bbfc49c2ae96200cdbe55df6b17 \
     --hash=sha256:95c5d300c4e879ee69708c428ba566c59478fd653cc3a22243eeb8ed846950bb
     # via google-auth
-safir[db]==3.1.0 \
-    --hash=sha256:d32eafce4180fc245bd6e804b3e537159521dfe6d319994143012c2214a5ab10 \
-    --hash=sha256:e46e49f54360763379897b889940e734545e601657cdec9a3a4c005d3dc9587b
+safir[db]==3.2.0 \
+    --hash=sha256:3573c6f24043004591e5c070a7b7f2445fdf575e1114f2cecfb34164dc33e5a0 \
+    --hash=sha256:c0b51c0d0a0fd05549329122aa6ebb9affdedc56861691cea1cc98939bfd9621
     # via -r requirements/main.in
 six==1.16.0 \
     --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
