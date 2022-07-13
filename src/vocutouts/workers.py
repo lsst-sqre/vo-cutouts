@@ -199,12 +199,12 @@ def cutout(
                 frame="icrs",
             )
             radius = Angle(stencil_dict["radius"] * u.degree)
-            stencil = SkyCircle.from_astropy(center, radius)
+            stencil = SkyCircle.from_astropy(center, radius, clip=True)
         elif stencil_dict["type"] == "polygon":
             ras = [v[0] for v in stencil_dict["vertices"]]
             decs = [v[1] for v in stencil_dict["vertices"]]
             vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
-            stencil = SkyPolygon.from_astropy(vertices)
+            stencil = SkyPolygon.from_astropy(vertices, clip=True)
         else:
             msg = f'Unknown stencil type {stencil_dict["type"]}'
             logger.warning(msg)
