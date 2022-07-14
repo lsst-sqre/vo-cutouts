@@ -2,6 +2,14 @@
 Change log
 ##########
 
+0.4.2 (2022-07-14)
+==================
+
+- Clip stencils at the edge of the image instead of raising an error in the backend.
+  Practical experience with the Portal and deeper thought about possible scientific use cases have shown this to be a more practical and user-friendly approach.
+- Drop support for Python 3.9.
+- Update dependencies.
+
 0.4.1 (2022-06-01)
 ==================
 
