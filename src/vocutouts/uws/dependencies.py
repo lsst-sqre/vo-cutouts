@@ -157,7 +157,11 @@ async def uws_post_params_dependency(request: Request) -> List[JobParameter]:
     """
     if request.method != "POST":
         raise ValueError("uws_post_params_dependency used for non-POST route")
-    return [
-        JobParameter(parameter_id=k.lower(), value=v, is_post=True)
-        for k, v in (await request.form()).items()
-    ]
+    parameters = []
+    for key, value in (await request.form()).items():
+        if not isinstance(value, str):
+            raise ValueError("File upload not supported")
+        parameters.append(
+            JobParameter(parameter_id=key.lower(), value=value, is_post=True)
+        )
+    return parameters
