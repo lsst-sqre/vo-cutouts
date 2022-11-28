@@ -93,7 +93,7 @@ def cutout(
     logged in the job, and then the retry succeeds and we end up with a valid
     result.  The UWS database layer currently will not handle this properly.
     """
-    pass
+    return []
 
 
 @dramatiq.actor(queue_name="uws", priority=0)
