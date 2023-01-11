@@ -11,6 +11,7 @@ to Safir.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import AsyncIterator, Iterator
 
 import pytest
@@ -25,6 +26,7 @@ from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.http_client import http_client_dependency
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
+from safir.testing.gcs import MockStorageClient, patch_google_storage
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
@@ -38,7 +40,6 @@ from ..support.uws import (
     TrivialPolicy,
     WorkerSession,
     build_uws_config,
-    mock_uws_google_storage,
     trivial_job,
     uws_broker,
 )
@@ -98,8 +99,10 @@ def logger() -> BoundLogger:
 
 
 @pytest.fixture(autouse=True)
-def mock_google_storage() -> Iterator[None]:
-    yield from mock_uws_google_storage()
+def mock_google_storage() -> Iterator[MockStorageClient]:
+    yield from patch_google_storage(
+        expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
+    )
 
 
 @pytest_asyncio.fixture

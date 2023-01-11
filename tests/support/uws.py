@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterator, List, Optional
-from unittest.mock import Mock, patch
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 import dramatiq
 import structlog
@@ -15,7 +14,6 @@ from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
-from google.cloud import storage
 from safir.database import create_sync_session
 from sqlalchemy.future import select
 from sqlalchemy.orm import scoped_session
@@ -152,52 +150,6 @@ def build_uws_config() -> UWSConfig:
         redis_password=None,
         signing_service_account="",
     )
-
-
-class MockBlob(Mock):
-    def __init__(self) -> None:
-        super().__init__(spec=storage.blob.Blob)
-
-    def generate_signed_url(
-        self,
-        *,
-        version: str,
-        expiration: timedelta,
-        method: str,
-        response_type: str,
-        credentials: Any,
-    ) -> str:
-        assert version == "v4"
-        assert expiration == timedelta(seconds=15 * 60)
-        assert method == "GET"
-        assert response_type == "application/fits"
-        return "https://example.com/cutout-result"
-
-
-class MockBucket(Mock):
-    def __init__(self) -> None:
-        super().__init__(spec=storage.bucket.Bucket)
-
-    def blob(self, blob_name: str) -> Mock:
-        assert blob_name == "some/path"
-        return MockBlob()
-
-
-class MockStorageClient(Mock):
-    def __init__(self) -> None:
-        super().__init__(spec=storage.Client)
-
-    def bucket(self, bucket_name: str) -> Mock:
-        assert bucket_name == "some-bucket"
-        return MockBucket()
-
-
-def mock_uws_google_storage() -> Iterator[None]:
-    mock_gcs = MockStorageClient()
-    with patch("google.auth.impersonated_credentials.Credentials"):
-        with patch("google.auth.default", return_value=(None, None)):
-            with patch("google.cloud.storage.Client", return_value=mock_gcs):
-                yield
 
 
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:

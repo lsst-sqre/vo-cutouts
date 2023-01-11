@@ -227,9 +227,9 @@ httpx==0.23.3 \
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
-identify==2.5.12 \
-    --hash=sha256:0bc96b09c838310b6fcfcc61f78a981ea07f94836ef6ef553da5bb5d4745d662 \
-    --hash=sha256:e8a400c3062d980243d27ce10455a52832205649bbcaf27ffddb3dfaaf477bad
+identify==2.5.13 \
+    --hash=sha256:8aa48ce56e38c28b6faa9f261075dea0a942dfbb42b341b4e711896cbb40f3f7 \
+    --hash=sha256:abb546bca6f470228785338a01b539de8a85bbf46491250ae03363956d8ebb10
     # via pre-commit
 idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \

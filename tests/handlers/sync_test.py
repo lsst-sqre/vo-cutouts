@@ -24,7 +24,7 @@ async def test_sync(client: AsyncClient) -> None:
             params={"ID": "1:2:band:id", "Pos": "CIRCLE 0 -2 2"},
         )
         assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/cutout-result"
+        assert r.headers["Location"] == "https://example.com/some/path"
 
         # POST request.
         r = await client.post(
@@ -33,7 +33,7 @@ async def test_sync(client: AsyncClient) -> None:
             data={"ID": "3:4:band:id", "Pos": "CIRCLE 0 -2 2"},
         )
         assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/cutout-result"
+        assert r.headers["Location"] == "https://example.com/some/path"
     finally:
         worker.stop()
 

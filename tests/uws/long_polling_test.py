@@ -80,7 +80,7 @@ FINISHED_JOB = """
     <uws:parameter id="id">bar</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+    <uws:result id="cutout" xlink:href="https://example.com/some/path"\
  mime-type="application/fits"/>
   </uws:results>
 </uws:job>
