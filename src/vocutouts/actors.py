@@ -66,13 +66,13 @@ def cutout(
 
     Parameters
     ----------
-    job_id : `str`
+    job_id
         The UWS job ID, used as the key for storing results.
-    dataset_ids : list[`str`]
+    dataset_ids
         The data objects on which to perform cutouts.  These are opaque
         identifiers passed as-is to the backend.  The user will normally
         discover them via some service such as ObsTAP.
-    stencils : list[dict[`str`, Any]]
+    stencils
         Serialized stencils for the cutouts to perform.  These are
         JSON-serializable (a requirement for Dramatiq) representations of the
         `~vocutouts.models.stencils.Stencil` objects corresponding to the
@@ -80,7 +80,7 @@ def cutout(
 
     Returns
     -------
-    result : list[dict[`str`, `str`]]
+    list of dict of str to str
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
 

@@ -125,7 +125,7 @@ class FrontendJobStore:
 
     Parameters
     ----------
-    session : `sqlalchemy.ext.asyncio.async_scoped_session`
+    session
         The underlying database session.
 
     Notes
@@ -170,22 +170,22 @@ class FrontendJobStore:
 
         Parameters
         ----------
-        owner : `str`
+        owner
             The username of the owner of the job.
-        run_id : `str`, optional
+        run_id
             A client-supplied opaque identifier to record with the job.
-        params : list[`vocutouts.uws.models.JobParameter`]
+        params
             The input parameters to the job.
-        execution_duration : `int`
+        execution_duration
             The maximum length of time for which a job is allowed to run in
             seconds.
-        lifetime : `int`
+        lifetime
             The maximum lifetime of the job and its results, in seconds.
             After this time, any record of the job will be deleted.
 
         Returns
         -------
-        job : `vocutouts.uws.models.Job`
+        vocutouts.uws.models.Job
             The internal representation of the newly-created job.
         """
         now = datetime.now(tz=timezone.utc).replace(microsecond=0)
@@ -250,19 +250,19 @@ class FrontendJobStore:
 
         Parameters
         ----------
-        user : `str`
+        user
             Name of the user whose jobs to load.
-        phases : list[`vocutouts.uws.models.ExecutionPhase`], optional
+        phases
             Limit the result to jobs in this list of possible execution
             phases.
-        after : `datetime.datetime`, optional
+        after
             Limit the result to jobs created after the given datetime in UTC.
-        count : `int`, optional
+        count
             Limit the results to the most recent count jobs.
 
         Returns
         -------
-        descriptions : list[`vocutouts.uws.models.JobDescription`]
+        list of vocutouts.uws.models.JobDescription
             List of job descriptions matching the search criteria.
         """
         stmt = select(
@@ -303,9 +303,9 @@ class FrontendJobStore:
 
         Parameters
         ----------
-        job_id : `str`
+        job_id
             The identifier of the job.
-        message_id : `str`
+        message_id
             The identifier for the execution of that job in the work queuing
             system.
         """
@@ -322,9 +322,9 @@ class FrontendJobStore:
 
         Parameters
         ----------
-        job_id : `str`
+        job_id
             The identifier of the job.
-        destruction : `datetime.datetime`
+        destruction
             The new destruction time.
         """
         async with self._session.begin():
@@ -338,9 +338,9 @@ class FrontendJobStore:
 
         Parameters
         ----------
-        job_id : `str`
+        job_id
             The identifier of the job.
-        execution_duration : `int`
+        execution_duration
             The new execution duration.
         """
         async with self._session.begin():
@@ -391,7 +391,7 @@ class WorkerJobStore:
 
     Parameters
     ----------
-    session : `sqlalchemy.orm.scoped_session`
+    session
         The underlying database session.
     """
 
@@ -436,12 +436,12 @@ class WorkerJobStore:
 
         Parameters
         ----------
-        job_id : `str`
+        job_id
             The identifier of the job.
-        message_id : `str`
+        message_id
             The identifier for the execution of that job in the work queuing
             system.
-        start_time : `datetime`
+        start_time
             The time at which the job started executing.
         """
         with self._session.begin():

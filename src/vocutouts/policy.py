@@ -26,11 +26,11 @@ class ImageCutoutPolicy(UWSPolicy):
 
     Parameters
     ----------
-    actor : ``dramatiq.Actor``
+    actor
          The actor to call for a job.  This simple mapping is temporary;
          eventually different types of cutouts will dispatch to different
          actors.
-    logger : ``structlog.stdlib.BoundLogger``
+    logger
          Logger to use to report errors when dispatching the request.
     """
 
@@ -44,12 +44,12 @@ class ImageCutoutPolicy(UWSPolicy):
 
         Parameters
         ----------
-        job : `vocutouts.uws.models.Job`
+        job
             The submitted job description.
 
         Returns
         -------
-        message : `dramatiq.Message`
+        dramatiq.Message
             The dispatched message to the backend.
 
         Notes

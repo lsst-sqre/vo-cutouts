@@ -56,15 +56,15 @@ def uws_job_started(
 
     Parameters
     ----------
-    job_id : `str`
+    job_id
         The identifier of the job that was started.
-    message_id : `str`
+    message_id
         The message ID of the Dramatiq message that started it.
-    start_time : `datetime.datetime`
+    start_time
         When the job was started.
-    session : `sqlalchemy.orm.scoped_session`
+    session
         A synchronous session to the UWS database.
-    logger : `structlog.stdlib.BoundLogger`
+    logger
         Logger for any messages.
     """
     storage = WorkerJobStore(session)
@@ -85,14 +85,14 @@ def uws_job_completed(
 
     Parameters
     ----------
-    job_id : `str`
+    job_id
         The identifier of the job that was started.
-    result : list[dict[`str`, Any]]
+    result
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
-    session : `sqlalchemy.orm.scoped_session`
+    session
         A synchronous session to the UWS database.
-    logger : `structlog.stdlib.BoundLogger`
+    logger
         Logger for any messages.
     """
     storage = WorkerJobStore(session)
@@ -114,13 +114,13 @@ def uws_job_failed(
 
     Parameters
     ----------
-    job_id : `str`
+    job_id
         The identifier of the job that was started.
-    exception : dict[`str`, `str`]
+    exception
         Exception information as passed to a Dramatiq ``on_failure`` callback.
-    session : `sqlalchemy.orm.scoped_session`
+    session
         A synchronous session to the UWS database.
-    logger : `structlog.stdlib.BoundLogger`
+    logger
         Logger for any messages.
     """
     storage = WorkerJobStore(session)

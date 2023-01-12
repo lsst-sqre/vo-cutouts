@@ -22,7 +22,7 @@ class ResultStore:
 
     Parameters
     ----------
-    config : `vocutouts.uws.config.UWSConfig`
+    config
         The UWS configuration.
     """
 

@@ -34,12 +34,12 @@ class JobService:
 
     Parameters
     ----------
-    config : `vocutouts.uws.config.UWSConfig`
+    config
         The UWS configuration.
-    policy : `vocutouts.uws.policy.UWSPolicy`
+    policy
         The policy layer for dispatching jobs and validating parameters,
         destruction times, and execution durations.
-    storage : `vocutouts.uws.storage.JobStore`
+    storage
         The underlying storage for job metadata and result tracking.
     """
 
@@ -63,7 +63,7 @@ class JobService:
 
         Returns
         -------
-        available : `vocutouts.uws.models.Availability`
+        vocutouts.uws.models.Availability
             Service availability information.
         """
         return await self._storage.availability()
@@ -82,16 +82,16 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             User on behalf this operation is performed.
-        run_id : `str`, optional
+        run_id
             A client-supplied opaque identifier to record with the job.
-        params : list[`vocutouts.uws.models.JobParameter`]
+        params
             The input parameters to the job.
 
         Returns
         -------
-        job : `vocutouts.uws.models.Job`
+        vocutouts.uws.models.Job
             The internal representation of the newly-created job.
         """
         self._policy.validate_params(params)
@@ -137,20 +137,20 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             User on behalf this operation is performed.
-        job_id : `str`
+        job_id
             Identifier of the job.
-        wait : `int`, optional
+        wait
             If given, wait up to this many seconds for the status to change
             before returning.  ``-1`` says to wait the maximum length of time.
             This is done by polling the database with exponential backoff.
             This will only be honored if the phase is ``PENDING``, ``QUEUED``,
             or ``EXECUTING``.
-        wait_phase : `vocutouts.uws.models.ExecutionPhase`, optional
+        wait_phase
             If ``wait`` was given, the starting phase for waiting.  Returns
             immediately if the initial phase doesn't match this one.
-        wait_for_completion : `bool`, optional
+        wait_for_completion
             If set to true, wait until the job completes (has a phase other
             than ``QUEUED`` or ``EXECUTING``).  Only one of this or
             ``wait_phase`` should be given.  Ignored if ``wait`` was not
@@ -158,7 +158,7 @@ class JobService:
 
         Returns
         -------
-        job : `vocutouts.uws.models.Job`
+        vocutouts.uws.models.Job
             The corresponding job.
 
         Raises
@@ -224,19 +224,19 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             Name of the user whose jobs to load.
-        phases : list[`vocutouts.uws.models.ExecutionPhase`], optional
+        phases
             Limit the result to jobs in this list of possible execution
             phases.
-        after : `datetime.datetime`, optional
+        after
             Limit the result to jobs created after the given datetime.
-        count : `int`, optional
+        count
             Limit the results to the most recent count jobs.
 
         Returns
         -------
-        descriptions : list[`vocutouts.uws.models.JobDescription`]
+        list of vocutouts.uws.models.JobDescription
             List of job descriptions matching the search criteria.
         """
         return await self._storage.list_jobs(
@@ -248,14 +248,14 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             User on behalf of whom this operation is performed.
-        job_id : `str`
+        job_id
             Identifier of the job to start.
 
         Returns
         -------
-        message : `dramatiq.Message`
+        dramatiq.Message
             The work queuing message representing this job.
 
         Raises
@@ -280,17 +280,17 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             User on behalf of whom this operation is performed
-        job_id : `str`
+        job_id
             Identifier of the job to update.
-        destruction : `datetime.datetime`
+        destruction
             The new job destruction time.  This may be arbitrarily modified
             by the policy layer.
 
         Returns
         -------
-        destruction : `datetime.datetime` or `None`
+        datetime.datetime or None
             The new destruction time of the job (possibly modified by the
             policy layer), or `None` if the destruction time of the job was
             not changed.
@@ -318,17 +318,17 @@ class JobService:
 
         Parameters
         ----------
-        user : `str`
+        user
             User on behalf of whom this operation is performed
-        job_id : `str`
+        job_id
             Identifier of the job to update.
-        duration : `int`
+        duration
             The new job execution duration.  This may be arbitrarily modified
             by the policy layer.
 
         Returns
         -------
-        duration : `int` or `None`
+        int or None
             The new execution duration of the job (possibly modified by the
             policy layer), or `None` if the execution duration of the job was
             not changed.
