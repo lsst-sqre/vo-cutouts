@@ -16,7 +16,7 @@ def parse_isodatetime(time_string: str) -> datetime | None:
 
     Returns
     -------
-    timestamp : `datetime.datetime` or `None`
+    datetime.datetime or None
         The corresponding `datetime.datetime` or `None` if the string is
         invalid.
     """

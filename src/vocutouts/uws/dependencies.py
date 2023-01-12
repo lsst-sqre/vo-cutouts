@@ -106,11 +106,11 @@ class UWSDependency:
 
         Parameters
         ----------
-        config : `vocutouts.uws.config.UWSConfig`
+        config
             The UWS configuration.
-        policy : `vocutouts.uws.policy.UWSPolicy`
+        policy
             The UWS policy layer.
-        logger : `structlog.stdlib.BoundLogger`
+        logger
             Logger to use during database initialization.  This is not saved;
             subsequent invocations as a dependency will create a new logger
             from the triggering request.
@@ -131,7 +131,7 @@ class UWSDependency:
 
         Parameters
         ----------
-        actor : `vocutouts.uws.policy.UWSPolicy`
+        actor
             The new policy.
         """
         self._policy = policy

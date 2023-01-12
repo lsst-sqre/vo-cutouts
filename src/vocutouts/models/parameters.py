@@ -27,12 +27,12 @@ class CutoutParameters:
 
         Parameters
         ----------
-        params : list[`vocutouts.uws.models.JobParameter`]
+        params
             Generic input job parameters.
 
         Returns
         -------
-        result : `CutoutParameters`
+        CutoutParameters
             The parsed cutout parameters specific to the image cutout service.
 
         Raises

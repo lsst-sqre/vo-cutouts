@@ -36,12 +36,12 @@ class UWSPolicy(ABC):
 
         Parameters
         ----------
-        job : `vocutouts.uws.models.Job`
+        job
             The job to start.
 
         Returns
         -------
-        message : `dramatiq.Message`
+        dramatiq.Message
             The message sent to the backend worker.
         """
 
@@ -53,15 +53,15 @@ class UWSPolicy(ABC):
 
         Parameters
         ----------
-        destruction : `datetime.datetime`
+        destruction
            New date at which the job outputs and its metadata will be
            deleted to recover resources.
-        job : `vocutouts.uws.models.Job`
+        job
             The existing job.
 
         Returns
         -------
-        destruction : `datetime.datetime`
+        datetime.datetime
             The new destruction time for the job, which should be
             ``job.destruction_time`` if the policy layer doesn't want to allow
             any change.
@@ -75,15 +75,15 @@ class UWSPolicy(ABC):
 
         Parameters
         ----------
-        execution_duration : `int`
+        execution_duration
             New desired maximum execution time for the job in wall clock
             seconds.
-        job : `vocutouts.uws.models.Job`
+        job
             The existing job.
 
         Returns
         -------
-        execution_duration : `int`
+        int
             The new execution duration for the job, which should be
             ``job.execution_duration`` if the policy layer doesn't want to
             allow any change.
@@ -95,7 +95,7 @@ class UWSPolicy(ABC):
 
         Parameters
         ----------
-        params : list[`vocutouts.uws.models.JobParameter`]
+        params
             The new parameters.
 
         Raises
