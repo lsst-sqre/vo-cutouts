@@ -56,7 +56,7 @@ COMPLETED_JOB = """
     <uws:parameter id="pos" isPost="true">CIRCLE 0.5 0.8 2</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+    <uws:result id="cutout" xlink:href="https://example.com/some/path"\
  mime-type="application/fits"/>
   </uws:results>
 </uws:job>

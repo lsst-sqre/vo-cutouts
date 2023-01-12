@@ -64,7 +64,7 @@ FINISHED_JOB = """
     <uws:parameter id="circle">1 1 1</uws:parameter>
   </uws:parameters>
   <uws:results>
-    <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+    <uws:result id="cutout" xlink:href="https://example.com/some/path"\
  mime-type="application/fits"/>
   </uws:results>
 </uws:job>
@@ -90,7 +90,7 @@ JOB_RESULTS = """
     xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
     xmlns:xlink="http://www.w3.org/1999/xlink"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <uws:result id="cutout" xlink:href="https://example.com/cutout-result"\
+  <uws:result id="cutout" xlink:href="https://example.com/some/path"\
  mime-type="application/fits"/>
 </uws:results>
 """

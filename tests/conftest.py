@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncIterator, Dict, Iterator, List
 
 import dramatiq
@@ -14,6 +14,7 @@ from dramatiq.middleware import CurrentMessage
 from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.database import create_database_engine, initialize_database
+from safir.testing.gcs import MockStorageClient, patch_google_storage
 
 from vocutouts import main
 from vocutouts.actors import job_started
@@ -23,8 +24,6 @@ from vocutouts.policy import ImageCutoutPolicy
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.schema import Base
 from vocutouts.uws.utils import isodatetime
-
-from .support.uws import mock_uws_google_storage
 
 
 @dramatiq.actor(queue_name="cutout", store_results=True)
@@ -76,5 +75,7 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture(autouse=True)
-def mock_google_storage() -> Iterator[None]:
-    yield from mock_uws_google_storage()
+def mock_google_storage() -> Iterator[MockStorageClient]:
+    yield from patch_google_storage(
+        expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
+    )
