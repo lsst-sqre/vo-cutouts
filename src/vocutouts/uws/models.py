@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Optional
 
 
 @dataclass
@@ -155,7 +155,7 @@ class JobParameter:
     is_post: bool = False
     """Whether the parameter was provided via POST."""
 
-    def to_dict(self) -> Dict[str, Union[str, bool]]:
+    def to_dict(self) -> dict[str, str | bool]:
         """Convert to a dictionary, primarily for logging."""
         return asdict(self)
 
@@ -177,7 +177,7 @@ class JobDescription:
     phase: ExecutionPhase
     """Execution phase of the job."""
 
-    run_id: Optional[str]
+    run_id: str | None
     """Optional opaque string provided by the client.
 
     The RunId is intended for the client to add a unique identifier to all
@@ -197,7 +197,7 @@ class Job:
     job_id: str
     """Unique identifier of the job."""
 
-    message_id: Optional[str]
+    message_id: str | None
     """Internal message identifier for the work queuing system."""
 
     owner: str
@@ -206,7 +206,7 @@ class Job:
     phase: ExecutionPhase
     """Execution phase of the job."""
 
-    run_id: Optional[str]
+    run_id: str | None
     """Optional opaque string provided by the client.
 
     The RunId is intended for the client to add a unique identifier to all
@@ -218,10 +218,10 @@ class Job:
     creation_time: datetime
     """When the job was created."""
 
-    start_time: Optional[datetime]
+    start_time: datetime | None
     """When the job started executing (if it has started)."""
 
-    end_time: Optional[datetime]
+    end_time: datetime | None
     """When the job stopped executing (if it has stopped)."""
 
     destruction_time: datetime
@@ -242,7 +242,7 @@ class Job:
     aborted.
     """
 
-    quote: Optional[datetime]
+    quote: datetime | None
     """Expected completion time of the job if it were started now.
 
     May be `None` to indicate that the expected duration of the job is not
@@ -250,11 +250,11 @@ class Job:
     not possible due to resource constraints.
     """
 
-    error: Optional[JobError]
+    error: JobError | None
     """Error information if the job failed."""
 
-    parameters: List[JobParameter]
+    parameters: list[JobParameter]
     """The parameters of the job."""
 
-    results: List[JobResult]
+    results: list[JobResult]
     """The results of the job."""

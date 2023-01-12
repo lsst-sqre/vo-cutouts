@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List
 
 from dramatiq import Actor, Message
 from structlog.stdlib import BoundLogger
@@ -80,7 +79,7 @@ class ImageCutoutPolicy(UWSPolicy):
     ) -> int:
         return job.execution_duration
 
-    def validate_params(self, params: List[JobParameter]) -> None:
+    def validate_params(self, params: list[JobParameter]) -> None:
         try:
             cutout_params = CutoutParameters.from_job_parameters(params)
         except InvalidCutoutParameterError as e:

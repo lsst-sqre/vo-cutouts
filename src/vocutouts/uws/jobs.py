@@ -29,7 +29,7 @@ or receive their own infrastructure objects.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy.orm import scoped_session
 from structlog.stdlib import BoundLogger
@@ -77,7 +77,7 @@ def uws_job_started(
 
 def uws_job_completed(
     job_id: str,
-    result: List[Dict[str, Any]],
+    result: list[dict[str, Any]],
     session: scoped_session,
     logger: BoundLogger,
 ) -> None:
@@ -87,7 +87,7 @@ def uws_job_completed(
     ----------
     job_id : `str`
         The identifier of the job that was started.
-    result : List[Dict[`str`, Any]]
+    result : list[dict[`str`, Any]]
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
     session : `sqlalchemy.orm.scoped_session`
@@ -106,7 +106,7 @@ def uws_job_completed(
 
 def uws_job_failed(
     job_id: str,
-    exception: Dict[str, str],
+    exception: dict[str, str],
     session: scoped_session,
     logger: BoundLogger,
 ) -> None:
@@ -116,7 +116,7 @@ def uws_job_failed(
     ----------
     job_id : `str`
         The identifier of the job that was started.
-    exception : Dict[`str`, `str`]
+    exception : dict[`str`, `str`]
         Exception information as passed to a Dramatiq ``on_failure`` callback.
     session : `sqlalchemy.orm.scoped_session`
         A synchronous session to the UWS database.

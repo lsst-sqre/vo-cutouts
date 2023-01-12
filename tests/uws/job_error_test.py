@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any
 
 import dramatiq
 import pytest
@@ -80,7 +80,7 @@ async def test_temporary_error(
 
     # Create a backend worker that raises a transient error.
     @dramatiq.actor(broker=uws_broker, queue_name="job")
-    def error_transient_job(job_id: str) -> List[Dict[str, Any]]:
+    def error_transient_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
         job_started.send(job_id, message.message_id, isodatetime(now))
@@ -145,7 +145,7 @@ async def test_fatal_error(
 
     # Create a backend worker that raises a fatal error with detail.
     @dramatiq.actor(broker=uws_broker, queue_name="job")
-    def error_fatal_job(job_id: str) -> List[Dict[str, Any]]:
+    def error_fatal_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
         job_started.send(job_id, message.message_id, isodatetime(now))
@@ -208,7 +208,7 @@ async def test_unknown_error(
 
     # Create a backend worker that raises a fatal error with detail.
     @dramatiq.actor(broker=uws_broker, queue_name="job")
-    def error_unknown_job(job_id: str) -> List[Dict[str, Any]]:
+    def error_unknown_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
         now = datetime.now(tz=timezone.utc)
         time.sleep(0.5)

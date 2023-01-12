@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 
 from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
@@ -60,7 +59,7 @@ class UWSTemplates:
         )
 
     def job_list(
-        self, request: Request, jobs: List[JobDescription], base_url: str
+        self, request: Request, jobs: list[JobDescription], base_url: str
     ) -> Response:
         """Return a list of jobs as an XML response."""
         return _templates.TemplateResponse(

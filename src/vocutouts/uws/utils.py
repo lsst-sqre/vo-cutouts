@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 
 def isodatetime(timestamp: datetime) -> str:
@@ -12,7 +11,7 @@ def isodatetime(timestamp: datetime) -> str:
     return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def parse_isodatetime(time_string: str) -> Optional[datetime]:
+def parse_isodatetime(time_string: str) -> datetime | None:
     """Parse a string in the UWS ISO date format.
 
     Returns

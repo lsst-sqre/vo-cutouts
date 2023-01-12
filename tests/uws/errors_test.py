@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict
 
 import pytest
 from httpx import AsyncClient
@@ -17,7 +16,7 @@ class PostTest:
     """Encapsulates the data a test POST."""
 
     url: str
-    data: Dict[str, str]
+    data: dict[str, str]
 
 
 @pytest.mark.asyncio

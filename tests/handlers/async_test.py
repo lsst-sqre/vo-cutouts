@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-from typing import Dict, List
 
 import pytest
 from dramatiq import Worker
@@ -156,7 +155,7 @@ async def test_redirect(app: FastAPI) -> None:
 
 @pytest.mark.asyncio
 async def test_bad_parameters(client: AsyncClient) -> None:
-    bad_params: List[Dict[str, str]] = [
+    bad_params: list[dict[str, str]] = [
         {},
         {"pos": "RANGE 0 360 -2 2"},
         {"id": "foo", "foo": "bar"},

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import Column, ForeignKey, Index, Integer, String
 
 from .base import Base
@@ -21,8 +19,8 @@ class JobResult(Base):
     result_id: str = Column(String(64), nullable=False)
     sequence: int = Column(Integer, nullable=False)
     url: str = Column(String(256), nullable=False)
-    size: Optional[int] = Column(Integer)
-    mime_type: Optional[str] = Column(String(64))
+    size: int | None = Column(Integer)
+    mime_type: str | None = Column(String(64))
 
     __table_args__ = (
         Index("by_sequence", "job_id", "sequence", unique=True),
