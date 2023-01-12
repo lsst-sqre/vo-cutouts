@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timedelta, timezone
-from typing import Any, AsyncIterator, Dict, Iterator, List
+from typing import Any
 
 import dramatiq
 import pytest
@@ -29,9 +30,9 @@ from vocutouts.uws.utils import isodatetime
 @dramatiq.actor(queue_name="cutout", store_results=True)
 def cutout_test(
     job_id: str,
-    dataset_ids: List[str],
-    stencils: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    dataset_ids: list[str],
+    stencils: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
     now = isodatetime(datetime.now(tz=timezone.utc))
     job_started.send(job_id, message.message_id, now)

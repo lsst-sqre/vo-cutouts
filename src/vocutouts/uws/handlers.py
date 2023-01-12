@@ -17,7 +17,7 @@ example:
 """
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -53,7 +53,7 @@ uws_router = APIRouter()
 )
 async def get_job_list(
     request: Request,
-    phase: Optional[List[ExecutionPhase]] = Query(
+    phase: Optional[list[ExecutionPhase]] = Query(
         None,
         title="Execution phase",
         description="Limit results to the provided execution phases",
@@ -151,7 +151,7 @@ async def delete_job_via_post(
         title="Action to perform",
         description="Mandatory, must be set to DELETE",
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
@@ -206,7 +206,7 @@ async def post_job_destruction(
         description="Must be in ISO 8601 format.",
         example="2021-09-10T10:01:02Z",
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
@@ -291,7 +291,7 @@ async def post_job_execution_duration(
         description="Integer seconds of wall clock time.",
         example=14400,
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
@@ -388,7 +388,7 @@ async def post_job_phase(
         title="Job state change",
         summary="RUN to start the job, ABORT to abort the job.",
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),

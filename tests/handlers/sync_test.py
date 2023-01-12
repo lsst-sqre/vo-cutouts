@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 import pytest
 from dramatiq import Worker
 from httpx import AsyncClient
@@ -40,7 +38,7 @@ async def test_sync(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_bad_parameters(client: AsyncClient) -> None:
-    bad_params: List[Dict[str, str]] = [
+    bad_params: list[dict[str, str]] = [
         {},
         {"pos": "RANGE 0 360 -2 2"},
         {"id": "5:6:a:b", "foo": "bar"},

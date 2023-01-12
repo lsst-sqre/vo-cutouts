@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Optional
 
 from dramatiq import Message
 
@@ -73,7 +73,7 @@ class JobService:
         user: str,
         *,
         run_id: Optional[str] = None,
-        params: List[JobParameter],
+        params: list[JobParameter],
     ) -> Job:
         """Create a pending job.
 
@@ -86,7 +86,7 @@ class JobService:
             User on behalf this operation is performed.
         run_id : `str`, optional
             A client-supplied opaque identifier to record with the job.
-        params : List[`vocutouts.uws.models.JobParameter`]
+        params : list[`vocutouts.uws.models.JobParameter`]
             The input parameters to the job.
 
         Returns
@@ -216,17 +216,17 @@ class JobService:
         self,
         user: str,
         *,
-        phases: Optional[List[ExecutionPhase]] = None,
+        phases: Optional[list[ExecutionPhase]] = None,
         after: Optional[datetime] = None,
         count: Optional[int] = None,
-    ) -> List[JobDescription]:
+    ) -> list[JobDescription]:
         """List the jobs for a particular user.
 
         Parameters
         ----------
         user : `str`
             Name of the user whose jobs to load.
-        phases : List[`vocutouts.uws.models.ExecutionPhase`], optional
+        phases : list[`vocutouts.uws.models.ExecutionPhase`], optional
             Limit the result to jobs in this list of possible execution
             phases.
         after : `datetime.datetime`, optional
@@ -236,7 +236,7 @@ class JobService:
 
         Returns
         -------
-        descriptions : List[`vocutouts.uws.models.JobDescription`]
+        descriptions : list[`vocutouts.uws.models.JobDescription`]
             List of job descriptions matching the search criteria.
         """
         return await self._storage.list_jobs(
@@ -275,7 +275,7 @@ class JobService:
 
     async def update_destruction(
         self, user: str, job_id: str, destruction: datetime
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """Update the destruction time of a job.
 
         Parameters
@@ -313,7 +313,7 @@ class JobService:
 
     async def update_execution_duration(
         self, user: str, job_id: str, duration: int
-    ) -> Optional[int]:
+    ) -> int | None:
         """Update the execution duration time of a job.
 
         Parameters

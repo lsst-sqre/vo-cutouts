@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -37,7 +37,7 @@ from lsst.image_cutout_backend.stencils import (
 )
 from safir.logging import configure_logging
 
-BACKENDS: Dict[str, ImageCutoutBackend] = {}
+BACKENDS: dict[str, ImageCutoutBackend] = {}
 """Cache of image cutout backends by Butler repository label."""
 
 configure_logging(
@@ -65,13 +65,13 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
 
 @dramatiq.actor(queue_name="uws")
 def job_completed(
-    message: Dict[str, Any], result: List[Dict[str, str]]
+    message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
     pass
 
 
 @dramatiq.actor(queue_name="uws")
-def job_failed(message: Dict[str, Any], exception: Dict[str, str]) -> None:
+def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
     pass
 
 
@@ -114,7 +114,7 @@ def get_backend(butler_label: str) -> ImageCutoutBackend:
     return backend
 
 
-def parse_uri(uri: str) -> Tuple[str, UUID]:
+def parse_uri(uri: str) -> tuple[str, UUID]:
     """Parse a Butler URI.
 
     Parameters
@@ -124,7 +124,7 @@ def parse_uri(uri: str) -> Tuple[str, UUID]:
 
     Returns
     -------
-    data : Tuple[`str`, `uuid.UUID`]
+    data : tuple[`str`, `uuid.UUID`]
         The Butler label and the object UUID.
     """
     parsed_uri = urlparse(uri)
@@ -134,9 +134,9 @@ def parse_uri(uri: str) -> Tuple[str, UUID]:
 @dramatiq.actor(queue_name="cutout", max_retries=1, store_results=True)
 def cutout(
     job_id: str,
-    dataset_ids: List[str],
-    stencils: List[Dict[str, Any]],
-) -> List[Dict[str, str]]:
+    dataset_ids: list[str],
+    stencils: list[dict[str, Any]],
+) -> list[dict[str, str]]:
     """Perform a cutout.
 
     This is a queue worker for the vo-cutouts service.  It takes a serialized
@@ -149,11 +149,11 @@ def cutout(
     ----------
     job_id : `str`
         The UWS job ID, used as the key for storing results.
-    dataset_ids : List[`str`]
+    dataset_ids : list[`str`]
         The data objects on which to perform cutouts.  These are opaque
         identifiers passed as-is to the backend.  The user will normally
         discover them via some service such as ObsTAP.
-    stencils : List[Dict[`str`, Any]]
+    stencils : list[dict[`str`, Any]]
         Serialized stencils for the cutouts to perform.  These are
         JSON-serializable (a requirement for Dramatiq) representations of the
         `~vocutouts.models.stencils.Stencil` objects corresponding to the
@@ -161,7 +161,7 @@ def cutout(
 
     Returns
     -------
-    result : List[Dict[`str`, `str`]]
+    result : list[dict[`str`, `str`]]
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
     """
@@ -190,7 +190,7 @@ def cutout(
     backend = get_backend(butler_label)
 
     # Convert the stencils to SkyStencils.
-    sky_stencils: List[SkyStencil] = []
+    sky_stencils: list[SkyStencil] = []
     for stencil_dict in stencils:
         if stencil_dict["type"] == "circle":
             center = SkyCoord(

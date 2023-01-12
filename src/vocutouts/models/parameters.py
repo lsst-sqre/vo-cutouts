@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 from ..exceptions import InvalidCutoutParameterError
 from ..uws.models import JobParameter
@@ -14,21 +13,21 @@ from .stencils import Stencil, parse_stencil
 class CutoutParameters:
     """The parameters to a cutout request."""
 
-    ids: List[str]
+    ids: list[str]
     """The dataset IDs on which to operate."""
 
-    stencils: List[Stencil]
+    stencils: list[Stencil]
     """The cutout stencils to apply."""
 
     @classmethod
     def from_job_parameters(
-        cls, params: List[JobParameter]
+        cls, params: list[JobParameter]
     ) -> CutoutParameters:
         """Convert generic UWS parameters to the iamge cutout parameters.
 
         Parameters
         ----------
-        params : List[`vocutouts.uws.models.JobParameter`]
+        params : list[`vocutouts.uws.models.JobParameter`]
             Generic input job parameters.
 
         Returns

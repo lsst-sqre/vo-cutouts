@@ -6,7 +6,7 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Optional
 
 from .models import ErrorCode, ErrorType, JobError
 
@@ -61,7 +61,7 @@ class TaskError(UWSError):
     """An error occurred during background task processing."""
 
     @classmethod
-    def from_callback(cls, exception: Dict[str, str]) -> TaskError:
+    def from_callback(cls, exception: dict[str, str]) -> TaskError:
         """Reconstitute the exception passed to an on_failure callback.
 
         Notes

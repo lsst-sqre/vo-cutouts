@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List
 
 from dramatiq import Message
 
@@ -91,12 +90,12 @@ class UWSPolicy(ABC):
         """
 
     @abstractmethod
-    def validate_params(self, params: List[JobParameter]) -> None:
+    def validate_params(self, params: list[JobParameter]) -> None:
         """Validate parameters for a job.
 
         Parameters
         ----------
-        params : List[`vocutouts.uws.models.JobParameter`]
+        params : list[`vocutouts.uws.models.JobParameter`]
             The new parameters.
 
         Raises

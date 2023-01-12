@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 
-Range = Tuple[float, float]
+Range = tuple[float, float]
 
 
 class Stencil(ABC):
@@ -21,7 +21,7 @@ class Stencil(ABC):
         """Parse a string representation of stencil parameters to an object."""
 
     @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the stencil to a JSON-serializable form for queuing."""
 
 
@@ -40,7 +40,7 @@ class CircleStencil(Stencil):
             radius=Angle(radius * u.degree),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": "circle",
             "center": {
@@ -78,7 +78,7 @@ class PolygonStencil(Stencil):
         vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
         return cls(vertices=vertices)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": "polygon",
             "vertices": [(v.ra.degree, v.dec.degree) for v in self.vertices],
@@ -100,7 +100,7 @@ class RangeStencil(Stencil):
             dec=(dec_min, dec_max),
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": "range",
             "ra": self.ra,

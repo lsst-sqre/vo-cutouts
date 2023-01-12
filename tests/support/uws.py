@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import dramatiq
 import structlog
@@ -69,7 +69,7 @@ class WorkerSession(Middleware):
 
 
 @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
-def trivial_job(job_id: str) -> List[Dict[str, Any]]:
+def trivial_job(job_id: str) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
     now = datetime.now(tz=timezone.utc)
     job_started.send(job_id, message.message_id, isodatetime(now))
@@ -93,7 +93,7 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
 
 @dramatiq.actor(broker=uws_broker, queue_name="uws", priority=10)
 def job_completed(
-    message: Dict[str, Any], result: List[Dict[str, str]]
+    message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
     logger = structlog.get_logger("uws")
     job_id = message["args"][0]
@@ -102,7 +102,7 @@ def job_completed(
 
 
 @dramatiq.actor(broker=uws_broker, queue_name="uws", priority=20)
-def job_failed(message: Dict[str, Any], exception: Dict[str, str]) -> None:
+def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
     logger = structlog.get_logger("uws")
     job_id = message["args"][0]
     assert worker_session
@@ -131,7 +131,7 @@ class TrivialPolicy(UWSPolicy):
     ) -> int:
         return execution_duration
 
-    def validate_params(self, params: List[JobParameter]) -> None:
+    def validate_params(self, params: list[JobParameter]) -> None:
         pass
 
 

@@ -5,7 +5,7 @@ to create a new job has to be provided by the application since only the
 application knows the job parameters.
 """
 
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -118,9 +118,9 @@ async def get_capabilities(request: Request) -> Response:
 
 
 async def _sync_request(
-    params: List[JobParameter],
+    params: list[JobParameter],
     user: str,
-    runid: Optional[str],
+    runid: str | None,
     uws_factory: UWSFactory,
     logger: BoundLogger,
 ) -> Response:
@@ -193,7 +193,7 @@ async def _sync_request(
 )
 async def get_sync(
     request: Request,
-    id: List[str] = Query(
+    id: list[str] = Query(
         ...,
         title="Source ID",
         description=(
@@ -201,7 +201,7 @@ async def get_sync(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[List[str]] = Query(
+    pos: Optional[list[str]] = Query(
         None,
         title="Cutout positions",
         description=(
@@ -213,7 +213,7 @@ async def get_sync(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[List[str]] = Query(
+    circle: Optional[list[str]] = Query(
         None,
         title="Cutout circle positions",
         description=(
@@ -223,7 +223,7 @@ async def get_sync(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[List[str]] = Query(
+    polygon: Optional[list[str]] = Query(
         None,
         title="Cutout polygon positions",
         description=(
@@ -274,7 +274,7 @@ async def get_sync(
 )
 async def post_sync(
     request: Request,
-    id: Optional[List[str]] = Form(
+    id: Optional[list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -282,7 +282,7 @@ async def post_sync(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[List[str]] = Form(
+    pos: Optional[list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -294,7 +294,7 @@ async def post_sync(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[List[str]] = Form(
+    circle: Optional[list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -304,7 +304,7 @@ async def post_sync(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[List[str]] = Form(
+    polygon: Optional[list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
@@ -324,7 +324,7 @@ async def post_sync(
             " with specific larger operations."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
@@ -346,7 +346,7 @@ async def post_sync(
 )
 async def create_job(
     request: Request,
-    id: Optional[List[str]] = Form(
+    id: Optional[list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -354,7 +354,7 @@ async def create_job(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[List[str]] = Form(
+    pos: Optional[list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -366,7 +366,7 @@ async def create_job(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[List[str]] = Form(
+    circle: Optional[list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -376,7 +376,7 @@ async def create_job(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[List[str]] = Form(
+    polygon: Optional[list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
@@ -399,7 +399,7 @@ async def create_job(
             " with specific larger operations."
         ),
     ),
-    params: List[JobParameter] = Depends(uws_post_params_dependency),
+    params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),

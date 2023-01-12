@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 __all__ = ["UWSConfig"]
 
@@ -49,10 +48,10 @@ class UWSConfig:
     with this email.
     """
 
-    database_password: Optional[str] = None
+    database_password: str | None = None
     """Password for the database."""
 
-    redis_password: Optional[str] = None
+    redis_password: str | None = None
     """Password for the Redis server used by Dramatiq."""
 
     url_lifetime: int = 15 * 60

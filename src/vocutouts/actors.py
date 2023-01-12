@@ -34,7 +34,7 @@ always appear to be `None` because the import won't pick up changes from the
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import dramatiq
 import structlog
@@ -55,9 +55,9 @@ __all__ = [
 @dramatiq.actor(queue_name="cutout", max_retries=1, store_results=True)
 def cutout(
     job_id: str,
-    dataset_ids: List[str],
-    stencils: List[Dict[str, Any]],
-) -> List[Dict[str, str]]:
+    dataset_ids: list[str],
+    stencils: list[dict[str, Any]],
+) -> list[dict[str, str]]:
     """Stub for a circle cutout.
 
     This is only a stub, existing to define the actor in the Dramatiq broker
@@ -68,11 +68,11 @@ def cutout(
     ----------
     job_id : `str`
         The UWS job ID, used as the key for storing results.
-    dataset_ids : List[`str`]
+    dataset_ids : list[`str`]
         The data objects on which to perform cutouts.  These are opaque
         identifiers passed as-is to the backend.  The user will normally
         discover them via some service such as ObsTAP.
-    stencils : List[Dict[`str`, Any]]
+    stencils : list[dict[`str`, Any]]
         Serialized stencils for the cutouts to perform.  These are
         JSON-serializable (a requirement for Dramatiq) representations of the
         `~vocutouts.models.stencils.Stencil` objects corresponding to the
@@ -80,7 +80,7 @@ def cutout(
 
     Returns
     -------
-    result : List[Dict[`str`, `str`]]
+    result : list[dict[`str`, `str`]]
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
 
@@ -117,7 +117,7 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
 
 @dramatiq.actor(queue_name="uws", priority=10)
 def job_completed(
-    message: Dict[str, Any], result: List[Dict[str, str]]
+    message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
     """Wrapper around the UWS function to mark a job as completed."""
     logger = structlog.get_logger(config.logger_name)
@@ -127,7 +127,7 @@ def job_completed(
 
 
 @dramatiq.actor(queue_name="uws", priority=20)
-def job_failed(message: Dict[str, Any], exception: Dict[str, str]) -> None:
+def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
     """Wrapper around the UWS function to mark a job as errored."""
     logger = structlog.get_logger(config.logger_name)
     job_id = message["args"][0]

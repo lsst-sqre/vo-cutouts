@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 from .uws.config import UWSConfig
 
@@ -29,7 +28,7 @@ class Configuration:
     is mandatory.
     """
 
-    database_password: Optional[str] = os.getenv("CUTOUT_DATABASE_PASSWORD")
+    database_password: str | None = os.getenv("CUTOUT_DATABASE_PASSWORD")
     """The password for the UWS job database.
 
     Set with the ``CUTOUT_DATABASE_PASSWORD`` environment variable.
@@ -64,7 +63,7 @@ class Configuration:
     mandatory.
     """
 
-    redis_password: Optional[str] = os.getenv("CUTOUT_REDIS_PASSWORD")
+    redis_password: str | None = os.getenv("CUTOUT_REDIS_PASSWORD")
     """Password for the Redis server used by Dramatiq.
 
     Set with the ``CUTOUT_REDIS_PASSWORD`` environment variable.

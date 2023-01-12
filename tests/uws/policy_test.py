@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import List
 
 import pytest
 from httpx import AsyncClient
@@ -34,7 +33,7 @@ class Policy(TrivialPolicy):
         else:
             return execution_duration
 
-    def validate_params(self, params: List[JobParameter]) -> None:
+    def validate_params(self, params: list[JobParameter]) -> None:
         for param in params:
             if param.parameter_id != "id":
                 msg = f"Invalid parameter f{param.parameter_id}"

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Any, Awaitable, Callable, List, Optional, TypeVar, cast
+from typing import Any, Optional, TypeVar, cast
 
 from safir.database import datetime_from_db, datetime_to_db
 from sqlalchemy import delete
@@ -159,7 +160,7 @@ class FrontendJobStore:
         *,
         owner: str,
         run_id: Optional[str] = None,
-        params: List[JobParameter],
+        params: list[JobParameter],
         execution_duration: int,
         lifetime: int,
     ) -> Job:
@@ -173,7 +174,7 @@ class FrontendJobStore:
             The username of the owner of the job.
         run_id : `str`, optional
             A client-supplied opaque identifier to record with the job.
-        params : List[`vocutouts.uws.models.JobParameter`]
+        params : list[`vocutouts.uws.models.JobParameter`]
             The input parameters to the job.
         execution_duration : `int`
             The maximum length of time for which a job is allowed to run in
@@ -241,17 +242,17 @@ class FrontendJobStore:
         self,
         user: str,
         *,
-        phases: Optional[List[ExecutionPhase]] = None,
+        phases: Optional[list[ExecutionPhase]] = None,
         after: Optional[datetime] = None,
         count: Optional[int] = None,
-    ) -> List[JobDescription]:
+    ) -> list[JobDescription]:
         """List the jobs for a particular user.
 
         Parameters
         ----------
         user : `str`
             Name of the user whose jobs to load.
-        phases : List[`vocutouts.uws.models.ExecutionPhase`], optional
+        phases : list[`vocutouts.uws.models.ExecutionPhase`], optional
             Limit the result to jobs in this list of possible execution
             phases.
         after : `datetime.datetime`, optional
@@ -261,7 +262,7 @@ class FrontendJobStore:
 
         Returns
         -------
-        descriptions : List[`vocutouts.uws.models.JobDescription`]
+        descriptions : list[`vocutouts.uws.models.JobDescription`]
             List of job descriptions matching the search criteria.
         """
         stmt = select(
@@ -398,7 +399,7 @@ class WorkerJobStore:
         self._session = session
 
     @retry_transaction
-    def mark_completed(self, job_id: str, results: List[JobResult]) -> None:
+    def mark_completed(self, job_id: str, results: list[JobResult]) -> None:
         """Mark a job as completed."""
         with self._session.begin():
             job = self._get_job(job_id)

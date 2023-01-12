@@ -9,7 +9,6 @@ and sharp edges.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -26,25 +25,25 @@ class Job(Base):
     __tablename__ = "job"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
-    message_id: Optional[str] = Column(String(64))
+    message_id: str | None = Column(String(64))
     owner: str = Column(String(64), nullable=False)
     phase: ExecutionPhase = Column(Enum(ExecutionPhase), nullable=False)
-    run_id: Optional[str] = Column(String(64))
+    run_id: str | None = Column(String(64))
     creation_time: datetime = Column(DateTime, nullable=False)
-    start_time: Optional[datetime] = Column(DateTime)
-    end_time: Optional[datetime] = Column(DateTime)
+    start_time: datetime | None = Column(DateTime)
+    end_time: datetime | None = Column(DateTime)
     destruction_time: datetime = Column(DateTime, nullable=False)
     execution_duration: int = Column(Integer, nullable=False)
-    quote: Optional[datetime] = Column(DateTime)
-    error_type: Optional[ErrorType] = Column(Enum(ErrorType))
-    error_code: Optional[ErrorCode] = Column(Enum(ErrorCode))
-    error_message: Optional[str] = Column(Text)
-    error_detail: Optional[str] = Column(Text)
+    quote: datetime | None = Column(DateTime)
+    error_type: ErrorType | None = Column(Enum(ErrorType))
+    error_code: ErrorCode | None = Column(Enum(ErrorCode))
+    error_message: str | None = Column(Text)
+    error_detail: str | None = Column(Text)
 
-    parameters: List[JobParameter] = relationship(
+    parameters: list[JobParameter] = relationship(
         "JobParameter", cascade="delete", lazy="selectin", uselist=True
     )
-    results: List[JobResult] = relationship(
+    results: list[JobResult] = relationship(
         "JobResult", cascade="delete", lazy="selectin", uselist=True
     )
 

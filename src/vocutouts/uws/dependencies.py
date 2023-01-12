@@ -6,7 +6,7 @@ request to individual route handlers, which in turn can create other needed
 objects.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import Depends, Request
 from safir.dependencies.db_session import db_session_dependency
@@ -140,7 +140,7 @@ class UWSDependency:
 uws_dependency = UWSDependency()
 
 
-async def uws_post_params_dependency(request: Request) -> List[JobParameter]:
+async def uws_post_params_dependency(request: Request) -> list[JobParameter]:
     """Parse POST parameters.
 
     UWS requires that all POST parameters be case-insensitive, which is not
