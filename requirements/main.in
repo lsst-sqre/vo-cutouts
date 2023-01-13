@@ -26,4 +26,4 @@ structlog
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
-#git+https://github.com/lsst-sqre/safir@master#egg=safir[db,gcs]
+#git+https://github.com/lsst-sqre/safir@main#egg=safir[db,gcs]
