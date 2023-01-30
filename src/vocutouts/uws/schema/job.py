@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from ..models import ErrorCode, ErrorType, ExecutionPhase
 from .base import Base
@@ -40,11 +40,11 @@ class Job(Base):
     error_message: str | None = Column(Text)
     error_detail: str | None = Column(Text)
 
-    parameters: list[JobParameter] = relationship(
-        "JobParameter", cascade="delete", lazy="selectin", uselist=True
+    parameters: Mapped[list[JobParameter]] = relationship(
+        cascade="delete", lazy="selectin", uselist=True
     )
-    results: list[JobResult] = relationship(
-        "JobResult", cascade="delete", lazy="selectin", uselist=True
+    results: Mapped[list[JobResult]] = relationship(
+        cascade="delete", lazy="selectin", uselist=True
     )
 
     __mapper_args__ = {"eager_defaults": True}
