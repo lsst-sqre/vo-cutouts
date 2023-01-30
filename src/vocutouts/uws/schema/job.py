@@ -41,10 +41,10 @@ class Job(Base):
     error_detail: str | None = Column(Text)
 
     parameters: Mapped[list[JobParameter]] = relationship(
-        "JobParameter", cascade="delete", lazy="selectin", uselist=True
+        cascade="delete", lazy="selectin", uselist=True
     )
     results: Mapped[list[JobResult]] = relationship(
-        "JobResult", cascade="delete", lazy="selectin", uselist=True
+        cascade="delete", lazy="selectin", uselist=True
     )
 
     __mapper_args__ = {"eager_defaults": True}
