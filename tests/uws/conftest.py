@@ -64,13 +64,13 @@ async def app(
     await engine.dispose()
     uws_app = FastAPI()
     uws_app.include_router(uws_router, prefix="/jobs")
+    uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
+    uws_app.add_middleware(XForwardedMiddleware)
+    install_error_handlers(uws_app)
     uws_broker.add_middleware(WorkerSession(uws_config))
 
     @uws_app.on_event("startup")
     async def startup_event() -> None:
-        install_error_handlers(uws_app)
-        uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
-        uws_app.add_middleware(XForwardedMiddleware)
         await uws_dependency.initialize(
             config=uws_config,
             policy=TrivialPolicy(trivial_job),
