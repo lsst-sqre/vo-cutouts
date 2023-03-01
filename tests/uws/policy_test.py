@@ -7,12 +7,13 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from httpx import AsyncClient
 
-from tests.support.uws import TrivialPolicy
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.exceptions import ParameterError
 from vocutouts.uws.models import Job, JobParameter
 from vocutouts.uws.utils import isodatetime
+
+from ..support.uws import TrivialPolicy, trivial_job
 
 
 class Policy(TrivialPolicy):
@@ -44,8 +45,8 @@ class Policy(TrivialPolicy):
 async def test_policy(
     client: AsyncClient, uws_factory: UWSFactory, uws_config: UWSConfig
 ) -> None:
-    uws_dependency.override_policy(Policy(uws_config))
-    uws_factory._policy = Policy(uws_config)
+    uws_dependency.override_policy(Policy(trivial_job))
+    uws_factory._policy = Policy(trivial_job)
     job_service = uws_factory.create_job_service()
 
     # Check parameter rejection.
