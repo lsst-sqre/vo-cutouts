@@ -77,7 +77,7 @@ async def get_job_list(
     )
     base_url = request.url_for("get_job_list")
     templates = uws_factory.create_templates()
-    return templates.job_list(request, jobs, base_url)
+    return templates.job_list(request, jobs, str(base_url))
 
 
 @uws_router.get(
@@ -131,7 +131,7 @@ async def delete_job(
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
     logger.info("Deleted job", job_id=job_id)
-    return request.url_for("get_job_list")
+    return str(request.url_for("get_job_list"))
 
 
 @uws_router.post(
@@ -173,7 +173,7 @@ async def delete_job_via_post(
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
     logger.info("Deleted job", job_id=job_id)
-    return request.url_for("get_job_list")
+    return str(request.url_for("get_job_list"))
 
 
 @uws_router.get(
@@ -236,7 +236,7 @@ async def post_job_destruction(
             job_id=job_id,
             destruction=isodatetime(new_destruction),
         )
-    return request.url_for("get_job", job_id=job_id)
+    return str(request.url_for("get_job", job_id=job_id))
 
 
 @uws_router.get(
@@ -324,7 +324,7 @@ async def post_job_execution_duration(
             job_id=job_id,
             duration=f"{new_executionduration}s",
         )
-    return request.url_for("get_job", job_id=job_id)
+    return str(request.url_for("get_job", job_id=job_id))
 
 
 @uws_router.get(
@@ -412,7 +412,7 @@ async def post_job_phase(
     job_service = uws_factory.create_job_service()
     await job_service.start(user, job_id)
     logger.info("Started job", job_id=job_id)
-    return request.url_for("get_job", job_id=job_id)
+    return str(request.url_for("get_job", job_id=job_id))
 
 
 @uws_router.get(

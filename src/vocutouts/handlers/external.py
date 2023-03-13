@@ -423,7 +423,7 @@ async def create_job(
         logger.info("Started job", job_id=job.job_id)
 
     # Redirect to the new job.
-    return request.url_for("get_job", job_id=job.job_id)
+    return str(request.url_for("get_job", job_id=job.job_id))
 
 
 # Add the UWS routes to our external routes.  This must be done after defining
