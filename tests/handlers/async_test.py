@@ -137,7 +137,11 @@ async def test_redirect(app: FastAPI) -> None:
     the redirect to honor ``X-Forwarded-Proto`` and thus use ``https``.  Also
     test that the correct hostname is used if it is different.
     """
-    async with AsyncClient(app=app, base_url="http://foo.com/") as client:
+    async with AsyncClient(
+        app=app,
+        base_url="http://foo.com/",
+        headers={"X-Auth-Request-Token": "sometoken"},
+    ) as client:
         r = await client.post(
             "/api/cutout/jobs",
             headers={

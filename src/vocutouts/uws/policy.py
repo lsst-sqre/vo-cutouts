@@ -27,7 +27,7 @@ class UWSPolicy(ABC):
     """
 
     @abstractmethod
-    def dispatch(self, job: Job) -> Message:
+    def dispatch(self, job: Job, access_token: str) -> Message:
         """Dispatch a job to a backend worker.
 
         This method is responsible for converting UWS job parameters to the
@@ -38,6 +38,9 @@ class UWSPolicy(ABC):
         ----------
         job
             The job to start.
+        access_token
+            Gafaelfawr access token used to authenticate to services used
+            by the backend on the user's behalf.
 
         Returns
         -------
