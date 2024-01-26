@@ -274,7 +274,7 @@ async def get_sync(
 )
 async def post_sync(
     request: Request,
-    id: Optional[list[str]] = Form(
+    id: Optional[str | list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -282,7 +282,7 @@ async def post_sync(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[list[str]] = Form(
+    pos: Optional[str | list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -294,7 +294,7 @@ async def post_sync(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[list[str]] = Form(
+    circle: Optional[str | list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -304,7 +304,7 @@ async def post_sync(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[list[str]] = Form(
+    polygon: Optional[str | list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
@@ -346,7 +346,7 @@ async def post_sync(
 )
 async def create_job(
     request: Request,
-    id: Optional[list[str]] = Form(
+    id: Optional[str | list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -354,7 +354,7 @@ async def create_job(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[list[str]] = Form(
+    pos: Optional[str | list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -366,7 +366,7 @@ async def create_job(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[list[str]] = Form(
+    circle: Optional[str | list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -376,7 +376,7 @@ async def create_job(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[list[str]] = Form(
+    polygon: Optional[str | list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
