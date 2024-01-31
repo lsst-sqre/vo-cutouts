@@ -66,6 +66,7 @@ class ImageCutoutPolicy(UWSPolicy):
                 job.job_id,
                 cutout_params.ids,
                 [s.to_dict() for s in cutout_params.stencils],
+                access_token,
             ),
             time_limit=job.execution_duration * 1000,
             on_success=job_completed,

@@ -25,7 +25,7 @@ set -x
 # alternative (no releases and no tags).
 mkdir /backend
 cd /backend
-git clone --depth 1 https://github.com/lsst-dm/image_cutout_backend.git
+git clone --depth 1 -b 0.0.1 https://github.com/lsst-dm/image_cutout_backend.git
 cd image_cutout_backend
 setup -r .
 scons install declare -t current
