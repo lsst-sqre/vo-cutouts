@@ -22,6 +22,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from safir.dependencies.gafaelfawr import (
+    auth_delegated_token_dependency,
     auth_dependency,
     auth_logger_dependency,
 )
@@ -390,6 +391,7 @@ async def post_job_phase(
     ),
     params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
+    access_token: str = Depends(auth_delegated_token_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
@@ -410,7 +412,7 @@ async def post_job_phase(
 
     # The only remaining case is starting the job.
     job_service = uws_factory.create_job_service()
-    await job_service.start(user, job_id)
+    await job_service.start(user, job_id, access_token)
     logger.info("Started job", job_id=job_id)
     return str(request.url_for("get_job", job_id=job_id))
 

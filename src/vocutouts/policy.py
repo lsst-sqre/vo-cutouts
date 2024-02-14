@@ -39,13 +39,16 @@ class ImageCutoutPolicy(UWSPolicy):
         self._actor = actor
         self._logger = logger
 
-    def dispatch(self, job: Job) -> Message:
+    def dispatch(self, job: Job, access_token: str) -> Message:
         """Dispatch a cutout request to the backend.
 
         Parameters
         ----------
         job
             The submitted job description.
+        access_token
+            Gafaelfawr access token used to authenticate to Butler server
+            in the backend.
 
         Returns
         -------
@@ -63,6 +66,7 @@ class ImageCutoutPolicy(UWSPolicy):
                 job.job_id,
                 cutout_params.ids,
                 [s.to_dict() for s in cutout_params.stencils],
+                access_token,
             ),
             time_limit=job.execution_duration * 1000,
             on_success=job_completed,

@@ -10,6 +10,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from safir.dependencies.gafaelfawr import (
+    auth_delegated_token_dependency,
     auth_dependency,
     auth_logger_dependency,
 )
@@ -123,6 +124,7 @@ async def _sync_request(
     runid: str | None,
     uws_factory: UWSFactory,
     logger: BoundLogger,
+    access_token: str,
 ) -> Response:
     """Process a sync request.
 
@@ -136,7 +138,7 @@ async def _sync_request(
     logger.info(
         "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
     )
-    await job_service.start(user, job.job_id)
+    await job_service.start(user, job.job_id, access_token)
     logger.info("Started job", job_id=job.job_id)
     job = await job_service.get(
         user, job.job_id, wait=config.sync_timeout, wait_for_completion=True
@@ -244,6 +246,7 @@ async def get_sync(
         ),
     ),
     user: str = Depends(auth_dependency),
+    access_token: str = Depends(auth_delegated_token_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> Response:
@@ -251,7 +254,9 @@ async def get_sync(
         JobParameter(parameter_id=k.lower(), value=v, is_post=False)
         for k, v in request.query_params.items()
     ]
-    return await _sync_request(params, user, runid, uws_factory, logger)
+    return await _sync_request(
+        params, user, runid, uws_factory, logger, access_token
+    )
 
 
 @external_router.post(
@@ -274,7 +279,7 @@ async def get_sync(
 )
 async def post_sync(
     request: Request,
-    id: Optional[list[str]] = Form(
+    id: Optional[str | list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -282,7 +287,7 @@ async def post_sync(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[list[str]] = Form(
+    pos: Optional[str | list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -294,7 +299,7 @@ async def post_sync(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[list[str]] = Form(
+    circle: Optional[str | list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -304,7 +309,7 @@ async def post_sync(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[list[str]] = Form(
+    polygon: Optional[str | list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
@@ -326,6 +331,7 @@ async def post_sync(
     ),
     params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
+    access_token: str = Depends(auth_delegated_token_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> Response:
@@ -334,7 +340,9 @@ async def post_sync(
         if param.parameter_id == "runid":
             runid = param.value
     params = [p for p in params if p.parameter_id != "runid"]
-    return await _sync_request(params, user, runid, uws_factory, logger)
+    return await _sync_request(
+        params, user, runid, uws_factory, logger, access_token
+    )
 
 
 @uws_router.post(
@@ -346,7 +354,7 @@ async def post_sync(
 )
 async def create_job(
     request: Request,
-    id: Optional[list[str]] = Form(
+    id: Optional[str | list[str]] = Form(
         None,
         title="Source ID",
         description=(
@@ -354,7 +362,7 @@ async def create_job(
             " parameter is mandatory."
         ),
     ),
-    pos: Optional[list[str]] = Form(
+    pos: Optional[str | list[str]] = Form(
         None,
         title="Cutout positions",
         description=(
@@ -366,7 +374,7 @@ async def create_job(
             " numbers expressed as strings."
         ),
     ),
-    circle: Optional[list[str]] = Form(
+    circle: Optional[str | list[str]] = Form(
         None,
         title="Cutout circle positions",
         description=(
@@ -376,7 +384,7 @@ async def create_job(
             " strings and separated by spaces."
         ),
     ),
-    polygon: Optional[list[str]] = Form(
+    polygon: Optional[str | list[str]] = Form(
         None,
         title="Cutout polygon positions",
         description=(
@@ -401,6 +409,7 @@ async def create_job(
     ),
     params: list[JobParameter] = Depends(uws_post_params_dependency),
     user: str = Depends(auth_dependency),
+    access_token: str = Depends(auth_delegated_token_dependency),
     uws_factory: UWSFactory = Depends(uws_dependency),
     logger: BoundLogger = Depends(auth_logger_dependency),
 ) -> str:
@@ -419,7 +428,7 @@ async def create_job(
         "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
     )
     if phase == "RUN":
-        await job_service.start(user, job.job_id)
+        await job_service.start(user, job.job_id, access_token)
         logger.info("Started job", job_id=job.job_id)
 
     # Redirect to the new job.

@@ -28,7 +28,7 @@ from dramatiq.brokers.redis import RedisBroker
 from dramatiq.middleware import CurrentMessage
 from dramatiq.results import Results
 from dramatiq.results.backends import RedisBackend
-from lsst.daf.butler import Butler
+from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import (
     SkyCircle,
@@ -37,8 +37,7 @@ from lsst.image_cutout_backend.stencils import (
 )
 from safir.logging import configure_logging
 
-BACKENDS: dict[str, ImageCutoutBackend] = {}
-"""Cache of image cutout backends by Butler repository label."""
+BUTLER_FACTORY = LabeledButlerFactory()
 
 configure_logging(
     name=os.getenv("SAFIR_LOGGER", "vocutouts"),
@@ -86,7 +85,7 @@ class TaskTransientError(Exception):
     """Some transient problem occurred."""
 
 
-def get_backend(butler_label: str) -> ImageCutoutBackend:
+def get_backend(butler_label: str, access_token: str) -> ImageCutoutBackend:
     """Given the Butler label, retrieve or build a backend.
 
     The dataset ID will be a URI of the form ``butler://<label>/<uuid>``.
@@ -103,15 +102,17 @@ def get_backend(butler_label: str) -> ImageCutoutBackend:
     lsst.image_cutout_backend.ImageCutoutBackend
         Backend to use.
     """
-    if butler_label in BACKENDS:
-        return BACKENDS[butler_label]
-    butler = Butler(butler_label)
+
+    butler = BUTLER_FACTORY.create_butler(
+        label=butler_label, access_token=access_token
+    )
+    # At present, projection finders and image cutout backend have no internal
+    # caching and are cheap to construct, so we just make a new one for each
+    # request.
     projection_finder = projection_finders.ProjectionFinder.make_default()
     output = os.environ["CUTOUT_STORAGE_URL"]
     tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
-    backend = ImageCutoutBackend(butler, projection_finder, output, tmpdir)
-    BACKENDS[butler_label] = backend
-    return backend
+    return ImageCutoutBackend(butler, projection_finder, output, tmpdir)
 
 
 def parse_uri(uri: str) -> tuple[str, UUID]:
@@ -138,6 +139,7 @@ def cutout(
     job_id: str,
     dataset_ids: list[str],
     stencils: list[dict[str, Any]],
+    access_token: str,
 ) -> list[dict[str, str]]:
     """Perform a cutout.
 
@@ -160,6 +162,8 @@ def cutout(
         JSON-serializable (a requirement for Dramatiq) representations of the
         `~vocutouts.models.stencils.Stencil` objects corresponding to the
         user's request.
+    access_token
+        Gafaelfawr access token used to authenticate to Butler server.
 
     Returns
     -------
@@ -189,7 +193,7 @@ def cutout(
 
     # Parse the dataset ID and retrieve an appropriate backend.
     butler_label, uuid = parse_uri(dataset_ids[0])
-    backend = get_backend(butler_label)
+    backend = get_backend(butler_label, access_token)
 
     # Convert the stencils to SkyStencils.
     sky_stencils: list[SkyStencil] = []

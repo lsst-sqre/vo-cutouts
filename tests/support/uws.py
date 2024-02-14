@@ -114,7 +114,7 @@ class TrivialPolicy(UWSPolicy):
         super().__init__()
         self.actor = actor
 
-    def dispatch(self, job: Job) -> Message:
+    def dispatch(self, job: Job, access_token: str) -> Message:
         return self.actor.send_with_options(
             args=(job.job_id,),
             on_success=job_completed,

@@ -57,6 +57,7 @@ def cutout(
     job_id: str,
     dataset_ids: list[str],
     stencils: list[dict[str, Any]],
+    access_token: str,
 ) -> list[dict[str, str]]:
     """Stub for a circle cutout.
 
@@ -77,6 +78,8 @@ def cutout(
         JSON-serializable (a requirement for Dramatiq) representations of the
         `~vocutouts.models.stencils.Stencil` objects corresponding to the
         user's request.
+    access_token
+        Gafaelfawr access token used to authenticate to Butler server.
 
     Returns
     -------

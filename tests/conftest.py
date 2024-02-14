@@ -32,11 +32,13 @@ def cutout_test(
     job_id: str,
     dataset_ids: list[str],
     stencils: list[dict[str, Any]],
+    access_token: str,
 ) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
     now = isodatetime(datetime.now(tz=timezone.utc))
     job_started.send(job_id, message.message_id, now)
     assert len(dataset_ids) == 1
+    assert access_token == "sometoken"
     return [
         {
             "result_id": "cutout",
@@ -71,7 +73,12 @@ async def app() -> AsyncIterator[FastAPI]:
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
-    async with AsyncClient(app=app, base_url="https://example.com/") as client:
+    async with AsyncClient(
+        app=app,
+        base_url="https://example.com/",
+        # Mock the Gafaelfawr delegated token header.
+        headers={"X-Auth-Request-Token": "sometoken"},
+    ) as client:
         yield client
 
 
