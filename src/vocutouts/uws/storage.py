@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import wraps
-from typing import Any, Optional, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 from safir.database import datetime_from_db, datetime_to_db
 from sqlalchemy import delete
@@ -159,7 +159,7 @@ class FrontendJobStore:
         self,
         *,
         owner: str,
-        run_id: Optional[str] = None,
+        run_id: str | None = None,
         params: list[JobParameter],
         execution_duration: int,
         lifetime: int,
@@ -188,7 +188,7 @@ class FrontendJobStore:
         vocutouts.uws.models.Job
             The internal representation of the newly-created job.
         """
-        now = datetime.now(tz=timezone.utc).replace(microsecond=0)
+        now = datetime.now(tz=UTC).replace(microsecond=0)
         destruction_time = now + timedelta(seconds=lifetime)
         sql_params = [
             SQLJobParameter(
@@ -223,7 +223,7 @@ class FrontendJobStore:
             note = "cannot query UWS job database"
             return Availability(available=False, note=note)
         except Exception as e:
-            note = f"{type(e).__name__}: {str(e)}"
+            note = f"{type(e).__name__}: {e!s}"
             return Availability(available=False, note=note)
 
     async def delete(self, job_id: str) -> None:
@@ -242,9 +242,9 @@ class FrontendJobStore:
         self,
         user: str,
         *,
-        phases: Optional[list[ExecutionPhase]] = None,
-        after: Optional[datetime] = None,
-        count: Optional[int] = None,
+        phases: list[ExecutionPhase] | None = None,
+        after: datetime | None = None,
+        count: int | None = None,
     ) -> list[JobDescription]:
         """List the jobs for a particular user.
 
@@ -404,7 +404,7 @@ class WorkerJobStore:
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.COMPLETED
-            job.end_time = datetime_to_db(datetime.now(tz=timezone.utc))
+            job.end_time = datetime_to_db(datetime.now(tz=UTC))
             for sequence, result in enumerate(results, start=1):
                 sql_result = SQLJobResult(
                     job_id=job.id,
@@ -422,7 +422,7 @@ class WorkerJobStore:
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.ERROR
-            job.end_time = datetime_to_db(datetime.now(tz=timezone.utc))
+            job.end_time = datetime_to_db(datetime.now(tz=UTC))
             job.error_type = error.error_type
             job.error_code = error.error_code
             job.error_message = error.message

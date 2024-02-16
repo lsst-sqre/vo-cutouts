@@ -11,8 +11,6 @@ or those tasks will be associated with a RabbitMQ broker.
 
 from __future__ import annotations
 
-from typing import Optional
-
 import dramatiq
 import structlog
 from dramatiq import Broker, Middleware, Worker
@@ -33,7 +31,7 @@ broker = RedisBroker(host=config.redis_host, password=config.redis_password)
 results = RedisBackend(host=config.redis_host, password=config.redis_password)
 """Result backend used by UWS."""
 
-worker_session: Optional[scoped_session] = None
+worker_session: scoped_session | None = None
 """Shared scoped session used by the UWS worker."""
 
 

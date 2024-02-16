@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import dramatiq
@@ -104,13 +104,13 @@ async def test_poll(
 
     # Poll for changes for two seconds.  Nothing will happen since there is no
     # worker.
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     r = await client.get(
         "/jobs/1",
         headers={"X-Auth-Request-User": "user"},
         params={"WAIT": "2"},
     )
-    assert (datetime.now(tz=timezone.utc) - now).total_seconds() >= 2
+    assert (datetime.now(tz=UTC) - now).total_seconds() >= 2
     assert r.status_code == 200
     assert r.text == PENDING_JOB.strip().format(
         "PENDING",
@@ -121,7 +121,7 @@ async def test_poll(
     @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
     def wait_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         job_started.send(job_id, message.message_id, now)
         time.sleep(2)
         return [
@@ -147,7 +147,7 @@ async def test_poll(
         isodatetime(job.creation_time),
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     worker = Worker(uws_broker, worker_timeout=100)
     worker.start()
 
@@ -182,6 +182,6 @@ async def test_poll(
             isodatetime(job.end_time),
             isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
         )
-        assert (datetime.now(tz=timezone.utc) - now).total_seconds() >= 2
+        assert (datetime.now(tz=UTC) - now).total_seconds() >= 2
     finally:
         worker.stop()

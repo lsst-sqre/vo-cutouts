@@ -5,7 +5,7 @@ to create a new job has to be provided by the application since only the
 application knows the job parameters.
 """
 
-from typing import Literal, Optional
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -94,7 +94,8 @@ async def get_index() -> Index:
     summary="IVOA service availability",
 )
 async def get_availability(
-    request: Request, uws_factory: UWSFactory = Depends(uws_dependency)
+    request: Request,
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     availability = await job_service.availability()
@@ -194,61 +195,72 @@ async def _sync_request(
     summary="Synchronous cutout",
 )
 async def get_sync(
+    *,
     request: Request,
-    id: list[str] = Query(
-        ...,
-        title="Source ID",
-        description=(
-            "Identifiers of images from which to make a cutout. This"
-            " parameter is mandatory."
+    id: Annotated[
+        list[str],
+        Query(
+            title="Source ID",
+            description=(
+                "Identifiers of images from which to make a cutout. This"
+                " parameter is mandatory."
+            ),
         ),
-    ),
-    pos: Optional[list[str]] = Query(
-        None,
-        title="Cutout positions",
-        description=(
-            "Positions to cut out. Supported parameters are RANGE followed"
-            " by min and max ra and min and max dec; CIRCLE followed by"
-            " ra, dec, and radius; and POLYGON followed by a list of"
-            " ra/dec positions for vertices. Arguments must be separated"
-            " by spaces and parameters are double-precision floating point"
-            " numbers expressed as strings."
+    ],
+    pos: Annotated[
+        list[str] | None,
+        Query(
+            title="Cutout positions",
+            description=(
+                "Positions to cut out. Supported parameters are RANGE followed"
+                " by min and max ra and min and max dec; CIRCLE followed by"
+                " ra, dec, and radius; and POLYGON followed by a list of"
+                " ra/dec positions for vertices. Arguments must be separated"
+                " by spaces and parameters are double-precision floating point"
+                " numbers expressed as strings."
+            ),
         ),
-    ),
-    circle: Optional[list[str]] = Query(
-        None,
-        title="Cutout circle positions",
-        description=(
-            "Circles to cut out. The value must be the ra and dec of the"
-            " center of the circle and then the radius, as"
-            " double-precision floating point numbers expressed as"
-            " strings and separated by spaces."
+    ] = None,
+    circle: Annotated[
+        list[str] | None,
+        Query(
+            title="Cutout circle positions",
+            description=(
+                "Circles to cut out. The value must be the ra and dec of the"
+                " center of the circle and then the radius, as"
+                " double-precision floating point numbers expressed as"
+                " strings and separated by spaces."
+            ),
         ),
-    ),
-    polygon: Optional[list[str]] = Query(
-        None,
-        title="Cutout polygon positions",
-        description=(
-            "Polygons to cut out. The value must be ra/dec pairs for each"
-            " vertex, ordered so that the polygon winding direction is"
-            " counter-clockwise (when viewed from the origin towards the"
-            " sky). These parameters are double-precision floating point"
-            " numbers expressed as strings and separated by spaces."
+    ] = None,
+    polygon: Annotated[
+        list[str] | None,
+        Query(
+            title="Cutout polygon positions",
+            description=(
+                "Polygons to cut out. The value must be ra/dec pairs for each"
+                " vertex, ordered so that the polygon winding direction is"
+                " counter-clockwise (when viewed from the origin towards the"
+                " sky). These parameters are double-precision floating point"
+                " numbers expressed as strings and separated by spaces."
+            ),
         ),
-    ),
-    runid: Optional[str] = Query(
-        None,
-        title="Run ID for job",
-        description=(
-            "An opaque string that is returned in the job metadata and"
-            " job listings. Maybe used by the client to associate jobs"
-            " with specific larger operations."
+    ] = None,
+    runid: Annotated[
+        str | None,
+        Query(
+            title="Run ID for job",
+            description=(
+                "An opaque string that is returned in the job metadata and"
+                " job listings. Maybe used by the client to associate jobs"
+                " with specific larger operations."
+            ),
         ),
-    ),
-    user: str = Depends(auth_dependency),
-    access_token: str = Depends(auth_delegated_token_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    ] = None,
+    user: Annotated[str, Depends(auth_dependency)],
+    access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> Response:
     params = [
         JobParameter(parameter_id=k.lower(), value=v, is_post=False)
@@ -278,62 +290,73 @@ async def get_sync(
     summary="Synchronous cutout",
 )
 async def post_sync(
+    *,
     request: Request,
-    id: Optional[str | list[str]] = Form(
-        None,
-        title="Source ID",
-        description=(
-            "Identifiers of images from which to make a cutout. This"
-            " parameter is mandatory."
+    id: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Source ID",
+            description=(
+                "Identifiers of images from which to make a cutout. This"
+                " parameter is mandatory."
+            ),
         ),
-    ),
-    pos: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout positions",
-        description=(
-            "Positions to cut out. Supported parameters are RANGE followed"
-            " by min and max ra and min and max dec; CIRCLE followed by"
-            " ra, dec, and radius; and POLYGON followed by a list of"
-            " ra/dec positions for vertices. Arguments must be separated"
-            " by spaces and parameters are double-precision floating point"
-            " numbers expressed as strings."
+    ] = None,
+    pos: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout positions",
+            description=(
+                "Positions to cut out. Supported parameters are RANGE followed"
+                " by min and max ra and min and max dec; CIRCLE followed by"
+                " ra, dec, and radius; and POLYGON followed by a list of"
+                " ra/dec positions for vertices. Arguments must be separated"
+                " by spaces and parameters are double-precision floating point"
+                " numbers expressed as strings."
+            ),
         ),
-    ),
-    circle: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout circle positions",
-        description=(
-            "Circles to cut out. The value must be the ra and dec of the"
-            " center of the circle and then the radius, as"
-            " double-precision floating point numbers expressed as"
-            " strings and separated by spaces."
+    ] = None,
+    circle: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout circle positions",
+            description=(
+                "Circles to cut out. The value must be the ra and dec of the"
+                " center of the circle and then the radius, as"
+                " double-precision floating point numbers expressed as"
+                " strings and separated by spaces."
+            ),
         ),
-    ),
-    polygon: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout polygon positions",
-        description=(
-            "Polygons to cut out. The value must be ra/dec pairs for each"
-            " vertex, ordered so that the polygon winding direction is"
-            " counter-clockwise (when viewed from the origin towards the"
-            " sky). These parameters are double-precision floating point"
-            " numbers expressed as strings and separated by spaces."
+    ] = None,
+    polygon: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout polygon positions",
+            description=(
+                "Polygons to cut out. The value must be ra/dec pairs for each"
+                " vertex, ordered so that the polygon winding direction is"
+                " counter-clockwise (when viewed from the origin towards the"
+                " sky). These parameters are double-precision floating point"
+                " numbers expressed as strings and separated by spaces."
+            ),
         ),
-    ),
-    runid: Optional[str] = Form(
-        None,
-        title="Run ID for job",
-        description=(
-            "An opaque string that is returned in the job metadata and"
-            " job listings. Maybe used by the client to associate jobs"
-            " with specific larger operations."
+    ] = None,
+    runid: Annotated[
+        str | None,
+        Form(
+            title="Run ID for job",
+            description=(
+                "An opaque string that is returned in the job metadata and"
+                " job listings. Maybe used by the client to associate jobs"
+                " with specific larger operations."
+            ),
         ),
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    access_token: str = Depends(auth_delegated_token_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> Response:
     runid = None
     for param in params:
@@ -353,65 +376,76 @@ async def post_sync(
     summary="Create async job",
 )
 async def create_job(
+    *,
     request: Request,
-    id: Optional[str | list[str]] = Form(
-        None,
-        title="Source ID",
-        description=(
-            "Identifiers of images from which to make a cutout. This"
-            " parameter is mandatory."
+    id: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Source ID",
+            description=(
+                "Identifiers of images from which to make a cutout. This"
+                " parameter is mandatory."
+            ),
         ),
-    ),
-    pos: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout positions",
-        description=(
-            "Positions to cut out. Supported parameters are RANGE followed"
-            " by min and max ra and min and max dec; CIRCLE followed by"
-            " ra, dec, and radius; and POLYGON followed by a list of"
-            " ra/dec positions for vertices. Arguments must be separated"
-            " by spaces and parameters are double-precision floating point"
-            " numbers expressed as strings."
+    ] = None,
+    pos: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout positions",
+            description=(
+                "Positions to cut out. Supported parameters are RANGE followed"
+                " by min and max ra and min and max dec; CIRCLE followed by"
+                " ra, dec, and radius; and POLYGON followed by a list of"
+                " ra/dec positions for vertices. Arguments must be separated"
+                " by spaces and parameters are double-precision floating point"
+                " numbers expressed as strings."
+            ),
         ),
-    ),
-    circle: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout circle positions",
-        description=(
-            "Circles to cut out. The value must be the ra and dec of the"
-            " center of the circle and then the radius, as"
-            " double-precision floating point numbers expressed as"
-            " strings and separated by spaces."
+    ] = None,
+    circle: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout circle positions",
+            description=(
+                "Circles to cut out. The value must be the ra and dec of the"
+                " center of the circle and then the radius, as"
+                " double-precision floating point numbers expressed as"
+                " strings and separated by spaces."
+            ),
         ),
-    ),
-    polygon: Optional[str | list[str]] = Form(
-        None,
-        title="Cutout polygon positions",
-        description=(
-            "Polygons to cut out. The value must be ra/dec pairs for each"
-            " vertex, ordered so that the polygon winding direction is"
-            " counter-clockwise (when viewed from the origin towards the"
-            " sky). These parameters are double-precision floating point"
-            " numbers expressed as strings and separated by spaces."
+    ] = None,
+    polygon: Annotated[
+        str | list[str] | None,
+        Form(
+            title="Cutout polygon positions",
+            description=(
+                "Polygons to cut out. The value must be ra/dec pairs for each"
+                " vertex, ordered so that the polygon winding direction is"
+                " counter-clockwise (when viewed from the origin towards the"
+                " sky). These parameters are double-precision floating point"
+                " numbers expressed as strings and separated by spaces."
+            ),
         ),
-    ),
-    phase: Optional[Literal["RUN"]] = Query(
-        None, title="Immediately start job"
-    ),
-    runid: Optional[str] = Form(
-        None,
-        title="Run ID for job",
-        description=(
-            "An opaque string that is returned in the job metadata and"
-            " job listings. Maybe used by the client to associate jobs"
-            " with specific larger operations."
+    ] = None,
+    phase: Annotated[
+        Literal["RUN"] | None, Query(title="Immediately start job")
+    ] = None,
+    runid: Annotated[
+        str | None,
+        Form(
+            title="Run ID for job",
+            description=(
+                "An opaque string that is returned in the job metadata and"
+                " job listings. Maybe used by the client to associate jobs"
+                " with specific larger operations."
+            ),
         ),
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    access_token: str = Depends(auth_delegated_token_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     runid = None
     for param in params:

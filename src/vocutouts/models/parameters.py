@@ -50,7 +50,7 @@ class CutoutParameters:
                     f = parse_stencil(param.parameter_id.upper(), param.value)
                     stencils.append(f)
         except Exception as e:
-            msg = f"Invalid cutout parameter: {type(e).__name__}: {str(e)}"
+            msg = f"Invalid cutout parameter: {type(e).__name__}: {e!s}"
             raise InvalidCutoutParameterError(msg, params) from e
         if not ids:
             raise InvalidCutoutParameterError("No dataset ID given", params)

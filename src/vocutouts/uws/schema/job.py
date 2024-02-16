@@ -9,6 +9,7 @@ and sharp edges.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import ClassVar
 
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, relationship
@@ -22,6 +23,8 @@ __all__ = ["Job"]
 
 
 class Job(Base):
+    """Table holding UWS jobs."""
+
     __tablename__ = "job"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
@@ -47,7 +50,7 @@ class Job(Base):
         cascade="delete", lazy="selectin", uselist=True
     )
 
-    __mapper_args__ = {"eager_defaults": True}
+    __mapper_args__: ClassVar[dict[str, bool]] = {"eager_defaults": True}
     __table_args__ = (
         Index("by_owner_phase", "owner", "phase", "creation_time"),
         Index("by_owner_time", "owner", "creation_time"),

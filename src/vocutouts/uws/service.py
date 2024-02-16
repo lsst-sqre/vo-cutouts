@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from dramatiq import Message
 
@@ -72,7 +71,7 @@ class JobService:
         self,
         user: str,
         *,
-        run_id: Optional[str] = None,
+        run_id: str | None = None,
         params: list[JobParameter],
     ) -> Job:
         """Create a pending job.
@@ -125,8 +124,8 @@ class JobService:
         user: str,
         job_id: str,
         *,
-        wait: Optional[int] = None,
-        wait_phase: Optional[ExecutionPhase] = None,
+        wait: int | None = None,
+        wait_phase: ExecutionPhase | None = None,
         wait_for_completion: bool = False,
     ) -> Job:
         """Retrieve a job.
@@ -185,7 +184,7 @@ class JobService:
         if wait and job.phase in ACTIVE_PHASES:
             if wait < 0 or wait > self._config.wait_timeout:
                 wait = self._config.wait_timeout
-            end_time = datetime.now(tz=timezone.utc) + timedelta(seconds=wait)
+            end_time = datetime.now(tz=UTC) + timedelta(seconds=wait)
             if not wait_phase:
                 wait_phase = job.phase
 
@@ -203,7 +202,7 @@ class JobService:
             while not_done(job):
                 await asyncio.sleep(delay)
                 job = await self._storage.get(job_id)
-                now = datetime.now(tz=timezone.utc)
+                now = datetime.now(tz=UTC)
                 if now >= end_time:
                     break
                 delay *= 1.5
@@ -216,9 +215,9 @@ class JobService:
         self,
         user: str,
         *,
-        phases: Optional[list[ExecutionPhase]] = None,
-        after: Optional[datetime] = None,
-        count: Optional[int] = None,
+        phases: list[ExecutionPhase] | None = None,
+        after: datetime | None = None,
+        count: int | None = None,
     ) -> list[JobDescription]:
         """List the jobs for a particular user.
 

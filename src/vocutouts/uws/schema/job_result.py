@@ -10,6 +10,8 @@ __all__ = ["JobResult"]
 
 
 class JobResult(Base):
+    """Table holding job results."""
+
     __tablename__ = "job_result"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
