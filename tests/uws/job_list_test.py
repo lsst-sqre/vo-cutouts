@@ -6,7 +6,7 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -112,7 +112,7 @@ async def test_job_list(
     async with session.begin():
         for i, job in enumerate(jobs):
             hours = (2 - i) * 2
-            creation = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
+            creation = datetime.now(tz=UTC) - timedelta(hours=hours)
             stmt = (
                 update(SQLJob)
                 .where(SQLJob.id == int(job.job_id))
@@ -131,7 +131,7 @@ async def test_job_list(
     assert r.text == expected
 
     # Filter by recency.
-    threshold = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    threshold = datetime.now(tz=UTC) - timedelta(hours=1)
     r = await client.get(
         "/jobs",
         headers={"X-Auth-Request-User": "user"},

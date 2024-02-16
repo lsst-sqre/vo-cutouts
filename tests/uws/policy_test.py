@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -20,7 +20,7 @@ class Policy(TrivialPolicy):
     def validate_destruction(
         self, destruction: datetime, job: Job
     ) -> datetime:
-        max_destruction = datetime.now(tz=timezone.utc) + timedelta(days=1)
+        max_destruction = datetime.now(tz=UTC) + timedelta(days=1)
         if destruction > max_destruction:
             return max_destruction
         else:
@@ -62,7 +62,7 @@ async def test_policy(
 
     # Change the destruction time, first to something that should be honored
     # and then something that should be overridden.
-    destruction = datetime.now(tz=timezone.utc) + timedelta(hours=1)
+    destruction = datetime.now(tz=UTC) + timedelta(hours=1)
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
@@ -75,8 +75,8 @@ async def test_policy(
     )
     assert r.status_code == 200
     assert r.text == isodatetime(destruction)
-    destruction = datetime.now(tz=timezone.utc) + timedelta(days=5)
-    expected = datetime.now(tz=timezone.utc) + timedelta(days=1)
+    destruction = datetime.now(tz=UTC) + timedelta(days=5)
+    expected = datetime.now(tz=UTC) + timedelta(days=1)
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},

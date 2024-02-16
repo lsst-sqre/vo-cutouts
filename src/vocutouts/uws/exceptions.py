@@ -6,8 +6,6 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
-from typing import Optional
-
 from .models import ErrorCode, ErrorType, JobError
 
 __all__ = [
@@ -33,7 +31,7 @@ class UWSError(Exception):
     """
 
     def __init__(
-        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+        self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
         super().__init__(message)
         self.error_code = error_code
@@ -102,7 +100,7 @@ class TaskError(UWSError):
         error_type: ErrorType,
         error_code: ErrorCode,
         message: str,
-        detail: Optional[str] = None,
+        detail: str | None = None,
     ) -> None:
         super().__init__(error_code, message)
         self.error_type = error_type
@@ -126,7 +124,7 @@ class TaskFatalError(TaskError):
     """
 
     def __init__(
-        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+        self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
         super().__init__(ErrorType.FATAL, error_code, message, detail)
 
@@ -138,7 +136,7 @@ class TaskTransientError(TaskError):
     """
 
     def __init__(
-        self, error_code: ErrorCode, message: str, detail: Optional[str] = None
+        self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
         super().__init__(ErrorType.TRANSIENT, error_code, message, detail)
 
@@ -146,7 +144,7 @@ class TaskTransientError(TaskError):
 class UsageError(UWSError):
     """Invalid parameters were passed to a UWS API."""
 
-    def __init__(self, message: str, detail: Optional[str] = None) -> None:
+    def __init__(self, message: str, detail: str | None = None) -> None:
         super().__init__(ErrorCode.USAGE_ERROR, message, detail)
         self.status_code = 422
 

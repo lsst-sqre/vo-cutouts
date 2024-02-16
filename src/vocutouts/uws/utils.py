@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def isodatetime(timestamp: datetime) -> str:
     """Format a timestamp in UTC in the expected UWS ISO date format."""
-    assert timestamp.tzinfo in (None, timezone.utc)
+    if timestamp.tzinfo not in (None, UTC):
+        raise ValueError("Timestamp not in UTC time zone")
     return timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

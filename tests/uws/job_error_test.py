@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import dramatiq
@@ -82,7 +82,7 @@ async def test_temporary_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_transient_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
         raise TaskTransientError(
@@ -147,7 +147,7 @@ async def test_fatal_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_fatal_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
         raise TaskFatalError(ErrorCode.ERROR, "Error Whoops\nSome details")
@@ -210,7 +210,7 @@ async def test_unknown_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_unknown_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         time.sleep(0.5)
         job_started.send(job_id, message.message_id, isodatetime(now))
         raise ValueError("Unknown exception")

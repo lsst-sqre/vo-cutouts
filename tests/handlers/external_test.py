@@ -48,7 +48,7 @@ CAPABILITIES = """
 
 @pytest.mark.asyncio
 async def test_get_index(client: AsyncClient) -> None:
-    """Test ``GET /api/cutout/``"""
+    """Test ``GET /api/cutout/``."""
     response = await client.get("/api/cutout/")
     assert response.status_code == 200
     data = response.json()

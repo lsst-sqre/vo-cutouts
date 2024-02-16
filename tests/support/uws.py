@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import dramatiq
 import structlog
@@ -36,7 +36,7 @@ uws_broker = StubBroker()
 results = StubBackend()
 """Result backend used by UWS."""
 
-worker_session: Optional[scoped_session] = None
+worker_session: scoped_session | None = None
 """Shared scoped session used by the UWS worker."""
 
 uws_broker.add_middleware(CurrentMessage())
@@ -71,7 +71,7 @@ class WorkerSession(Middleware):
 @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
 def trivial_job(job_id: str) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     job_started.send(job_id, message.message_id, isodatetime(now))
     return [
         {

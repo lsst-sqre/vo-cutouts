@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import dramatiq
@@ -35,7 +35,7 @@ def cutout_test(
     access_token: str,
 ) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
-    now = isodatetime(datetime.now(tz=timezone.utc))
+    now = isodatetime(datetime.now(tz=UTC))
     job_started.send(job_id, message.message_id, now)
     assert len(dataset_ids) == 1
     assert access_token == "sometoken"

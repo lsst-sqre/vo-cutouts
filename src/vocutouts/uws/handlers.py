@@ -17,7 +17,7 @@ example:
 """
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
@@ -53,24 +53,31 @@ uws_router = APIRouter()
     summary="Async job list",
 )
 async def get_job_list(
+    *,
     request: Request,
-    phase: Optional[list[ExecutionPhase]] = Query(
-        None,
-        title="Execution phase",
-        description="Limit results to the provided execution phases",
-    ),
-    after: Optional[datetime] = Query(
-        None,
-        title="Creation date",
-        description="Limit results to jobs created after this date",
-    ),
-    last: Optional[int] = Query(
-        None,
-        title="Number of jobs",
-        description="Return at most the given number of jobs",
-    ),
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    phase: Annotated[
+        list[ExecutionPhase] | None,
+        Query(
+            title="Execution phase",
+            description="Limit results to the provided execution phases",
+        ),
+    ] = None,
+    after: Annotated[
+        datetime | None,
+        Query(
+            title="Creation date",
+            description="Limit results to jobs created after this date",
+        ),
+    ] = None,
+    last: Annotated[
+        int | None,
+        Query(
+            title="Number of jobs",
+            description="Return at most the given number of jobs",
+        ),
+    ] = None,
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     jobs = await job_service.list_jobs(
@@ -87,28 +94,33 @@ async def get_job_list(
     summary="Job details",
 )
 async def get_job(
+    *,
     job_id: str,
     request: Request,
-    wait: int = Query(
-        None,
-        title="Wait for status changes",
-        description=(
-            "Maximum number of seconds to wait or -1 to wait for as long as"
-            " the server permits"
+    wait: Annotated[
+        int | None,
+        Query(
+            title="Wait for status changes",
+            description=(
+                "Maximum number of seconds to wait or -1 to wait for as long"
+                " as the server permits"
+            ),
         ),
-    ),
-    phase: ExecutionPhase = Query(
-        None,
-        title="Initial phase for waiting",
-        description=(
-            "When waiting for status changes, consider this to be the initial"
-            " execution phase. If the phase has already changed, return"
-            " immediately. This parameter should always be provided when"
-            " wait is used."
+    ] = None,
+    phase: Annotated[
+        ExecutionPhase | None,
+        Query(
+            title="Initial phase for waiting",
+            description=(
+                "When waiting for status changes, consider this to be the"
+                " initial execution phase. If the phase has already changed,"
+                " return immediately. This parameter should always be"
+                " provided when wait is used."
+            ),
         ),
-    ),
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    ] = None,
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id, wait=wait, wait_phase=phase)
@@ -123,11 +135,12 @@ async def get_job(
     summary="Delete a job",
 )
 async def delete_job(
+    *,
     job_id: str,
     request: Request,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     await job_service.delete(user, job_id)
@@ -145,17 +158,20 @@ async def delete_job(
     summary="Delete a job",
 )
 async def delete_job_via_post(
+    *,
     job_id: str,
     request: Request,
-    action: Optional[Literal["DELETE"]] = Form(
-        None,
-        title="Action to perform",
-        description="Mandatory, must be set to DELETE",
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    action: Annotated[
+        Literal["DELETE"] | None,
+        Form(
+            title="Action to perform",
+            description="Mandatory, must be set to DELETE",
+        ),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters,
     # which is also why the action parameter is declared as optional (but is
@@ -184,8 +200,8 @@ async def delete_job_via_post(
 )
 async def get_job_destruction(
     job_id: str,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -199,18 +215,21 @@ async def get_job_destruction(
     summary="Change job destruction time",
 )
 async def post_job_destruction(
+    *,
     job_id: str,
     request: Request,
-    destruction: Optional[datetime] = Form(
-        None,
-        title="New destruction time",
-        description="Must be in ISO 8601 format.",
-        example="2021-09-10T10:01:02Z",
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    destruction: Annotated[
+        datetime | None,
+        Form(
+            title="New destruction time",
+            description="Must be in ISO 8601 format.",
+            example="2021-09-10T10:01:02Z",
+        ),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -249,10 +268,11 @@ async def post_job_destruction(
     summary="Job error",
 )
 async def get_job_error(
+    *,
     job_id: str,
     request: Request,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -269,8 +289,8 @@ async def get_job_error(
 )
 async def get_job_execution_duration(
     job_id: str,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -284,18 +304,21 @@ async def get_job_execution_duration(
     summary="Change job execution duration",
 )
 async def post_job_execution_duration(
+    *,
     job_id: str,
     request: Request,
-    executionduration: Optional[int] = Form(
-        None,
-        title="New execution duration",
-        description="Integer seconds of wall clock time.",
-        example=14400,
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    executionduration: Annotated[
+        int | None,
+        Form(
+            title="New execution duration",
+            description="Integer seconds of wall clock time.",
+            example=14400,
+        ),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -304,8 +327,8 @@ async def post_job_execution_duration(
             raise ParameterError(msg)
         try:
             executionduration = int(param.value)
-        except Exception:
-            raise ParameterError(f"Invalid duration {param.value}")
+        except Exception as e:
+            raise ParameterError(f"Invalid duration {param.value}") from e
         if executionduration <= 0:
             raise ParameterError(f"Invalid duration {param.value}")
     if not executionduration:
@@ -335,8 +358,8 @@ async def post_job_execution_duration(
 )
 async def get_job_owner(
     job_id: str,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -349,10 +372,11 @@ async def get_job_owner(
     summary="Job parameters",
 )
 async def get_job_parameters(
+    *,
     job_id: str,
     request: Request,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -367,8 +391,8 @@ async def get_job_parameters(
 )
 async def get_job_phase(
     job_id: str,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -382,18 +406,21 @@ async def get_job_phase(
     summary="Start or abort job",
 )
 async def post_job_phase(
+    *,
     job_id: str,
     request: Request,
-    phase: Optional[Literal["RUN", "ABORT"]] = Form(
-        None,
-        title="Job state change",
-        summary="RUN to start the job, ABORT to abort the job.",
-    ),
-    params: list[JobParameter] = Depends(uws_post_params_dependency),
-    user: str = Depends(auth_dependency),
-    access_token: str = Depends(auth_delegated_token_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
-    logger: BoundLogger = Depends(auth_logger_dependency),
+    phase: Annotated[
+        Literal["RUN", "ABORT"] | None,
+        Form(
+            title="Job state change",
+            summary="RUN to start the job, ABORT to abort the job.",
+        ),
+    ] = None,
+    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    user: Annotated[str, Depends(auth_dependency)],
+    access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> str:
     # Work around the obnoxious requirement for case-insensitive parameters.
     for param in params:
@@ -424,8 +451,8 @@ async def post_job_phase(
 )
 async def get_job_quote(
     job_id: str,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
@@ -443,10 +470,11 @@ async def get_job_quote(
     summary="Job results",
 )
 async def get_job_results(
+    *,
     job_id: str,
     request: Request,
-    user: str = Depends(auth_dependency),
-    uws_factory: UWSFactory = Depends(uws_dependency),
+    user: Annotated[str, Depends(auth_dependency)],
+    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)

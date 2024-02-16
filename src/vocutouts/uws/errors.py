@@ -19,7 +19,7 @@ __all__ = ["install_error_handlers"]
 async def _uws_error_handler(
     request: Request, exc: UWSError
 ) -> PlainTextResponse:
-    response = f"{exc.error_code.value} {str(exc)}\n"
+    response = f"{exc.error_code.value} {exc!s}\n"
     if exc.detail:
         response += "\n{exc.detail}"
     return PlainTextResponse(response, status_code=exc.status_code)
@@ -28,7 +28,7 @@ async def _uws_error_handler(
 async def _usage_handler(
     request: Request, exc: RequestValidationError
 ) -> PlainTextResponse:
-    return PlainTextResponse(f"UsageError\n\n{str(exc)}", status_code=422)
+    return PlainTextResponse(f"UsageError\n\n{exc!s}", status_code=422)
 
 
 def install_error_handlers(app: FastAPI) -> None:

@@ -15,7 +15,7 @@ API frontend to dispatch jobs.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -59,19 +59,19 @@ broker.add_middleware(Results(backend=results))
 
 @dramatiq.actor(queue_name="uws")
 def job_started(job_id: str, message_id: str, start_time: str) -> None:
-    pass
+    """Mark a job as started."""
 
 
 @dramatiq.actor(queue_name="uws")
 def job_completed(
     message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
-    pass
+    """Mark a job as completed."""
 
 
 @dramatiq.actor(queue_name="uws")
 def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
-    pass
+    """Mark a job as failed."""
 
 
 # Exceptions of these names are handled specially by job_failed.
@@ -102,7 +102,6 @@ def get_backend(butler_label: str, access_token: str) -> ImageCutoutBackend:
     lsst.image_cutout_backend.ImageCutoutBackend
         Backend to use.
     """
-
     butler = BUTLER_FACTORY.create_butler(
         label=butler_label, access_token=access_token
     )
@@ -178,7 +177,7 @@ def cutout(
 
     # Tell UWS that we have started executing.
     message = CurrentMessage.get_current_message()
-    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     job_started.send(job_id, message.message_id, now)
 
     # Currently, only a single dataset ID and a single stencil are supported.
@@ -223,8 +222,8 @@ def cutout(
         result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
     except Exception as e:
         logger.exception("Cutout processing failed")
-        msg = f"Error Cutout processing failed\n{type(e).__name__}: {str(e)}"
-        raise TaskTransientError(msg)
+        msg = f"Error Cutout processing failed\n{type(e).__name__}: {e!s}"
+        raise TaskTransientError(msg) from e
 
     # Return the result URL.  This must be a dict representation of a
     # vocutouts.uws.models.JobResult.

@@ -18,6 +18,8 @@ __all__ = ["JobParameter"]
 
 
 class JobParameter(Base):
+    """Table holding parameters to UWS jobs."""
+
     __tablename__ = "job_parameter"
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)

@@ -101,7 +101,7 @@ def cutout(
 
 @dramatiq.actor(queue_name="uws", priority=0)
 def job_started(job_id: str, message_id: str, start_time: str) -> None:
-    """Wrapper around the UWS function to mark a job as started.
+    """Call the UWS function to mark a job as started.
 
     Notes
     -----
@@ -113,8 +113,10 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
     """
     logger = structlog.get_logger(config.logger_name)
     start = parse_isodatetime(start_time)
-    assert broker.worker_session, "Worker database connection not initalized"
-    assert start, f"Invalid start timestamp {start_time}"
+    if not broker.worker_session:
+        raise RuntimeError("Worker database connection not initalized")
+    if not start:
+        raise RuntimeError(f"Invalid start timestamp {start_time}")
     uws_job_started(job_id, message_id, start, broker.worker_session, logger)
 
 
@@ -122,17 +124,19 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
 def job_completed(
     message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
-    """Wrapper around the UWS function to mark a job as completed."""
+    """Call the UWS function to mark a job as completed."""
     logger = structlog.get_logger(config.logger_name)
     job_id = message["args"][0]
-    assert broker.worker_session, "Worker database connection not initalized"
+    if not broker.worker_session:
+        raise RuntimeError("Worker database connection not initalized")
     uws_job_completed(job_id, result, broker.worker_session, logger)
 
 
 @dramatiq.actor(queue_name="uws", priority=20)
 def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
-    """Wrapper around the UWS function to mark a job as errored."""
+    """Call the UWS function to mark a job as errored."""
     logger = structlog.get_logger(config.logger_name)
     job_id = message["args"][0]
-    assert broker.worker_session, "Worker database connection not initalized"
+    if not broker.worker_session:
+        raise RuntimeError("Worker database connection not initalized")
     uws_job_failed(job_id, exception, broker.worker_session, logger)

@@ -6,7 +6,7 @@ request to individual route handlers, which in turn can create other needed
 objects.
 """
 
-from typing import Optional
+from typing import Annotated
 
 from fastapi import Depends, Request
 from safir.dependencies.db_session import db_session_dependency
@@ -68,21 +68,22 @@ class UWSDependency:
     """Initializes UWS and provides a UWS factory as a dependency."""
 
     def __init__(self) -> None:
-        self._config: Optional[UWSConfig] = None
-        self._policy: Optional[UWSPolicy] = None
-        self._result_store: Optional[ResultStore] = None
+        self._config: UWSConfig | None = None
+        self._policy: UWSPolicy | None = None
+        self._result_store: ResultStore | None = None
 
     async def __call__(
         self,
-        session: async_scoped_session = Depends(db_session_dependency),
-        logger: BoundLogger = Depends(logger_dependency),
+        session: Annotated[
+            async_scoped_session, Depends(db_session_dependency)
+        ],
+        logger: Annotated[BoundLogger, Depends(logger_dependency)],
     ) -> UWSFactory:
         # Tell mypy that not calling initialize first is an error.  This would
         # fail anyway without the asserts when something tried to use the None
         # value.
-        assert self._config, "UWSDependency not initialized"
-        assert self._policy, "UWSDependency not initialized"
-        assert self._result_store, "UWSDependency not initialized"
+        if not (self._config and self._policy and self._result_store):
+            raise RuntimeError("UWSDependency not initialized")
         return UWSFactory(
             config=self._config,
             policy=self._policy,
@@ -160,7 +161,7 @@ async def uws_post_params_dependency(request: Request) -> list[JobParameter]:
     parameters = []
     for key, value in (await request.form()).items():
         if not isinstance(value, str):
-            raise ValueError("File upload not supported")
+            raise TypeError("File upload not supported")
         parameters.append(
             JobParameter(parameter_id=key.lower(), value=value, is_post=True)
         )
