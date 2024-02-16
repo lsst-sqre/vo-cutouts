@@ -16,6 +16,10 @@ init:
 	rm -rf .tox
 	pre-commit install
 
+.PHONY: run
+run:
+	tox run -e run
+
 .PHONY: update
 update: update-deps init
 
@@ -39,7 +43,3 @@ update-deps-no-hashes:
 	    --output-file requirements/main.txt requirements/main.in
 	uv pip compile --upgrade					\
 	    --output-file requirements/dev.txt requirements/dev.in
-
-.PHONY: run
-run:
-	tox -e run
