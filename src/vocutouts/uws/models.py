@@ -56,11 +56,11 @@ class ExecutionPhase(Enum):
     """Execution completed some time ago and the results have been deleted."""
 
 
-ACTIVE_PHASES = (
+ACTIVE_PHASES = {
     ExecutionPhase.PENDING,
     ExecutionPhase.QUEUED,
     ExecutionPhase.EXECUTING,
-)
+}
 """Phases in which the job is active and can be waited on."""
 
 

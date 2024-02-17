@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import dramatiq
@@ -142,8 +142,8 @@ def build_uws_config() -> UWSConfig:
     environment, which is done as part of running the test with tox-docker.
     """
     return UWSConfig(
-        execution_duration=10 * 60,
-        lifetime=24 * 60 * 60,
+        execution_duration=timedelta(minutes=10),
+        lifetime=timedelta(days=1),
         database_url=os.environ["CUTOUT_DATABASE_URL"],
         database_password=os.getenv("CUTOUT_DATABASE_PASSWORD"),
         redis_host=os.getenv("CUTOUT_REDIS_HOST", "127.0.0.1"),
@@ -155,10 +155,12 @@ def build_uws_config() -> UWSConfig:
 async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:
     """Wait for a job that was just started and return it."""
     job = await job_service.get(
-        "user", "1", wait=5, wait_phase=ExecutionPhase.QUEUED
+        "user", "1", wait_seconds=5, wait_phase=ExecutionPhase.QUEUED
     )
     while job.phase in (ExecutionPhase.QUEUED, ExecutionPhase.EXECUTING):
-        job = await job_service.get("user", "1", wait=5, wait_phase=job.phase)
+        job = await job_service.get(
+            "user", "1", wait_seconds=5, wait_phase=job.phase
+        )
 
     # Despite prioritization of messages, there can still be a race condition
     # where the completion message is processed before the start message, so

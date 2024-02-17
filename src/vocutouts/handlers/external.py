@@ -142,7 +142,10 @@ async def _sync_request(
     await job_service.start(user, job.job_id, access_token)
     logger.info("Started job", job_id=job.job_id)
     job = await job_service.get(
-        user, job.job_id, wait=config.sync_timeout, wait_for_completion=True
+        user,
+        job.job_id,
+        wait_seconds=int(config.sync_timeout.total_seconds()),
+        wait_for_completion=True,
     )
 
     # Check for error states.

@@ -23,7 +23,7 @@ async def test_uncaught_error(client: AsyncClient) -> None:
     # no meaningful information and no exception traceback due a bug in
     # swallowing errors in subapps.
     engine = create_database_engine(
-        config.database_url, config.database_password
+        str(config.database_url), config.database_password
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

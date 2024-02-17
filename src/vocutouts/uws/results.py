@@ -7,8 +7,6 @@ URL to a signed URL suitable for returning to a client of the service.
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from safir.gcs import SignedURLService
 
 from .config import UWSConfig
@@ -30,7 +28,7 @@ class ResultStore:
         self._config = config
         self._url_service = SignedURLService(
             service_account=config.signing_service_account,
-            lifetime=timedelta(seconds=config.url_lifetime),
+            lifetime=config.url_lifetime,
         )
 
     async def url_for_result(self, result: JobResult) -> JobResultURL:

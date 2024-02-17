@@ -8,6 +8,7 @@ from functools import wraps
 from typing import Any, TypeVar, cast
 
 from safir.database import datetime_from_db, datetime_to_db
+from safir.datetime import current_datetime
 from sqlalchemy import delete
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
@@ -161,8 +162,8 @@ class FrontendJobStore:
         owner: str,
         run_id: str | None = None,
         params: list[JobParameter],
-        execution_duration: int,
-        lifetime: int,
+        execution_duration: timedelta,
+        lifetime: timedelta,
     ) -> Job:
         """Create a record of a new job.
 
@@ -188,8 +189,8 @@ class FrontendJobStore:
         vocutouts.uws.models.Job
             The internal representation of the newly-created job.
         """
-        now = datetime.now(tz=UTC).replace(microsecond=0)
-        destruction_time = now + timedelta(seconds=lifetime)
+        now = current_datetime()
+        destruction_time = now + lifetime
         sql_params = [
             SQLJobParameter(
                 parameter=p.parameter_id,
@@ -204,7 +205,7 @@ class FrontendJobStore:
             run_id=run_id,
             creation_time=datetime_to_db(now),
             destruction_time=datetime_to_db(destruction_time),
-            execution_duration=execution_duration,
+            execution_duration=int(execution_duration.total_seconds()),
             parameters=sql_params,
             results=[],
         )
