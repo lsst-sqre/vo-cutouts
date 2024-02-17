@@ -40,7 +40,6 @@ import dramatiq
 import structlog
 
 from . import broker
-from .config import config
 from .uws.jobs import uws_job_completed, uws_job_failed, uws_job_started
 from .uws.utils import parse_isodatetime
 
@@ -111,7 +110,7 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
     test suite, where a job will be marked as completed but won't have a start
     time (and hopefully will fix the same issue in a production deployment).
     """
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     start = parse_isodatetime(start_time)
     if not broker.worker_session:
         raise RuntimeError("Worker database connection not initalized")
@@ -125,7 +124,7 @@ def job_completed(
     message: dict[str, Any], result: list[dict[str, str]]
 ) -> None:
     """Call the UWS function to mark a job as completed."""
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     job_id = message["args"][0]
     if not broker.worker_session:
         raise RuntimeError("Worker database connection not initalized")
@@ -135,7 +134,7 @@ def job_completed(
 @dramatiq.actor(queue_name="uws", priority=20)
 def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
     """Call the UWS function to mark a job as errored."""
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     job_id = message["args"][0]
     if not broker.worker_session:
         raise RuntimeError("Worker database connection not initalized")

@@ -123,7 +123,9 @@ async def get_job(
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
 ) -> Response:
     job_service = uws_factory.create_job_service()
-    job = await job_service.get(user, job_id, wait=wait, wait_phase=phase)
+    job = await job_service.get(
+        user, job_id, wait_seconds=wait, wait_phase=phase
+    )
     templates = uws_factory.create_templates()
     return await templates.job(request, job)
 

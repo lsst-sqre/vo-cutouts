@@ -57,11 +57,11 @@ async def app() -> AsyncIterator[FastAPI]:
     creating the app to ensure that data is dropped from a persistent database
     between test cases.
     """
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     broker.flush_all()
     broker.emit_after("process_boot")
     engine = create_database_engine(
-        config.database_url, config.database_password
+        str(config.database_url), config.database_password
     )
     await initialize_database(engine, logger, schema=Base.metadata, reset=True)
     await engine.dispose()
@@ -76,7 +76,6 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         app=app,
         base_url="https://example.com/",
-        # Mock the Gafaelfawr delegated token header.
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:
         yield client

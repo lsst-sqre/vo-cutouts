@@ -28,18 +28,16 @@ __all__ = ["app", "config"]
 
 
 configure_logging(
-    profile=config.profile,
-    log_level=config.log_level,
-    name=config.logger_name,
+    name="vocutouts", profile=config.profile, log_level=config.log_level
 )
 
 app = FastAPI(
     title="vo-cutouts",
     description=metadata("vo-cutouts")["Summary"],
     version=version("vo-cutouts"),
-    openapi_url=f"/api/{config.name}/openapi.json",
-    docs_url=f"/api/{config.name}/docs",
-    redoc_url=f"/api/{config.name}/redoc",
+    openapi_url=f"{config.path_prefix}/openapi.json",
+    docs_url=f"{config.path_prefix}/docs",
+    redoc_url=f"{config.path_prefix}/redoc",
 )
 """The main FastAPI application for vo-cutouts."""
 
@@ -47,7 +45,7 @@ app = FastAPI(
 app.include_router(internal_router)
 app.include_router(
     external_router,
-    prefix=f"/api/{config.name}",
+    prefix=config.path_prefix,
     responses={401: {"description": "Unauthenticated"}},
 )
 
@@ -61,7 +59,7 @@ install_error_handlers(app)
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     await uws_dependency.initialize(
         config=config.uws_config(),
         policy=ImageCutoutPolicy(cutout, logger),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 __all__ = ["UWSConfig"]
 
@@ -19,14 +20,14 @@ class UWSConfig:
     `vocutouts.uws.dependencies.UWSDependency` object.
     """
 
-    execution_duration: int
+    execution_duration: timedelta
     """Maximum execution time in seconds.
 
     Jobs that run longer than this length of time will be automatically
     aborted.
     """
 
-    lifetime: int
+    lifetime: timedelta
     """The lifetime of jobs in seconds.
 
     After this much time elapses since the creation of the job, all of the
@@ -54,8 +55,8 @@ class UWSConfig:
     redis_password: str | None = None
     """Password for the Redis server used by Dramatiq."""
 
-    url_lifetime: int = 15 * 60
-    """How long result URLs should be valid for in minutes."""
+    url_lifetime: timedelta = timedelta(minutes=15)
+    """How long result URLs should be valid for."""
 
-    wait_timeout: int = 60
-    """Maximum time in seconds a client can wait for a job change."""
+    wait_timeout: timedelta = timedelta(minutes=1)
+    """Maximum time a client can wait for a job change."""

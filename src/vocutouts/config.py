@@ -2,119 +2,107 @@
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
+from datetime import timedelta
+from pathlib import Path
+
+from pydantic import Field, PostgresDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from safir.logging import LogLevel, Profile
 
 from .uws.config import UWSConfig
 
-__all__ = ["Configuration", "config"]
+__all__ = ["Config", "config"]
 
 
-@dataclass
-class Configuration:
-    """Configuration for vocutouts."""
+class Config(BaseSettings):
+    """Configuration for vo-cutouts."""
 
-    storage_url: str = os.getenv("CUTOUT_STORAGE_URL", "")
-    """The root URL to use to store cutout results.
+    database_url: PostgresDsn = Field(..., title="URL for UWS job database")
 
-    This must be an ``s3`` URL pointing to a Google Cloud Storage bucket that
-    is writable by the backend and readable by the frontend.
-    """
+    database_password: str | None = Field(
+        None, title="Password for UWS job database"
+    )
 
-    database_url: str = os.getenv("CUTOUT_DATABASE_URL", "")
-    """The URL for the UWS job database.
+    lifetime: timedelta = Field(
+        timedelta(days=7), title="Lifetime of cutout job results"
+    )
 
-    Set with the ``CUTOUT_DATABASE_URL`` environment variable.  Setting this
-    is mandatory.
-    """
+    redis_host: str = Field(
+        ...,
+        title="Hostname of Redis server",
+        description=(
+            "The Redis server is used as the backing store for the Dramatiq"
+            " work queue"
+        ),
+    )
 
-    database_password: str | None = os.getenv("CUTOUT_DATABASE_PASSWORD")
-    """The password for the UWS job database.
+    redis_password: str | None = Field(
+        None,
+        title="Password for Redis server",
+        description=(
+            "The Redis server is used as the backing store for the Dramatiq"
+            " work queue"
+        ),
+    )
 
-    Set with the ``CUTOUT_DATABASE_PASSWORD`` environment variable.
-    """
+    service_account: str = Field(
+        ...,
+        title="Service account for URL signing",
+        description=(
+            "Email of the service account to use for signed URLs of results."
+            " The default credentials that the application frontend runs with"
+            " must have the ``roles/iam.serviceAccountTokenCreator`` role on"
+            " the service account with this email."
+        ),
+    )
 
-    signing_service_account: str = os.getenv("CUTOUT_SERVICE_ACCOUNT", "")
-    """Email of service account to use for signed URLs.
+    storage_url: str = Field(
+        ...,
+        title="Root URL for cutout results",
+        description=(
+            "Must be an ``s3`` URL pointing to a Google Cloud Storage bucket"
+            " that is writable by the backend and readable by the frontend."
+        ),
+    )
 
-    The default credentials that the application frontend runs with must have
-    the ``roles/iam.serviceAccountTokenCreator`` role on the service account
-    with this email.
-    """
+    sync_timeout: timedelta = Field(
+        timedelta(minutes=1), title="Timeout for sync requests"
+    )
 
-    execution_duration: int = int(os.getenv("CUTOUT_TIMEOUT", "600"))
-    """The timeout for a single cutout job.
+    timeout: timedelta = Field(
+        timedelta(minutes=10), title="Timeout for cutout jobs"
+    )
 
-    Set with the ``CUTOUT_TIMEOUT`` environment variable.  The default is
-    10 minutes.
-    """
+    tmpdir: Path = Field(Path("/tmp"), title="Temporary directory for workers")
 
-    lifetime: int = int(os.getenv("CUTOUT_LIFETIME", str(7 * 24 * 60 * 60)))
-    """The lifetime for which job results will be retained.
+    name: str = Field("vo-cutouts", title="Name of application")
 
-    Set with the ``CUTOUT_LIFETIME`` environment variable.  The default is
-    seven days.
-    """
+    path_prefix: str = Field("/api/cutout", title="URL prefix for application")
 
-    redis_host: str = os.getenv("CUTOUT_REDIS_HOST", "")
-    """Hostname of the Redis server used by Dramatiq.
+    profile: Profile = Field(
+        Profile.development, title="Application logging profile"
+    )
 
-    Set with the ``CUTOUT_REDIS_HOST`` environment variable.  Setting this is
-    mandatory.
-    """
+    log_level: LogLevel = Field(
+        LogLevel.INFO, title="Log level of the application's logger"
+    )
 
-    redis_password: str | None = os.getenv("CUTOUT_REDIS_PASSWORD")
-    """Password for the Redis server used by Dramatiq.
-
-    Set with the ``CUTOUT_REDIS_PASSWORD`` environment variable.
-    """
-
-    sync_timeout: int = int(os.getenv("CUTOUT_SYNC_TIMEOUT", "60"))
-    """The timeout for results from a sync cutout.
-
-    Set with the ``CUTOUT_SYNC_TIMEOUT`` environment variable.  The default is
-    one minute.
-    """
-
-    tmpdir: str = os.getenv("CUTOUT_TMPDIR", "/tmp")
-    """Temporary directory to use for cutouts before uploading them to GCS."""
-
-    name: str = os.getenv("SAFIR_NAME", "cutout")
-    """The application's name, which doubles as the root HTTP endpoint path.
-
-    Set with the ``SAFIR_NAME`` environment variable.
-    """
-
-    profile: str = os.getenv("SAFIR_PROFILE", "development")
-    """Application run profile: "development" or "production".
-
-    Set with the ``SAFIR_PROFILE`` environment variable.
-    """
-
-    logger_name: str = os.getenv("SAFIR_LOGGER", "vocutouts")
-    """The root name of the application's logger.
-
-    Set with the ``SAFIR_LOGGER`` environment variable.
-    """
-
-    log_level: str = os.getenv("SAFIR_LOG_LEVEL", "INFO")
-    """The log level of the application's logger.
-
-    Set with the ``SAFIR_LOG_LEVEL`` environment variable.
-    """
+    model_config = SettingsConfigDict(
+        env_prefix="CUTOUT_", case_sensitive=False
+    )
 
     def uws_config(self) -> UWSConfig:
         """Convert to configuration for the UWS subsystem."""
         return UWSConfig(
-            execution_duration=self.execution_duration,
+            execution_duration=self.timeout,
             lifetime=self.lifetime,
-            database_url=self.database_url,
+            database_url=str(self.database_url),
             database_password=self.database_password,
             redis_host=self.redis_host,
             redis_password=self.redis_password,
-            signing_service_account=self.signing_service_account,
+            signing_service_account=self.service_account,
         )
 
 
-config = Configuration()
+config = Config()
 """Configuration for vo-cutouts."""

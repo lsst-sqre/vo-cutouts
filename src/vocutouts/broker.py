@@ -47,9 +47,9 @@ class WorkerSession(Middleware):
         """
         global worker_session
         if worker_session is None:
-            logger = structlog.get_logger(config.logger_name)
+            logger = structlog.get_logger("vocutouts")
             worker_session = create_sync_session(
-                config.database_url,
+                str(config.database_url),
                 config.database_password,
                 logger,
                 isolation_level="REPEATABLE READ",

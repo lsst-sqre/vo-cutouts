@@ -6,7 +6,7 @@
 #     make update-deps
 
 # These dependencies are for fastapi including some optional features.
-fastapi!=0.89.0
+fastapi
 python-multipart
 starlette
 uvicorn[standard]
@@ -20,6 +20,8 @@ google-auth
 google-cloud-storage
 jinja2
 psycopg2
+pydantic
+pydantic-settings
 safir[db,gcs]
 sqlalchemy[asyncio]
 structlog

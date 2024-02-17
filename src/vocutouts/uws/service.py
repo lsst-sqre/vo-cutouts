@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from dramatiq import Message
+from safir.datetime import current_datetime
 
 from .config import UWSConfig
 from .exceptions import InvalidPhaseError, PermissionDeniedError
@@ -124,7 +125,7 @@ class JobService:
         user: str,
         job_id: str,
         *,
-        wait: int | None = None,
+        wait_seconds: int | None = None,
         wait_phase: ExecutionPhase | None = None,
         wait_for_completion: bool = False,
     ) -> Job:
@@ -142,18 +143,17 @@ class JobService:
             Identifier of the job.
         wait
             If given, wait up to this many seconds for the status to change
-            before returning.  ``-1`` says to wait the maximum length of time.
-            This is done by polling the database with exponential backoff.
-            This will only be honored if the phase is ``PENDING``, ``QUEUED``,
-            or ``EXECUTING``.
+            before returning. -1 indicates waiting the maximum length of
+            time. This is done by polling the database with exponential
+            backoff.  This will only be honored if the phase is ``PENDING``,
+            ``QUEUED``, or ``EXECUTING``.
         wait_phase
             If ``wait`` was given, the starting phase for waiting.  Returns
             immediately if the initial phase doesn't match this one.
         wait_for_completion
             If set to true, wait until the job completes (has a phase other
-            than ``QUEUED`` or ``EXECUTING``).  Only one of this or
-            ``wait_phase`` should be given.  Ignored if ``wait`` was not
-            given.
+            than ``QUEUED`` or ``EXECUTING``). Only one of this or
+            ``wait_phase`` should be given. Ignored if ``wait`` was not given.
 
         Returns
         -------
@@ -181,33 +181,18 @@ class JobService:
 
         # If waiting for a status change was requested and is meaningful, do
         # so, capping the wait time at the configured maximum timeout.
-        if wait and job.phase in ACTIVE_PHASES:
-            if wait < 0 or wait > self._config.wait_timeout:
+        if wait_seconds and job.phase in ACTIVE_PHASES:
+            if wait_seconds < 0:
                 wait = self._config.wait_timeout
-            end_time = datetime.now(tz=UTC) + timedelta(seconds=wait)
-            if not wait_phase:
-                wait_phase = job.phase
-
-            # Determine the criteria to stop waiting.
-            def not_done(j: Job) -> bool:
-                if wait_for_completion:
-                    return j.phase in ACTIVE_PHASES
-                else:
-                    return j.phase == wait_phase
-
-            # Poll the database with exponential delay starting with 0.1
-            # seconds and increasing by 1.5x each time until we reach the
-            # maximum duration.
-            delay = 0.1
-            while not_done(job):
-                await asyncio.sleep(delay)
-                job = await self._storage.get(job_id)
-                now = datetime.now(tz=UTC)
-                if now >= end_time:
-                    break
-                delay *= 1.5
-                if now + timedelta(seconds=delay) > end_time:
-                    delay = (end_time - now).total_seconds()
+            else:
+                wait = timedelta(seconds=wait_seconds)
+                if wait > self._config.wait_timeout:
+                    wait = self._config.wait_timeout
+            if wait_for_completion:
+                until_not = ACTIVE_PHASES
+            else:
+                until_not = {wait_phase} if wait_phase else {job.phase}
+            job = await self._wait_for_job(job, until_not, wait)
 
         return job
 
@@ -352,3 +337,39 @@ class JobService:
         else:
             await self._storage.update_execution_duration(job_id, duration)
             return duration
+
+    async def _wait_for_job(
+        self, job: Job, until_not: set[ExecutionPhase], timeout: timedelta
+    ) -> Job:
+        """Wait for the completion of a job.
+
+        Parameters
+        ----------
+        job
+            Job to wait for.
+        until_not
+            Wait until the job is no longer in one of this set of phases.
+        timeout
+            How long to wait.
+
+        Returns
+        -------
+        Job
+            The new state of the job.
+        """
+        end_time = current_datetime(microseconds=True) + timeout
+        now = current_datetime(microseconds=True)
+
+        # I don't know of a way to set a watch on the database, so use
+        # polling. Poll the database with exponential delay starting with 0.1
+        # seconds and increasing by 1.5x each time until we reach the maximum
+        # duration.
+        delay = 0.1
+        while job.phase in until_not and now < end_time:
+            await asyncio.sleep(delay)
+            job = await self._storage.get(job.job_id)
+            now = current_datetime(microseconds=True)
+            delay *= 1.5
+            if now + timedelta(seconds=delay) > end_time:
+                delay = (end_time - now).total_seconds()
+        return job

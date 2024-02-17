@@ -45,9 +45,9 @@ def run(port: int) -> None:
 @run_with_asyncio
 async def init(*, reset: bool) -> None:
     """Initialize the database storage."""
-    logger = structlog.get_logger(config.logger_name)
+    logger = structlog.get_logger("vocutouts")
     engine = create_database_engine(
-        config.database_url,
+        str(config.database_url),
         config.database_password,
     )
     await initialize_database(
