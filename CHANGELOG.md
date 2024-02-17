@@ -7,6 +7,10 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+## 1.0.0 (2023-01-12)
+
+There are no major functionality changes in this release. It updates dependencies, packaging, and coding style, makes more use of Safir utility functions, and bumps the version to 1.0.0 since this is acceptable as a release candidate, even though we hope to add additional functionality later.
+
 ## 0.4.2 (2022-07-14)
 
 ### Bug fixes
