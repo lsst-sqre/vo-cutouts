@@ -22,10 +22,10 @@ jinja2
 psycopg2
 pydantic
 pydantic-settings
-safir[db,gcs]
+safir[db,gcs]>=5.2.1
 sqlalchemy[asyncio]
 structlog
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
-#git+https://github.com/lsst-sqre/safir@main#egg=safir[db,gcs]
+# safir[db,gcs] @ git+https://github.com/lsst-sqre/safir@main

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, TypeVar, cast
 
@@ -288,7 +288,7 @@ class FrontendJobStore:
                     owner=j.owner,
                     phase=j.phase,
                     run_id=j.run_id,
-                    creation_time=j.creation_time,
+                    creation_time=datetime_from_db(j.creation_time),
                 )
                 for j in jobs.all()
             ]
@@ -405,7 +405,7 @@ class WorkerJobStore:
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.COMPLETED
-            job.end_time = datetime_to_db(datetime.now(tz=UTC))
+            job.end_time = datetime_to_db(current_datetime())
             for sequence, result in enumerate(results, start=1):
                 sql_result = SQLJobResult(
                     job_id=job.id,
@@ -423,7 +423,7 @@ class WorkerJobStore:
         with self._session.begin():
             job = self._get_job(job_id)
             job.phase = ExecutionPhase.ERROR
-            job.end_time = datetime_to_db(datetime.now(tz=UTC))
+            job.end_time = datetime_to_db(current_datetime())
             job.error_type = error.error_type
             job.error_code = error.error_code
             job.error_message = error.message

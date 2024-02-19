@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import dramatiq
@@ -15,6 +15,7 @@ from dramatiq.middleware import CurrentMessage
 from fastapi import FastAPI
 from httpx import AsyncClient
 from safir.database import create_database_engine, initialize_database
+from safir.datetime import current_datetime, isodatetime
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 
 from vocutouts import main
@@ -24,7 +25,6 @@ from vocutouts.config import config
 from vocutouts.policy import ImageCutoutPolicy
 from vocutouts.uws.dependencies import uws_dependency
 from vocutouts.uws.schema import Base
-from vocutouts.uws.utils import isodatetime
 
 
 @dramatiq.actor(queue_name="cutout", store_results=True)
@@ -35,7 +35,7 @@ def cutout_test(
     access_token: str,
 ) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
-    now = isodatetime(datetime.now(tz=UTC))
+    now = isodatetime(current_datetime())
     job_started.send(job_id, message.message_id, now)
     assert len(dataset_ids) == 1
     assert access_token == "sometoken"

@@ -21,6 +21,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
 from fastapi.responses import PlainTextResponse, RedirectResponse
+from safir.datetime import isodatetime, parse_isodatetime
 from safir.dependencies.gafaelfawr import (
     auth_delegated_token_dependency,
     auth_dependency,
@@ -35,7 +36,6 @@ from .dependencies import (
 )
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
 from .models import ExecutionPhase, JobParameter
-from .utils import isodatetime, parse_isodatetime
 
 __all__ = ["uws_router"]
 
@@ -238,9 +238,10 @@ async def post_job_destruction(
         if param.parameter_id != "destruction":
             msg = f"Unknown parameter {param.parameter_id}={param.value}"
             raise ParameterError(msg)
-        destruction = parse_isodatetime(param.value)
-        if destruction is None:
-            raise ParameterError(f"Invalid date {param.value}")
+        try:
+            destruction = parse_isodatetime(param.value)
+        except Exception as e:
+            raise ParameterError(f"Invalid date {param.value}") from e
     if not destruction:
         raise ParameterError("No new destruction time given")
 

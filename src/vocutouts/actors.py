@@ -38,10 +38,10 @@ from typing import Any
 
 import dramatiq
 import structlog
+from safir.datetime import parse_isodatetime
 
 from . import broker
 from .uws.jobs import uws_job_completed, uws_job_failed, uws_job_started
-from .uws.utils import parse_isodatetime
 
 __all__ = [
     "cutout",
@@ -114,8 +114,6 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
     start = parse_isodatetime(start_time)
     if not broker.worker_session:
         raise RuntimeError("Worker database connection not initalized")
-    if not start:
-        raise RuntimeError(f"Invalid start timestamp {start_time}")
     uws_job_started(job_id, message_id, start, broker.worker_session, logger)
 
 
