@@ -6,17 +6,18 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from httpx import AsyncClient
+from safir.database import datetime_to_db
+from safir.datetime import current_datetime, isodatetime
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_scoped_session
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import JobParameter
 from vocutouts.uws.schema import Job as SQLJob
-from vocutouts.uws.utils import isodatetime
 
 FULL_JOB_LIST = """
 <uws:jobs
@@ -112,11 +113,11 @@ async def test_job_list(
     async with session.begin():
         for i, job in enumerate(jobs):
             hours = (2 - i) * 2
-            creation = datetime.now(tz=UTC) - timedelta(hours=hours)
+            creation = current_datetime() - timedelta(hours=hours)
             stmt = (
                 update(SQLJob)
                 .where(SQLJob.id == int(job.job_id))
-                .values(creation_time=creation.replace(tzinfo=None))
+                .values(creation_time=datetime_to_db(creation))
             )
             await session.execute(stmt)
             job.creation_time = creation
@@ -131,7 +132,7 @@ async def test_job_list(
     assert r.text == expected
 
     # Filter by recency.
-    threshold = datetime.now(tz=UTC) - timedelta(hours=1)
+    threshold = current_datetime() - timedelta(hours=1)
     r = await client.get(
         "/jobs",
         headers={"X-Auth-Request-User": "user"},

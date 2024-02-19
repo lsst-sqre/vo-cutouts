@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import dramatiq
@@ -15,6 +15,7 @@ from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
 from safir.database import create_sync_session
+from safir.datetime import current_datetime, isodatetime, parse_isodatetime
 from sqlalchemy.future import select
 from sqlalchemy.orm import scoped_session
 
@@ -28,7 +29,6 @@ from vocutouts.uws.models import ExecutionPhase, Job, JobParameter
 from vocutouts.uws.policy import UWSPolicy
 from vocutouts.uws.schema import Job as SQLJob
 from vocutouts.uws.service import JobService
-from vocutouts.uws.utils import isodatetime, parse_isodatetime
 
 uws_broker = StubBroker()
 """Dramatiq broker for use in tests."""
@@ -71,7 +71,7 @@ class WorkerSession(Middleware):
 @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
 def trivial_job(job_id: str) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
-    now = datetime.now(tz=UTC)
+    now = current_datetime()
     job_started.send(job_id, message.message_id, isodatetime(now))
     return [
         {
@@ -87,7 +87,6 @@ def job_started(job_id: str, message_id: str, start_time: str) -> None:
     logger = structlog.get_logger("uws")
     start = parse_isodatetime(start_time)
     assert worker_session
-    assert start, f"Invalid start timestamp {start_time}"
     uws_job_started(job_id, message_id, start, worker_session, logger)
 
 

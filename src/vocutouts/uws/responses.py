@@ -6,10 +6,10 @@ from pathlib import Path
 
 from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
+from safir.datetime import isodatetime
 
 from .models import Availability, Job, JobDescription, JobError
 from .results import ResultStore
-from .utils import isodatetime
 
 __all__ = ["UWSTemplates"]
 

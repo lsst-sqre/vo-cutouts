@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from datetime import UTC, datetime
 from typing import Any
 
 import dramatiq
@@ -11,6 +10,7 @@ import pytest
 from dramatiq import Worker
 from dramatiq.middleware import CurrentMessage
 from httpx import AsyncClient
+from safir.datetime import current_datetime, isodatetime
 from structlog.stdlib import BoundLogger
 
 from tests.support.uws import (
@@ -23,7 +23,6 @@ from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
 from vocutouts.uws.models import ErrorCode, JobParameter
-from vocutouts.uws.utils import isodatetime
 
 ERRORED_JOB = """
 <uws:job
@@ -82,7 +81,7 @@ async def test_temporary_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_transient_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=UTC)
+        now = current_datetime()
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
         raise TaskTransientError(
@@ -147,7 +146,7 @@ async def test_fatal_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_fatal_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=UTC)
+        now = current_datetime()
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
         raise TaskFatalError(ErrorCode.ERROR, "Error Whoops\nSome details")
@@ -210,7 +209,7 @@ async def test_unknown_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_unknown_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
-        now = datetime.now(tz=UTC)
+        now = current_datetime()
         time.sleep(0.5)
         job_started.send(job_id, message.message_id, isodatetime(now))
         raise ValueError("Unknown exception")

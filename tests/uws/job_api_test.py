@@ -12,13 +12,13 @@ import pytest
 from dramatiq import Worker
 from fastapi import FastAPI
 from httpx import AsyncClient
+from safir.datetime import isodatetime
 from structlog.stdlib import BoundLogger
 
 from tests.support.uws import uws_broker, wait_for_job
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import JobParameter
-from vocutouts.uws.utils import isodatetime
 
 PENDING_JOB = """
 <uws:job

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from safir.datetime import current_datetime, isodatetime
 
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.exceptions import ParameterError
 from vocutouts.uws.models import Job, JobParameter
-from vocutouts.uws.utils import isodatetime
 
 from ..support.uws import TrivialPolicy, trivial_job
 
@@ -20,7 +20,7 @@ class Policy(TrivialPolicy):
     def validate_destruction(
         self, destruction: datetime, job: Job
     ) -> datetime:
-        max_destruction = datetime.now(tz=UTC) + timedelta(days=1)
+        max_destruction = current_datetime() + timedelta(days=1)
         if destruction > max_destruction:
             return max_destruction
         else:
@@ -62,7 +62,7 @@ async def test_policy(
 
     # Change the destruction time, first to something that should be honored
     # and then something that should be overridden.
-    destruction = datetime.now(tz=UTC) + timedelta(hours=1)
+    destruction = current_datetime() + timedelta(hours=1)
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
@@ -75,8 +75,8 @@ async def test_policy(
     )
     assert r.status_code == 200
     assert r.text == isodatetime(destruction)
-    destruction = datetime.now(tz=UTC) + timedelta(days=5)
-    expected = datetime.now(tz=UTC) + timedelta(days=1)
+    destruction = current_datetime() + timedelta(days=5)
+    expected = current_datetime() + timedelta(days=1)
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
