@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
 
-from pydantic import Field, PostgresDsn
+from pydantic import Field, PostgresDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
 
@@ -90,6 +90,18 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CUTOUT_", case_sensitive=False
     )
+
+    @field_validator("lifetime", "sync_timeout", "timeout", mode="before")
+    @classmethod
+    def _parse_as_seconds(cls, v: int | str | timedelta) -> int | timedelta:
+        """Convert timedelta strings so they are parsed as seconds."""
+        if isinstance(v, timedelta):
+            return v
+        try:
+            return int(v)
+        except ValueError as e:
+            msg = f"value {v} must be an integer number of seconds"
+            raise ValueError(msg) from e
 
     def uws_config(self) -> UWSConfig:
         """Convert to configuration for the UWS subsystem."""
