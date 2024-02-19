@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Self
 
 from ..exceptions import InvalidCutoutParameterError
 from ..uws.models import JobParameter
@@ -20,9 +21,7 @@ class CutoutParameters:
     """The cutout stencils to apply."""
 
     @classmethod
-    def from_job_parameters(
-        cls, params: list[JobParameter]
-    ) -> CutoutParameters:
+    def from_job_parameters(cls, params: list[JobParameter]) -> Self:
         """Convert generic UWS parameters to the iamge cutout parameters.
 
         Parameters

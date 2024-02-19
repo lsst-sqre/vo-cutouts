@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Self
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -17,7 +17,7 @@ class Stencil(ABC):
 
     @classmethod
     @abstractmethod
-    def from_string(cls, params: str) -> Stencil:
+    def from_string(cls, params: str) -> Self:
         """Parse a string representation of stencil parameters to an object."""
 
     @abstractmethod
@@ -33,7 +33,7 @@ class CircleStencil(Stencil):
     radius: Angle
 
     @classmethod
-    def from_string(cls, params: str) -> CircleStencil:
+    def from_string(cls, params: str) -> Self:
         ra, dec, radius = (float(p) for p in params.split())
         return cls(
             center=SkyCoord(ra * u.degree, dec * u.degree, frame="icrs"),
@@ -62,7 +62,7 @@ class PolygonStencil(Stencil):
     vertices: SkyCoord
 
     @classmethod
-    def from_string(cls, params: str) -> PolygonStencil:
+    def from_string(cls, params: str) -> Self:
         data = [float(p) for p in params.split()]
         if len(data) % 2 != 0:
             msg = f"Odd number of coordinates in vertex list {params}"
@@ -93,7 +93,7 @@ class RangeStencil(Stencil):
     dec: Range
 
     @classmethod
-    def from_string(cls, params: str) -> RangeStencil:
+    def from_string(cls, params: str) -> Self:
         ra_min, ra_max, dec_min, dec_max = (float(p) for p in params.split())
         return cls(
             ra=(ra_min, ra_max),
