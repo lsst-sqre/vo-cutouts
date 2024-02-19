@@ -12,7 +12,7 @@ from importlib.metadata import metadata, version
 import structlog
 from fastapi import FastAPI
 from safir.dependencies.http_client import http_client_dependency
-from safir.logging import configure_logging
+from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
@@ -30,6 +30,8 @@ __all__ = ["app", "config"]
 configure_logging(
     name="vocutouts", profile=config.profile, log_level=config.log_level
 )
+if config.profile == Profile.production:
+    configure_uvicorn_logging(config.log_level)
 
 app = FastAPI(
     title="vo-cutouts",
