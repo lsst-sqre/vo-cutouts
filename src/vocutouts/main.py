@@ -7,6 +7,8 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import metadata, version
 
 import structlog
@@ -24,7 +26,23 @@ from .policy import ImageCutoutPolicy
 from .uws.dependencies import uws_dependency
 from .uws.errors import install_error_handlers
 
-__all__ = ["app", "config"]
+__all__ = ["app", "lifespan"]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Set up and tear down the application."""
+    logger = structlog.get_logger("vocutouts")
+    await uws_dependency.initialize(
+        config=config.uws_config(),
+        policy=ImageCutoutPolicy(cutout, logger),
+        logger=logger,
+    )
+
+    yield
+
+    await http_client_dependency.aclose()
+    await uws_dependency.aclose()
 
 
 configure_logging(
@@ -40,6 +58,7 @@ app = FastAPI(
     openapi_url=f"{config.path_prefix}/openapi.json",
     docs_url=f"{config.path_prefix}/docs",
     redoc_url=f"{config.path_prefix}/redoc",
+    lifespan=lifespan,
 )
 """The main FastAPI application for vo-cutouts."""
 
@@ -57,19 +76,3 @@ app.add_middleware(CaseInsensitiveQueryMiddleware)
 
 # Install error handlers.
 install_error_handlers(app)
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    logger = structlog.get_logger("vocutouts")
-    await uws_dependency.initialize(
-        config=config.uws_config(),
-        policy=ImageCutoutPolicy(cutout, logger),
-        logger=logger,
-    )
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    await http_client_dependency.aclose()
-    await uws_dependency.aclose()

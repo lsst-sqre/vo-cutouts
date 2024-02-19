@@ -12,6 +12,7 @@ to Safir.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import pytest
@@ -62,25 +63,24 @@ async def app(
     )
     await initialize_database(engine, logger, schema=Base.metadata, reset=True)
     await engine.dispose()
-    uws_app = FastAPI()
-    uws_app.include_router(uws_router, prefix="/jobs")
-    uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
-    uws_app.add_middleware(XForwardedMiddleware)
-    install_error_handlers(uws_app)
-    uws_broker.add_middleware(WorkerSession(uws_config))
 
-    @uws_app.on_event("startup")
-    async def startup_event() -> None:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await uws_dependency.initialize(
             config=uws_config,
             policy=TrivialPolicy(trivial_job),
             logger=logger,
         )
-
-    @uws_app.on_event("shutdown")
-    async def shutdown_event() -> None:
+        yield
         await http_client_dependency.aclose()
         await uws_dependency.aclose()
+
+    uws_app = FastAPI(lifespan=lifespan)
+    uws_app.include_router(uws_router, prefix="/jobs")
+    uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
+    uws_app.add_middleware(XForwardedMiddleware)
+    install_error_handlers(uws_app)
+    uws_broker.add_middleware(WorkerSession(uws_config))
 
     async with LifespanManager(uws_app):
         yield uws_app
