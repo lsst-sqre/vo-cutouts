@@ -225,7 +225,7 @@ async def post_job_destruction(
         Form(
             title="New destruction time",
             description="Must be in ISO 8601 format.",
-            example="2021-09-10T10:01:02Z",
+            examples=["2021-09-10T10:01:02Z"],
         ),
     ] = None,
     params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
@@ -315,7 +315,7 @@ async def post_job_execution_duration(
         Form(
             title="New execution duration",
             description="Integer seconds of wall clock time.",
-            example=14400,
+            examples=[14400],
         ),
     ] = None,
     params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],

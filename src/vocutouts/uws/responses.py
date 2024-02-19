@@ -34,16 +34,18 @@ class UWSTemplates:
     ) -> Response:
         """Return the availability of a service as an XML response."""
         return _templates.TemplateResponse(
+            request,
             "availability.xml",
-            {"availability": availability, "request": request},
+            {"availability": availability},
             media_type="application/xml",
         )
 
     def error(self, request: Request, error: JobError) -> Response:
         """Return the error of a job as an XML response."""
         return _templates.TemplateResponse(
+            request,
             "error.xml",
-            {"error": error, "request": request},
+            {"error": error},
             media_type="application/xml",
         )
 
@@ -53,8 +55,9 @@ class UWSTemplates:
             await self._result_store.url_for_result(r) for r in job.results
         ]
         return _templates.TemplateResponse(
+            request,
             "job.xml",
-            {"job": job, "results": results, "request": request},
+            {"job": job, "results": results},
             media_type="application/xml",
         )
 
@@ -63,16 +66,18 @@ class UWSTemplates:
     ) -> Response:
         """Return a list of jobs as an XML response."""
         return _templates.TemplateResponse(
+            request,
             "jobs.xml",
-            {"base_url": base_url, "jobs": jobs, "request": request},
+            {"base_url": base_url, "jobs": jobs},
             media_type="application/xml",
         )
 
     def parameters(self, request: Request, job: Job) -> Response:
         """Return the parameters for a job as an XML response."""
         return _templates.TemplateResponse(
+            request,
             "parameters.xml",
-            {"job": job, "request": request},
+            {"job": job},
             media_type="application/xml",
         )
 
@@ -82,7 +87,8 @@ class UWSTemplates:
             await self._result_store.url_for_result(r) for r in job.results
         ]
         return _templates.TemplateResponse(
+            request,
             "results.xml",
-            {"results": results, "request": request},
+            {"results": results},
             media_type="application/xml",
         )
