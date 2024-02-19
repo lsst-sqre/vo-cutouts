@@ -9,26 +9,24 @@
 
 # Bash "strict mode", to help catch problems and bugs in the shell
 # script. Every bash script you write should include this. See
-# http://redsymbol.net/articles/unofficial-bash-strict-mode/ for
-# details.
+# http://redsymbol.net/articles/unofficial-bash-strict-mode/ for details.
 set -euo pipefail
 
 # Display each command as it's run.
 set -x
 
-# Tell apt-get we're never going to be able to give manual
-# feedback:
+# Tell apt-get we're never going to be able to give manual feedback.
 export DEBIAN_FRONTEND=noninteractive
 
-# Update the package listing, so we know what packages exist:
+# Update the package listing, so we know what packages exist.
 apt-get update
 
-# Install security updates:
+# Install security updates.
 apt-get -y upgrade
 
-# git is required by setuptools-scm.  libpq-dev is required by psycopg2.
-apt-get -y install --no-install-recommends git libpq-dev
+# Install dependencies required at runtime. libpq-dev is required by psycopg2.
+apt-get -y install --no-install-recommends libpq-dev
 
-# Delete cached files we don't need anymore:
+# Delete cached files we don't need anymore.
 apt-get clean
 rm -rf /var/lib/apt/lists/*
