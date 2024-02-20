@@ -7,6 +7,20 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-1.1.0'></a>
+## 1.1.0 (2024-02-19)
+
+### New features
+
+- Add support for querying the Butler server rather than instantiating local Butler instances. To support this, vo-cutouts now requires delegated tokens from Gafaelfawr so that it can make API calls on behalf of the user.
+- Send uvicorn logs through structlog for consistent JSON formatting and add context expected by Google Cloud Logging to each log message.
+
+### Other changes
+
+- Standardize the environment variables used for configuration. Rename `SAFIR_` environment variables to `CUTOUT_`, remove `SAFIR_LOG_NAME`, and add `CUTOUT_PATH_PREFIX` to control the API path prefix. This is handled by the Phalanx chart, so should be invisible to users.
+- Add a change log maintained using [scriv](https://scriv.readthedocs.io/en/latest/).
+- Use [Ruff](https://docs.astral.sh/ruff/) for linting and formatting instead of Black, flake8, and isort.
+
 ## 1.0.0 (2023-01-12)
 
 There are no major functionality changes in this release. It updates dependencies, packaging, and coding style, makes more use of Safir utility functions, and bumps the version to 1.0.0 since this is acceptable as a release candidate, even though we hope to add additional functionality later.
