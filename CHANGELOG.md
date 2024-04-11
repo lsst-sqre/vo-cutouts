@@ -7,6 +7,13 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-1.1.1'></a>
+## 1.1.1 (2024-04-11)
+
+### Other changes
+
+- Update to the latest weekly as a base image for the cutout worker, which picks up new versions of lsst-resources and the Butler client.
+
 <a id='changelog-1.1.0'></a>
 ## 1.1.0 (2024-02-19)
 
