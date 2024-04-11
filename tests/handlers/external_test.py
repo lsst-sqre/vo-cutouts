@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from vocutouts.config import config
 
@@ -83,7 +83,10 @@ async def test_capabilities_urls(app: FastAPI) -> None:
     the generated URLs to honor ``X-Forwarded-Proto`` and thus use ``https``.
     We also want to honor the ``Host`` header.
     """
-    async with AsyncClient(app=app, base_url="http://foo.com/") as client:
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
+    async with AsyncClient(
+        transport=transport, base_url="http://foo.com/"
+    ) as client:
         r = await client.get(
             "/api/cutout/capabilities",
             headers={

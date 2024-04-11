@@ -21,7 +21,7 @@ import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq import Broker
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.http_client import http_client_dependency
@@ -89,10 +89,10 @@ async def app(
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        app=app,
+        transport=transport,
         base_url="https://example.com/",
-        # Mock the Gafaelfawr delegated token header.
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:
         yield client

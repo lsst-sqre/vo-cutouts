@@ -13,7 +13,7 @@ import structlog
 from asgi_lifespan import LifespanManager
 from dramatiq.middleware import CurrentMessage
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from safir.database import create_database_engine, initialize_database
 from safir.datetime import current_datetime, isodatetime
 from safir.testing.gcs import MockStorageClient, patch_google_storage
@@ -73,8 +73,9 @@ async def app() -> AsyncIterator[FastAPI]:
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        app=app,
+        transport=transport,
         base_url="https://example.com/",
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:

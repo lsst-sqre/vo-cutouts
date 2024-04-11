@@ -8,7 +8,7 @@ import re
 import pytest
 from dramatiq import Worker
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from vocutouts.broker import broker
 
@@ -137,8 +137,9 @@ async def test_redirect(app: FastAPI) -> None:
     the redirect to honor ``X-Forwarded-Proto`` and thus use ``https``.  Also
     test that the correct hostname is used if it is different.
     """
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        app=app,
+        transport=transport,
         base_url="http://foo.com/",
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:

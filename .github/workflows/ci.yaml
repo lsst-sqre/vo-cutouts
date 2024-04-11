@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           tox-envs: "py,coverage-report,typing"
-          tox-plugins: tox-docker
+          tox-plugins: "tox-docker tox-uv"
 
   build:
     runs-on: ubuntu-latest
