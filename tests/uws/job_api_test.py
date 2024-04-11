@@ -11,7 +11,7 @@ from datetime import timedelta
 import pytest
 from dramatiq import Worker
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from safir.datetime import isodatetime
 from structlog.stdlib import BoundLogger
 
@@ -368,7 +368,10 @@ async def test_redirects(
 
     # Try various actions that result in redirects and ensure the redirect is
     # correct.
-    async with AsyncClient(app=app, base_url="http://foo.com/") as client:
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
+    async with AsyncClient(
+        transport=transport, base_url="http://foo.com/"
+    ) as client:
         r = await client.post(
             "/jobs/1/destruction",
             headers={

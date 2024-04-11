@@ -9,9 +9,8 @@ help:
 .PHONY: init
 init:
 	pip install --upgrade uv
-	uv pip install pre-commit tox
-	uv pip install --editable .
 	uv pip install -r requirements/main.txt -r requirements/dev.txt
+	uv pip install --editable .
 	rm -rf .tox
 	pre-commit install
 
