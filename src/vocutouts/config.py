@@ -2,22 +2,47 @@
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 from pathlib import Path
+from typing import Annotated, TypeAlias
+from urllib.parse import urlparse, urlunparse
 
-from pydantic import Field, PostgresDsn, field_validator
+from pydantic import Field, PostgresDsn, RedisDsn, TypeAdapter, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
 
 from .uws.config import UWSConfig
 
-__all__ = ["Config", "config"]
+_postgres_dsn_adapter = TypeAdapter(PostgresDsn)
+_redis_dsn_adapter = TypeAdapter(RedisDsn)
+
+PostgresDsnString: TypeAlias = Annotated[
+    str, lambda v: str(_postgres_dsn_adapter.validate_python(v))
+]
+"""Type for a PostgreSQL data source URL converted to a string."""
+
+RedisDsnString: TypeAlias = Annotated[
+    str, lambda v: str(_redis_dsn_adapter.validate_python(v))
+]
+"""Type for a Redis data source URL converted to a string."""
+
+__all__ = [
+    "Config",
+    "PostgresDsnString",
+    "RedisDsnString",
+    "config",
+]
 
 
 class Config(BaseSettings):
     """Configuration for vo-cutouts."""
 
-    database_url: PostgresDsn = Field(..., title="URL for UWS job database")
+    database_url: PostgresDsnString = Field(
+        ...,
+        title="PostgreSQL DSN",
+        description="DSN of PostgreSQL database for UWS job tracking",
+    )
 
     database_password: str | None = Field(
         None, title="Password for UWS job database"
@@ -27,9 +52,9 @@ class Config(BaseSettings):
         timedelta(days=7), title="Lifetime of cutout job results"
     )
 
-    redis_host: str = Field(
+    redis_url: str = Field(
         ...,
-        title="Hostname of Redis server",
+        title="Redis DSN",
         description=(
             "The Redis server is used as the backing store for the Dramatiq"
             " work queue"
@@ -91,6 +116,46 @@ class Config(BaseSettings):
         env_prefix="CUTOUT_", case_sensitive=False
     )
 
+    @field_validator("database_url")
+    @classmethod
+    def _validate_database_url(cls, v: PostgresDsnString) -> PostgresDsnString:
+        if not v.startswith(("postgresql:", "postgresql+asyncpg:")):
+            msg = "Use asyncpg as the PostgreSQL library or leave unspecified"
+            raise ValueError(msg)
+
+        # When run via tox and tox-docker, the PostgreSQL hostname and port
+        # will be randomly selected and exposed only in environment
+        # variables. We have to patch that into the database URL at runtime
+        # since tox doesn't have a way of substituting it into the environment
+        # (see https://github.com/tox-dev/tox-docker/issues/55).
+        if port := os.getenv("POSTGRES_5432_TCP_PORT"):
+            url = urlparse(v)
+            hostname = os.getenv("POSTGRES_HOST", url.hostname)
+            if url.password:
+                auth = f"{url.username}@{url.password}@"
+            elif url.username:
+                auth = f"{url.username}@"
+            else:
+                auth = ""
+            return urlunparse(url._replace(netloc=f"{auth}{hostname}:{port}"))
+
+        return v
+
+    @field_validator("redis_url")
+    @classmethod
+    def _validate_redis_url(cls, v: RedisDsnString) -> RedisDsnString:
+        # When run via tox and tox-docker, the Redis port will be randomly
+        # selected and exposed only in the REDIS_6379_TCP environment
+        # variable. We have to patch that into the Redis URL at runtime since
+        # tox doesn't have a way of substituting it into the environment (see
+        # https://github.com/tox-dev/tox-docker/issues/55).
+        if port := os.getenv("REDIS_6379_TCP_PORT"):
+            url = urlparse(v)
+            hostname = os.getenv("REDIS_HOST", url.hostname)
+            return urlunparse(url._replace(netloc=f"{hostname}:{port}"))
+
+        return v
+
     @field_validator("lifetime", "sync_timeout", "timeout", mode="before")
     @classmethod
     def _parse_as_seconds(cls, v: int | str | timedelta) -> int | timedelta:
@@ -110,7 +175,7 @@ class Config(BaseSettings):
             lifetime=self.lifetime,
             database_url=str(self.database_url),
             database_password=self.database_password,
-            redis_host=self.redis_host,
+            redis_url=self.redis_url,
             redis_password=self.redis_password,
             signing_service_account=self.service_account,
         )

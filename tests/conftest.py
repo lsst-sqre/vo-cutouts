@@ -35,6 +35,7 @@ def cutout_test(
     access_token: str,
 ) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
+    assert message
     now = isodatetime(current_datetime())
     job_started.send(job_id, message.message_id, now)
     assert len(dataset_ids) == 1
