@@ -121,6 +121,7 @@ async def test_poll(
     @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
     def wait_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
+        assert message
         now = isodatetime(current_datetime())
         job_started.send(job_id, message.message_id, now)
         time.sleep(2)

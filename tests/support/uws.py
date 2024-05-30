@@ -71,6 +71,7 @@ class WorkerSession(Middleware):
 @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
 def trivial_job(job_id: str) -> list[dict[str, Any]]:
     message = CurrentMessage.get_current_message()
+    assert message
     now = current_datetime()
     job_started.send(job_id, message.message_id, isodatetime(now))
     return [
@@ -137,15 +138,25 @@ class TrivialPolicy(UWSPolicy):
 def build_uws_config() -> UWSConfig:
     """Set up a test configuration.
 
-    This currently the database URL and Redis hostname be set in the
-    environment, which is done as part of running the test with tox-docker.
+    Exepcts the database hostname and port and the Redis hostname and port to
+    be set in the environment following the conventions used by tox-docker,
+    plus ``POSTGRES_USER`` and ``POSTGRES_DATABASE`` to specify the username
+    and database.
     """
+    db_host = os.environ["POSTGRES_HOST"]
+    db_port = os.environ["POSTGRES_5432_TCP_PORT"]
+    db_user = os.environ["POSTGRES_USER"]
+    db_name = os.environ["POSTGRES_DB"]
+    database_url = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
+    redis_host = os.environ["REDIS_HOST"]
+    redis_port = os.environ["REDIS_6379_TCP_PORT"]
+    redis_url = f"redis://{redis_host}:{redis_port}/0"
     return UWSConfig(
         execution_duration=timedelta(minutes=10),
         lifetime=timedelta(days=1),
-        database_url=os.environ["CUTOUT_DATABASE_URL"],
+        database_url=database_url,
         database_password=os.getenv("CUTOUT_DATABASE_PASSWORD"),
-        redis_host=os.getenv("CUTOUT_REDIS_HOST", "127.0.0.1"),
+        redis_url=redis_url,
         redis_password=None,
         signing_service_account="",
     )

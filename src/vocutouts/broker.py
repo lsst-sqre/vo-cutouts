@@ -25,10 +25,10 @@ from sqlalchemy.orm import scoped_session
 from .config import config
 from .uws.schema import Job
 
-broker = RedisBroker(host=config.redis_host, password=config.redis_password)
+broker = RedisBroker(url=config.redis_url, password=config.redis_password)
 """Broker used by UWS."""
 
-results = RedisBackend(host=config.redis_host, password=config.redis_password)
+results = RedisBackend(url=config.redis_url, password=config.redis_password)
 """Result backend used by UWS."""
 
 worker_session: scoped_session | None = None

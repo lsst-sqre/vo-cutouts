@@ -166,9 +166,15 @@ def cutout(
 
     Returns
     -------
-    list of dict of str to str
+    list of dict
         The results of the job.  This must be a list of dict representations
         of `~vocutouts.uws.models.JobResult` objects.
+
+    Raises
+    ------
+    RuntimeError
+        Raised if this function is called outside of the context of a Dramatiq
+        actor.
     """
     logger = structlog.get_logger(os.getenv("SAFIR_LOGGER", "vocutouts"))
     logger = logger.bind(
@@ -177,6 +183,8 @@ def cutout(
 
     # Tell UWS that we have started executing.
     message = CurrentMessage.get_current_message()
+    if not message:
+        raise RuntimeError("Cutout called outside of a Dramatiq actor")
     now = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     job_started.send(job_id, message.message_id, now)
 

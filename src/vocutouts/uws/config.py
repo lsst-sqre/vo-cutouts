@@ -38,8 +38,8 @@ class UWSConfig:
     database_url: str
     """URL for the metadata database."""
 
-    redis_host: str
-    """Hostname of the Redis server used by Dramatiq."""
+    redis_url: str
+    """DSN of the Redis server used by Dramatiq."""
 
     signing_service_account: str
     """Email of service account to use for signed URLs.

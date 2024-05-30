@@ -81,6 +81,7 @@ async def test_temporary_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_transient_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
+        assert message
         now = current_datetime()
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
@@ -146,6 +147,7 @@ async def test_fatal_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_fatal_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
+        assert message
         now = current_datetime()
         job_started.send(job_id, message.message_id, isodatetime(now))
         time.sleep(0.5)
@@ -209,6 +211,7 @@ async def test_unknown_error(
     @dramatiq.actor(broker=uws_broker, queue_name="job")
     def error_unknown_job(job_id: str) -> list[dict[str, Any]]:
         message = CurrentMessage.get_current_message()
+        assert message
         now = current_datetime()
         time.sleep(0.5)
         job_started.send(job_id, message.message_id, isodatetime(now))
