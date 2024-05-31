@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
+from pydantic import SecretStr
+
 __all__ = ["UWSConfig"]
 
 
@@ -49,10 +51,10 @@ class UWSConfig:
     with this email.
     """
 
-    database_password: str | None = None
+    database_password: SecretStr | None = None
     """Password for the database."""
 
-    redis_password: str | None = None
+    redis_password: SecretStr | None = None
     """Password for the Redis server used by Dramatiq."""
 
     url_lifetime: timedelta = timedelta(minutes=15)

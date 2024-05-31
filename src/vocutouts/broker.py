@@ -49,7 +49,7 @@ class WorkerSession(Middleware):
         if worker_session is None:
             logger = structlog.get_logger("vocutouts")
             worker_session = create_sync_session(
-                str(config.database_url),
+                config.database_url,
                 config.database_password,
                 logger,
                 isolation_level="REPEATABLE READ",

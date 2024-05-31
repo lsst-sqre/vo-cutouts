@@ -47,8 +47,7 @@ async def init(*, reset: bool) -> None:
     """Initialize the database storage."""
     logger = structlog.get_logger("vocutouts")
     engine = create_database_engine(
-        str(config.database_url),
-        config.database_password,
+        config.database_url, config.database_password
     )
     await initialize_database(
         engine, logger, schema=Base.metadata, reset=reset
