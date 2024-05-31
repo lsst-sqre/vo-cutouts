@@ -8,7 +8,14 @@ from pathlib import Path
 from typing import Annotated, TypeAlias
 from urllib.parse import urlparse, urlunparse
 
-from pydantic import Field, PostgresDsn, RedisDsn, TypeAdapter, field_validator
+from pydantic import (
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    TypeAdapter,
+    field_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.logging import LogLevel, Profile
 
@@ -44,7 +51,7 @@ class Config(BaseSettings):
         description="DSN of PostgreSQL database for UWS job tracking",
     )
 
-    database_password: str | None = Field(
+    database_password: SecretStr | None = Field(
         None, title="Password for UWS job database"
     )
 
@@ -61,7 +68,7 @@ class Config(BaseSettings):
         ),
     )
 
-    redis_password: str | None = Field(
+    redis_password: SecretStr | None = Field(
         None,
         title="Password for Redis server",
         description=(
@@ -173,7 +180,7 @@ class Config(BaseSettings):
         return UWSConfig(
             execution_duration=self.timeout,
             lifetime=self.lifetime,
-            database_url=str(self.database_url),
+            database_url=self.database_url,
             database_password=self.database_password,
             redis_url=self.redis_url,
             redis_password=self.redis_password,

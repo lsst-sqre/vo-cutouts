@@ -14,6 +14,7 @@ from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import CurrentMessage, Middleware
 from dramatiq.results import Results
 from dramatiq.results.backends import StubBackend
+from pydantic import SecretStr
 from safir.database import create_sync_session
 from safir.datetime import current_datetime, isodatetime, parse_isodatetime
 from sqlalchemy.future import select
@@ -155,7 +156,7 @@ def build_uws_config() -> UWSConfig:
         execution_duration=timedelta(minutes=10),
         lifetime=timedelta(days=1),
         database_url=database_url,
-        database_password=os.getenv("CUTOUT_DATABASE_PASSWORD"),
+        database_password=SecretStr(os.environ["CUTOUT_DATABASE_PASSWORD"]),
         redis_url=redis_url,
         redis_password=None,
         signing_service_account="",

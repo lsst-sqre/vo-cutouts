@@ -62,7 +62,7 @@ async def app() -> AsyncIterator[FastAPI]:
     broker.flush_all()
     broker.emit_after("process_boot")
     engine = create_database_engine(
-        str(config.database_url), config.database_password
+        config.database_url, config.database_password
     )
     await initialize_database(engine, logger, schema=Base.metadata, reset=True)
     await engine.dispose()
