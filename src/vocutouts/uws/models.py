@@ -10,6 +10,19 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 
+__all__ = [
+    "Availability",
+    "ErrorCode",
+    "ExecutionPhase",
+    "ErrorType",
+    "UWSJob",
+    "UWSJobDescription",
+    "UWSJobError",
+    "UWSJobParameter",
+    "UWSJobResult",
+    "UWSJobResultURL",
+]
+
 
 @dataclass
 class Availability:
@@ -83,7 +96,7 @@ class ErrorType(Enum):
 
 
 @dataclass
-class JobError:
+class UWSJobError:
     """Failure information about a job."""
 
     error_type: ErrorType
@@ -104,7 +117,7 @@ class JobError:
 
 
 @dataclass
-class JobResult:
+class UWSJobResult:
     """A single result from the job."""
 
     result_id: str
@@ -121,10 +134,10 @@ class JobResult:
 
 
 @dataclass
-class JobResultURL:
+class UWSJobResultURL:
     """A single result from the job with a signed URL.
 
-    A `JobResult` is converted to a `JobResultURL` before generating the
+    A `UWSJobResult` is converted to a `UWSJobResultURL` before generating the
     response via templating.
     """
 
@@ -142,7 +155,7 @@ class JobResultURL:
 
 
 @dataclass
-class JobParameter:
+class UWSJobParameter:
     """An input parameter to the job."""
 
     parameter_id: str
@@ -160,10 +173,10 @@ class JobParameter:
 
 
 @dataclass
-class JobDescription:
+class UWSJobDescription:
     """Brief job description used for the job list.
 
-    This is a strict subset of the fields of `Job`, but is kept separate
+    This is a strict subset of the fields of `UWSJob`, but is kept separate
     without an inheritance relationship to reflect how it's used in code.
     """
 
@@ -190,7 +203,7 @@ class JobDescription:
 
 
 @dataclass
-class Job:
+class UWSJob:
     """Represents a single UWS job."""
 
     job_id: str
@@ -210,7 +223,7 @@ class Job:
 
     The RunId is intended for the client to add a unique identifier to all
     jobs that are part of a single operation from the perspective of the
-    client.  This may aid in tracing issues through a complex system or
+    client. This may aid in tracing issues through a complex system or
     identifying which operation a job is part of.
     """
 
@@ -237,7 +250,7 @@ class Job:
     """Allowed maximum execution duration in seconds.
 
     This is specified in elapsed wall clock time, or 0 for unlimited execution
-    time.  If the job runs for longer than this time period, it will be
+    time. If the job runs for longer than this time period, it will be
     aborted.
     """
 
@@ -245,15 +258,15 @@ class Job:
     """Expected completion time of the job if it were started now.
 
     May be `None` to indicate that the expected duration of the job is not
-    known.  Maybe later than the destruction time to indicate that the job is
+    known. Maybe later than the destruction time to indicate that the job is
     not possible due to resource constraints.
     """
 
-    error: JobError | None
+    error: UWSJobError | None
     """Error information if the job failed."""
 
-    parameters: list[JobParameter]
+    parameters: list[UWSJobParameter]
     """The parameters of the job."""
 
-    results: list[JobResult]
+    results: list[UWSJobResult]
     """The results of the job."""

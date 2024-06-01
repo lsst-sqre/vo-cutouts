@@ -5,7 +5,7 @@ cachetools==5.3.3
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   tox
-certifi==2024.2.2
+certifi==2024.6.2
     # via
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
@@ -64,7 +64,7 @@ requests==2.32.3
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   docker
-tox==4.15.0
+tox==4.15.1
     # via
     #   -c requirements/dev.txt
     #   -r requirements/tox.in
@@ -82,7 +82,7 @@ urllib3==2.2.1
     #   -c requirements/main.txt
     #   docker
     #   requests
-uv==0.2.5
+uv==0.2.8
     # via
     #   -c requirements/dev.txt
     #   tox-uv

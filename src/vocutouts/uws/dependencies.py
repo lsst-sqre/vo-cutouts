@@ -15,12 +15,12 @@ from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
-from .models import JobParameter
+from .models import UWSJobParameter
 from .policy import UWSPolicy
 from .responses import UWSTemplates
 from .results import ResultStore
 from .service import JobService
-from .storage import FrontendJobStore
+from .storage import JobStore
 
 __all__ = [
     "UWSDependency",
@@ -54,10 +54,11 @@ class UWSFactory:
 
     def create_job_service(self) -> JobService:
         """Create a new UWS job metadata service."""
-        storage = FrontendJobStore(self._session)
-        return JobService(
-            config=self._config, policy=self._policy, storage=storage
-        )
+        return JobService(self._config, self._policy, self.create_job_store())
+
+    def create_job_store(self) -> JobStore:
+        """Create a new UWS job store."""
+        return JobStore(self._session)
 
     def create_templates(self) -> UWSTemplates:
         """Create a new XML renderer for responses."""
@@ -98,10 +99,8 @@ class UWSDependency:
 
     async def initialize(
         self,
-        *,
         config: UWSConfig,
         policy: UWSPolicy,
-        logger: BoundLogger,
     ) -> None:
         """Initialize the UWS subsystem.
 
@@ -111,10 +110,6 @@ class UWSDependency:
             The UWS configuration.
         policy
             The UWS policy layer.
-        logger
-            Logger to use during database initialization.  This is not saved;
-            subsequent invocations as a dependency will create a new logger
-            from the triggering request.
         """
         self._config = config
         self._policy = policy
@@ -141,14 +136,16 @@ class UWSDependency:
 uws_dependency = UWSDependency()
 
 
-async def uws_post_params_dependency(request: Request) -> list[JobParameter]:
+async def uws_post_params_dependency(
+    request: Request,
+) -> list[UWSJobParameter]:
     """Parse POST parameters.
 
     UWS requires that all POST parameters be case-insensitive, which is not
     supported by FastAPI or Starlette.  POST parameters therefore have to be
     parsed by this dependency and then extracted from the resulting
-    `~vocutouts.uws.models.JobParameter` list (which unfortunately also means
-    revalidating their types).
+    `~vocutouts.uws.models.UWSJobParameter` list (which unfortunately also
+    means revalidating their types).
 
     The POST parameters can also be (and should be) listed independently as
     dependencies using the normal FastAPI syntax, in order to populate the
@@ -163,6 +160,8 @@ async def uws_post_params_dependency(request: Request) -> list[JobParameter]:
         if not isinstance(value, str):
             raise TypeError("File upload not supported")
         parameters.append(
-            JobParameter(parameter_id=key.lower(), value=value, is_post=True)
+            UWSJobParameter(
+                parameter_id=key.lower(), value=value, is_post=True
+            )
         )
     return parameters

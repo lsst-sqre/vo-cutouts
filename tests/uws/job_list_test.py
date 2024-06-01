@@ -16,7 +16,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_scoped_session
 
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.models import UWSJobParameter
 from vocutouts.uws.schema import Job as SQLJob
 
 FULL_JOB_LIST = """
@@ -87,25 +87,26 @@ async def test_job_list(
     job_service = uws_factory.create_job_service()
     jobs = [
         await job_service.create(
-            "user", params=[JobParameter(parameter_id="id", value="bar")]
+            "user", params=[UWSJobParameter(parameter_id="id", value="bar")]
         ),
         await job_service.create(
             "user",
             run_id="some-run-id",
             params=[
-                JobParameter(parameter_id="id", value="bar"),
-                JobParameter(parameter_id="circle", value="1 1 1"),
+                UWSJobParameter(parameter_id="id", value="bar"),
+                UWSJobParameter(parameter_id="circle", value="1 1 1"),
             ],
         ),
         await job_service.create(
-            "user", params=[JobParameter(parameter_id="id", value="foo")]
+            "user", params=[UWSJobParameter(parameter_id="id", value="foo")]
         ),
     ]
 
     # Create an additional job for a different user, which shouldn't appear in
     # any of the lists.
     await job_service.create(
-        "otheruser", params=[JobParameter(parameter_id="other", value="user")]
+        "otheruser",
+        params=[UWSJobParameter(parameter_id="other", value="user")],
     )
 
     # Adjust the creation time of the jobs so that searches are more

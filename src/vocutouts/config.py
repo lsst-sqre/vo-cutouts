@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Annotated, TypeAlias
 from urllib.parse import urlparse, urlunparse
 
+from arq.connections import RedisSettings
 from pydantic import (
     Field,
     PostgresDsn,
@@ -17,33 +18,45 @@ from pydantic import (
     field_validator,
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from safir.arq import ArqMode
 from safir.logging import LogLevel, Profile
 
 from .uws.config import UWSConfig
 
 _postgres_dsn_adapter = TypeAdapter(PostgresDsn)
-_redis_dsn_adapter = TypeAdapter(RedisDsn)
 
 PostgresDsnString: TypeAlias = Annotated[
     str, lambda v: str(_postgres_dsn_adapter.validate_python(v))
 ]
 """Type for a PostgreSQL data source URL converted to a string."""
 
-RedisDsnString: TypeAlias = Annotated[
-    str, lambda v: str(_redis_dsn_adapter.validate_python(v))
-]
-"""Type for a Redis data source URL converted to a string."""
-
 __all__ = [
     "Config",
     "PostgresDsnString",
-    "RedisDsnString",
     "config",
 ]
 
 
 class Config(BaseSettings):
     """Configuration for vo-cutouts."""
+
+    arq_mode: ArqMode = Field(
+        ArqMode.production,
+        title="arq operation mode",
+        description="This will always be production outside the test suite",
+    )
+
+    arq_queue_url: RedisDsn = Field(
+        ...,
+        title="arq Redis DSN",
+        description="DSN of Redis server to use for the arq queue",
+    )
+
+    arq_queue_password: SecretStr | None = Field(
+        None,
+        title="Password for arq Redis server",
+        description="Password of Redis server to use for the arq queue",
+    )
 
     database_url: PostgresDsnString = Field(
         ...,
@@ -57,24 +70,6 @@ class Config(BaseSettings):
 
     lifetime: timedelta = Field(
         timedelta(days=7), title="Lifetime of cutout job results"
-    )
-
-    redis_url: str = Field(
-        ...,
-        title="Redis DSN",
-        description=(
-            "The Redis server is used as the backing store for the Dramatiq"
-            " work queue"
-        ),
-    )
-
-    redis_password: SecretStr | None = Field(
-        None,
-        title="Password for Redis server",
-        description=(
-            "The Redis server is used as the backing store for the Dramatiq"
-            " work queue"
-        ),
     )
 
     service_account: str = Field(
@@ -148,19 +143,28 @@ class Config(BaseSettings):
 
         return v
 
-    @field_validator("redis_url")
+    @field_validator("arq_queue_url")
     @classmethod
-    def _validate_redis_url(cls, v: RedisDsnString) -> RedisDsnString:
+    def _validate_arq_queue_url(cls, v: RedisDsn) -> RedisDsn:
+        if v.scheme != "redis":
+            raise ValueError("Only redis DSNs are supported")
+
         # When run via tox and tox-docker, the Redis port will be randomly
         # selected and exposed only in the REDIS_6379_TCP environment
         # variable. We have to patch that into the Redis URL at runtime since
         # tox doesn't have a way of substituting it into the environment (see
         # https://github.com/tox-dev/tox-docker/issues/55).
         if port := os.getenv("REDIS_6379_TCP_PORT"):
-            url = urlparse(v)
-            hostname = os.getenv("REDIS_HOST", url.hostname)
-            return urlunparse(url._replace(netloc=f"{hostname}:{port}"))
-
+            return RedisDsn.build(
+                scheme=v.scheme,
+                username=v.username,
+                password=v.password,
+                host=os.getenv("REDIS_HOST", v.unicode_host() or "localhost"),
+                port=int(port),
+                path=v.path,
+                query=v.query,
+                fragment=v.fragment,
+            )
         return v
 
     @field_validator("lifetime", "sync_timeout", "timeout", mode="before")
@@ -175,15 +179,33 @@ class Config(BaseSettings):
             msg = f"value {v} must be an integer number of seconds"
             raise ValueError(msg) from e
 
+    @property
+    def arq_redis_settings(self) -> RedisSettings:
+        """Redis settings for arq."""
+        database = 0
+        if self.arq_queue_url.path:
+            database = int(self.arq_queue_url.path.lstrip("/"))
+        if self.arq_queue_password:
+            password = self.arq_queue_password.get_secret_value()
+        else:
+            password = None
+        return RedisSettings(
+            host=self.arq_queue_url.unicode_host() or "localhost",
+            port=self.arq_queue_url.port or 6379,
+            database=database,
+            password=password,
+        )
+
+    @property
     def uws_config(self) -> UWSConfig:
-        """Convert to configuration for the UWS subsystem."""
+        """Corresponding configuration for the UWS subsystem."""
         return UWSConfig(
             execution_duration=self.timeout,
             lifetime=self.lifetime,
             database_url=self.database_url,
             database_password=self.database_password,
-            redis_url=self.redis_url,
-            redis_password=self.redis_password,
+            arq_mode=self.arq_mode,
+            arq_redis_settings=self.arq_redis_settings,
             signing_service_account=self.service_account,
         )
 

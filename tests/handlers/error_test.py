@@ -3,21 +3,16 @@
 from __future__ import annotations
 
 import pytest
-from dramatiq import Worker
 from httpx import AsyncClient
 from safir.database import create_database_engine
 from sqlalchemy.exc import ProgrammingError
 
-from vocutouts.broker import broker
 from vocutouts.config import config
 from vocutouts.uws.schema import Base
 
 
 @pytest.mark.asyncio
 async def test_uncaught_error(client: AsyncClient) -> None:
-    worker = Worker(broker, worker_timeout=100)
-    worker.start()
-
     # Drop the schema, which will ensure that all database errors will throw a
     # SQLAlchemy exception.  Previously this would result in a 500 error with
     # no meaningful information and no exception traceback due a bug in

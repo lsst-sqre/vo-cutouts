@@ -7,9 +7,13 @@ anyio==4.4.0
     #   httpx
     #   starlette
     #   watchfiles
+arq==0.26.0
+    # via
+    #   -r requirements/main.in
+    #   safir
 astropy==6.1.0
     # via -r requirements/main.in
-astropy-iers-data==0.2024.5.27.0.30.8
+astropy-iers-data==0.2024.6.3.0.31.14
     # via astropy
 asyncpg==0.29.0
     # via
@@ -17,7 +21,7 @@ asyncpg==0.29.0
     #   safir
 cachetools==5.3.3
     # via google-auth
-certifi==2024.2.2
+certifi==2024.6.2
     # via
     #   httpcore
     #   httpx
@@ -29,17 +33,16 @@ charset-normalizer==3.3.2
 click==8.1.7
     # via
     #   -r requirements/main.in
+    #   arq
     #   safir
     #   typer
     #   uvicorn
-cryptography==42.0.7
+cryptography==42.0.8
     # via
     #   pyjwt
     #   safir
 dnspython==2.6.1
     # via email-validator
-dramatiq==1.17.0
-    # via -r requirements/main.in
 email-validator==2.1.1
     # via fastapi
 fastapi==0.111.0
@@ -73,7 +76,7 @@ google-crc32c==1.5.0
     #   google-resumable-media
 google-resumable-media==2.7.0
     # via google-cloud-storage
-googleapis-common-protos==1.63.0
+googleapis-common-protos==1.63.1
     # via google-api-core
 greenlet==3.0.3
     # via sqlalchemy
@@ -81,6 +84,8 @@ h11==0.14.0
     # via
     #   httpcore
     #   uvicorn
+hiredis==2.3.2
+    # via redis
 httpcore==1.0.5
     # via httpx
 httptools==0.6.1
@@ -113,8 +118,6 @@ orjson==3.10.3
     # via fastapi
 packaging==24.0
     # via astropy
-prometheus-client==0.20.0
-    # via dramatiq
 proto-plus==1.23.0
     # via google-api-core
 protobuf==4.25.3
@@ -132,15 +135,15 @@ pyasn1-modules==0.4.0
     # via google-auth
 pycparser==2.22
     # via cffi
-pydantic==2.7.2
+pydantic==2.7.3
     # via
     #   -r requirements/main.in
     #   fastapi
     #   pydantic-settings
     #   safir
-pydantic-core==2.18.3
+pydantic-core==2.18.4
     # via pydantic
-pydantic-settings==2.2.1
+pydantic-settings==2.3.1
     # via -r requirements/main.in
 pyerfa==2.0.1.4
     # via astropy
@@ -160,8 +163,8 @@ pyyaml==6.0.1
     # via
     #   astropy
     #   uvicorn
-redis==5.0.4
-    # via dramatiq
+redis==4.6.0
+    # via arq
 requests==2.32.3
     # via
     #   google-api-core
@@ -170,7 +173,7 @@ rich==13.7.1
     # via typer
 rsa==4.9
     # via google-auth
-safir @ git+https://github.com/lsst-sqre/safir@f98d329edc0f8578c197167a8be8d581c0d2c2c4
+safir @ git+https://github.com/lsst-sqre/safir@9ce8b39d810df41cf028afe1c8befea5613951a8
     # via -r requirements/main.in
 shellingham==1.5.4
     # via typer
@@ -193,7 +196,7 @@ structlog==24.2.0
     #   safir
 typer==0.12.3
     # via fastapi-cli
-typing-extensions==4.12.0
+typing-extensions==4.12.1
     # via
     #   fastapi
     #   pydantic
@@ -206,7 +209,7 @@ uritemplate==4.1.1
     # via gidgethub
 urllib3==2.2.1
     # via requests
-uvicorn==0.30.0
+uvicorn==0.30.1
     # via
     #   -r requirements/main.in
     #   fastapi

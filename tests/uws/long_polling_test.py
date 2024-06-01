@@ -2,22 +2,16 @@
 
 from __future__ import annotations
 
-import time
-from datetime import timedelta
-from typing import Any
+import asyncio
+from datetime import UTC, datetime, timedelta
 
-import dramatiq
 import pytest
-from dramatiq import Worker
-from dramatiq.middleware import CurrentMessage
 from httpx import AsyncClient
+from safir.arq import MockArqQueue
 from safir.datetime import current_datetime, isodatetime
-from structlog.stdlib import BoundLogger
 
-from tests.support.uws import TrivialPolicy, job_started, uws_broker
-from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.dependencies import UWSFactory, uws_dependency
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.dependencies import UWSFactory
+from vocutouts.uws.models import UWSJobParameter, UWSJobResult
 
 PENDING_JOB = """
 <uws:job
@@ -90,27 +84,25 @@ FINISHED_JOB = """
 @pytest.mark.asyncio
 async def test_poll(
     client: AsyncClient,
-    logger: BoundLogger,
-    uws_config: UWSConfig,
+    arq_queue: MockArqQueue,
     uws_factory: UWSFactory,
 ) -> None:
     job_service = uws_factory.create_job_service()
+    job_storage = uws_factory.create_job_store()
     job = await job_service.create(
         "user",
-        params=[
-            JobParameter(parameter_id="id", value="bar"),
-        ],
+        params=[UWSJobParameter(parameter_id="id", value="bar")],
     )
 
-    # Poll for changes for two seconds.  Nothing will happen since there is no
-    # worker.
+    # Poll for changes for one second. Nothing will happen since nothing is
+    # changing the mock arq queue.
     now = current_datetime()
     r = await client.get(
         "/jobs/1",
         headers={"X-Auth-Request-User": "user"},
-        params={"WAIT": "2"},
+        params={"WAIT": "1"},
     )
-    assert (current_datetime() - now).total_seconds() >= 2
+    assert (current_datetime() - now).total_seconds() >= 1
     assert r.status_code == 200
     assert r.text == PENDING_JOB.strip().format(
         "PENDING",
@@ -118,23 +110,7 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
-    def wait_job(job_id: str) -> list[dict[str, Any]]:
-        message = CurrentMessage.get_current_message()
-        assert message
-        now = isodatetime(current_datetime())
-        job_started.send(job_id, message.message_id, now)
-        time.sleep(2)
-        return [
-            {
-                "result_id": "cutout",
-                "url": "s3://some-bucket/some/path",
-                "mime_type": "application/fits",
-            }
-        ]
-
     # Start the job and worker.
-    uws_dependency.override_policy(TrivialPolicy(wait_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
@@ -148,41 +124,66 @@ async def test_poll(
         isodatetime(job.creation_time),
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
-    now = current_datetime()
-    worker = Worker(uws_broker, worker_timeout=100)
-    worker.start()
 
-    # Now, wait again.  We should get a reply after a couple of seconds when
-    # the job finishes.
-    try:
-        r = await client.get(
+    async def set_in_progress() -> None:
+        await asyncio.sleep(0.5)
+        job = await job_service.get("user", "1")
+        assert job.message_id
+        await arq_queue.set_in_progress(job.message_id)
+        await job_storage.mark_executing("1", datetime.now(tz=UTC))
+
+    # Poll for a change from queued, which we should see after about a second.
+    now = current_datetime()
+    _, r = await asyncio.gather(
+        set_in_progress(),
+        client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "QUEUED"},
-        )
-        assert r.status_code == 200
+        ),
+    )
+    assert r.status_code == 200
+    job = await job_service.get("user", "1")
+    assert job.start_time
+    assert r.text == EXECUTING_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+
+    async def set_result() -> None:
+        result = [
+            UWSJobResult(
+                result_id="cutout",
+                url="s3://some-bucket/some/path",
+                mime_type="application/fits",
+            )
+        ]
+        await asyncio.sleep(1.5)
         job = await job_service.get("user", "1")
-        assert job.start_time
-        assert r.text == EXECUTING_JOB.strip().format(
-            isodatetime(job.creation_time),
-            isodatetime(job.start_time),
-            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
-        )
-        r = await client.get(
+        assert job.message_id
+        await arq_queue.set_complete(job.message_id, result=result)
+        job_result = await arq_queue.get_job_result(job.message_id)
+        await job_storage.mark_completed("1", job_result)
+
+    # Now, wait again, in parallel with the job finishing. We should get a
+    # reply after a couple of seconds when the job finishes.
+    _, r = await asyncio.gather(
+        set_result(),
+        client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "EXECUTING"},
-        )
-        assert r.status_code == 200
-        job = await job_service.get("user", "1")
-        assert job.start_time
-        assert job.end_time
-        assert r.text == FINISHED_JOB.strip().format(
-            isodatetime(job.creation_time),
-            isodatetime(job.start_time),
-            isodatetime(job.end_time),
-            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
-        )
-        assert (current_datetime() - now).total_seconds() >= 2
-    finally:
-        worker.stop()
+        ),
+    )
+    assert r.status_code == 200
+    job = await job_service.get("user", "1")
+    assert job.start_time
+    assert job.end_time
+    assert r.text == FINISHED_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.end_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+    assert (current_datetime() - now).total_seconds() >= 2

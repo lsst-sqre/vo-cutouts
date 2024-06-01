@@ -1,6 +1,6 @@
-# This Dockerfile constructs the image for cutout workers.  These images
+# This Dockerfile constructs the image for cutout workers. These images
 # are based on stack containers and install any required supporting code
-# for the image cutout backend, Dramatiq, and the backend worker definition.
+# for the image cutout backend, arq, and the backend worker definition.
 
 FROM lsstsqre/centos:7-stack-lsst_distrib-w_2024_15
 
@@ -11,12 +11,9 @@ USER root
 COPY scripts/install-worker-packages.sh .
 RUN ./install-worker-packages.sh && rm ./install-worker-packages.sh
 
-# Install the necessary prerequisites.
-COPY scripts/install-worker.sh .
-RUN ./install-worker.sh && rm ./install-worker.sh
-
-# Install the worker code.
-COPY src/vocutouts/workers.py /
+# Install the necessary prerequisites and the vo-cutouts code.
+COPY . /workdir
+RUN /workdir/scripts/install-worker.sh /workdir && rm -r /workdir
 COPY scripts/start-worker.sh /
 
 # Create a non-root user
@@ -25,6 +22,6 @@ RUN useradd --create-home appuser
 # Switch to the non-root user.
 USER appuser
 
-# Start the Dramatiq worker.
+# Start the arq worker.
 WORKDIR /
 CMD ["/start-worker.sh"]

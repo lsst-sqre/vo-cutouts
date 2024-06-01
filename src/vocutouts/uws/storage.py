@@ -7,23 +7,23 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, TypeVar, cast
 
+from safir.arq import JobMetadata, JobResult
 from safir.database import datetime_from_db, datetime_to_db
 from safir.datetime import current_datetime
 from sqlalchemy import delete
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.future import select
-from sqlalchemy.orm import scoped_session
 
-from .exceptions import UnknownJobError
+from .exceptions import TaskError, UnknownJobError
 from .models import (
     Availability,
     ExecutionPhase,
-    Job,
-    JobDescription,
-    JobError,
-    JobParameter,
-    JobResult,
+    UWSJob,
+    UWSJobDescription,
+    UWSJobError,
+    UWSJobParameter,
+    UWSJobResult,
 )
 from .schema.job import Job as SQLJob
 from .schema.job_parameter import JobParameter as SQLJobParameter
@@ -32,27 +32,27 @@ from .schema.job_result import JobResult as SQLJobResult
 F = TypeVar("F", bound=Callable[..., Any])
 G = TypeVar("G", bound=Callable[..., Awaitable[Any]])
 
-__all__ = ["FrontendJobStore", "WorkerJobStore"]
+__all__ = ["JobStore"]
 
 
-def _convert_job(job: SQLJob) -> Job:
+def _convert_job(job: SQLJob) -> UWSJob:
     """Convert the SQL representation of a job to its dataclass.
 
     The internal representation of a job uses a dataclass that is kept
-    intentionally separate from the database schema so that the conversion
-    can be done explicitly and the rest of the code kept separate from
-    SQLAlchemy database models.  This internal helper function converts
-    from the database representation to the internal representation.
+    intentionally separate from the database schema so that the conversion can
+    be done explicitly and the rest of the code kept separate from SQLAlchemy
+    database models. This internal helper function converts from the database
+    representation to the internal representation.
     """
     error = None
     if job.error_code and job.error_type and job.error_message:
-        error = JobError(
+        error = UWSJobError(
             error_type=job.error_type,
             error_code=job.error_code,
             message=job.error_message,
             detail=job.error_detail,
         )
-    return Job(
+    return UWSJob(
         job_id=str(job.id),
         message_id=job.message_id,
         owner=job.owner,
@@ -65,13 +65,13 @@ def _convert_job(job: SQLJob) -> Job:
         execution_duration=job.execution_duration,
         quote=job.quote,
         parameters=[
-            JobParameter(
+            UWSJobParameter(
                 parameter_id=p.parameter, value=p.value, is_post=p.is_post
             )
             for p in sorted(job.parameters, key=lambda p: p.id)
         ],
         results=[
-            JobResult(
+            UWSJobResult(
                 result_id=r.result_id,
                 url=r.url,
                 size=r.size,
@@ -95,15 +95,11 @@ def retry_async_transaction(g: G) -> G:
     been done and avoid setting a job in ``COMPLETED`` back to ``EXECUTING``.
 
     Unfortunately, that isolation level causes the underlying database to
-    raise an exception on commit if we raced with another worker.  We
-    therefore need to retry if a transaction failed with an exception.
+    raise an exception on commit if we raced with another worker. We therefore
+    need to retry if a transaction failed with an exception.
 
-    The only functions that can race for a given job are the frontend setting
-    the job status to ``QUEUED``, the backend setting it to ``EXECUTING``, and
-    the backend setting it to ``COMPLETED`` or ``ERROR``.  Priorities should
-    force the second to always execute before the third, so we should only
-    race with at most one other SQL transaction.  Therefore, retrying once
-    should be sufficient.
+    Any method with this decorator must be idempotent, since it may be re-run
+    multiple times.
     """
 
     @wraps(g)
@@ -118,39 +114,17 @@ def retry_async_transaction(g: G) -> G:
     return cast(G, wrapper)
 
 
-class FrontendJobStore:
-    """Stores and manipulates jobs in the database for the frontend.
+class JobStore:
+    """Stores and manipulates jobs in the database.
 
-    This is the async storage layer used by the web service frontend.  Workers
-    use the `WorkerJobStore`, which is synchronous.
+    The canonical representation of any UWS job is in the database. This class
+    provides methods to create, update, and delete UWS job records and their
+    associated results and errors.
 
     Parameters
     ----------
     session
         The underlying database session.
-
-    Notes
-    -----
-    Timestamp handling deserves special comment.  By default, SQLAlchemy
-    databases do not store timestamp information in database rows.  It's
-    possible to use a variant data type to do so in PostgreSQL, but since
-    all database times will be in UTC, there's no need to do so.
-
-    psycopg2 silently discards the UTC timezone information when storing a
-    datetime (and apparently silently adds it when retrieving one).  However,
-    asyncpg does not do this, and attempts to store a timezone-aware datetime
-    in a database column that is not defined as holding timezone information
-    results in an error.
-
-    Best practices for Python are to make every datetime normally seen in the
-    program timezone-aware so that one is never bitten by unexpected timezone
-    variations.  Therefore, the storage layer should only expose
-    timezone-aware datetimes.
-
-    This is done by stripping the timezone from datetimes when stored in the
-    database (making the assumption that all datetimes will use UTC, which is
-    maintained by the rest of the UWS layer), and adding the UTC timezone back
-    to datetimes when retrieved from the database.
     """
 
     def __init__(self, session: async_scoped_session) -> None:
@@ -161,10 +135,10 @@ class FrontendJobStore:
         *,
         owner: str,
         run_id: str | None = None,
-        params: list[JobParameter],
+        params: list[UWSJobParameter],
         execution_duration: timedelta,
         lifetime: timedelta,
-    ) -> Job:
+    ) -> UWSJob:
         """Create a record of a new job.
 
         The job will be created in pending status.
@@ -233,7 +207,7 @@ class FrontendJobStore:
             stmt = delete(SQLJob).where(SQLJob.id == int(job_id))
             await self._session.execute(stmt)
 
-    async def get(self, job_id: str) -> Job:
+    async def get(self, job_id: str) -> UWSJob:
         """Retrieve a job by ID."""
         async with self._session.begin():
             job = await self._get_job(job_id)
@@ -246,7 +220,7 @@ class FrontendJobStore:
         phases: list[ExecutionPhase] | None = None,
         after: datetime | None = None,
         count: int | None = None,
-    ) -> list[JobDescription]:
+    ) -> list[UWSJobDescription]:
         """List the jobs for a particular user.
 
         Parameters
@@ -283,7 +257,7 @@ class FrontendJobStore:
         async with self._session.begin():
             jobs = await self._session.execute(stmt)
             return [
-                JobDescription(
+                UWSJobDescription(
                     job_id=str(j.id),
                     owner=j.owner,
                     phase=j.phase,
@@ -294,25 +268,83 @@ class FrontendJobStore:
             ]
 
     @retry_async_transaction
-    async def mark_queued(self, job_id: str, message_id: str) -> None:
-        """Mark a job as queued for processing.
+    async def mark_completed(self, job_id: str, job_result: JobResult) -> None:
+        """Mark a job as completed."""
+        end_time = job_result.finish_time.replace(microsecond=0)
+        if isinstance(job_result.result, Exception):
+            error = TaskError.from_exception(job_result.result).to_job_error()
+            await self.mark_failed(job_id, error, end_time=end_time)
+            return
 
-        This is called by the web frontend after queuing the work.  However,
-        the worker may have gotten there first and have already updated the
-        phase to executing, in which case we should not set it back to
-        queued.
+        async with self._session.begin():
+            job = await self._get_job(job_id)
+            job.phase = ExecutionPhase.COMPLETED
+            job.end_time = datetime_to_db(end_time)
+            for sequence, result in enumerate(job_result.result, start=1):
+                sql_result = SQLJobResult(
+                    job_id=job.id,
+                    result_id=result.result_id,
+                    sequence=sequence,
+                    url=result.url,
+                    size=result.size,
+                    mime_type=result.mime_type,
+                )
+                self._session.add(sql_result)
+
+    @retry_async_transaction
+    async def mark_failed(
+        self,
+        job_id: str,
+        error: UWSJobError,
+        *,
+        end_time: datetime | None = None,
+    ) -> None:
+        """Mark a job as failed with an error."""
+        async with self._session.begin():
+            job = await self._get_job(job_id)
+            job.phase = ExecutionPhase.ERROR
+            job.end_time = datetime_to_db(end_time or current_datetime())
+            job.error_type = error.error_type
+            job.error_code = error.error_code
+            job.error_message = error.message
+            job.error_detail = error.detail
+
+    @retry_async_transaction
+    async def mark_executing(self, job_id: str, start_time: datetime) -> None:
+        """Mark a job as executing.
 
         Parameters
         ----------
         job_id
-            The identifier of the job.
-        message_id
-            The identifier for the execution of that job in the work queuing
-            system.
+            Identifier of the job.
+        start_time
+            Time at which the job started executing.
+        """
+        start_time = start_time.replace(microsecond=0)
+        async with self._session.begin():
+            job = await self._get_job(job_id)
+            if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
+                job.phase = ExecutionPhase.EXECUTING
+                job.start_time = datetime_to_db(start_time)
+
+    @retry_async_transaction
+    async def mark_queued(self, job_id: str, metadata: JobMetadata) -> None:
+        """Mark a job as queued for processing.
+
+        This is called by the web frontend after queuing the work. However,
+        the worker may have gotten there first and have already updated the
+        phase to executing, in which case we should not set it back to queued.
+
+        Parameters
+        ----------
+        job_id
+            Identifier of the job.
+        metadata
+            Metadata about the underlying arq job.
         """
         async with self._session.begin():
             job = await self._get_job(job_id)
-            job.message_id = message_id
+            job.message_id = metadata.id
             if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.HELD):
                 job.phase = ExecutionPhase.QUEUED
 
@@ -324,10 +356,11 @@ class FrontendJobStore:
         Parameters
         ----------
         job_id
-            The identifier of the job.
+            Identifier of the job.
         destruction
-            The new destruction time.
+            New destruction time.
         """
+        destruction = destruction.replace(microsecond=0)
         async with self._session.begin():
             job = await self._get_job(job_id)
             job.destruction_time = datetime_to_db(destruction)
@@ -340,9 +373,9 @@ class FrontendJobStore:
         Parameters
         ----------
         job_id
-            The identifier of the job.
+            Identifier of the job.
         execution_duration
-            The new execution duration.
+            New execution duration.
         """
         async with self._session.begin():
             job = await self._get_job(job_id)
@@ -352,110 +385,6 @@ class FrontendJobStore:
         """Retrieve a job from the database by job ID."""
         stmt = select(SQLJob).where(SQLJob.id == int(job_id))
         job = (await self._session.execute(stmt)).scalar_one_or_none()
-        if not job:
-            raise UnknownJobError(job_id)
-        return job
-
-
-def retry_transaction(f: F) -> F:
-    """Retry once if a transaction failed.
-
-    Notes
-    -----
-    The UWS database workers may be run out of order (the one indicating the
-    job has started may be run after the one indicating the job has finished,
-    for example), which means we need a ``REPEATABLE READ`` transaction
-    isolation level so that we can check if a job status change has already
-    been done and avoid setting a job in ``COMPLETED`` back to ``EXECUTING``.
-
-    Unfortunately, that isolation level causes the underlying database to
-    raise an exception on commit if we raced with another worker.  We
-    therefore need to retry if a transaction failed with an exception.
-    """
-
-    @wraps(f)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        for _ in range(1, 5):
-            try:
-                return f(*args, **kwargs)
-            except OperationalError:
-                continue
-        return f(*args, **kwargs)
-
-    return cast(F, wrapper)
-
-
-class WorkerJobStore:
-    """Records worker actions in the database.
-
-    This is the synchronous storage layer used by the backend workers.
-
-    Parameters
-    ----------
-    session
-        The underlying database session.
-    """
-
-    def __init__(self, session: scoped_session) -> None:
-        self._session = session
-
-    @retry_transaction
-    def mark_completed(self, job_id: str, results: list[JobResult]) -> None:
-        """Mark a job as completed."""
-        with self._session.begin():
-            job = self._get_job(job_id)
-            job.phase = ExecutionPhase.COMPLETED
-            job.end_time = datetime_to_db(current_datetime())
-            for sequence, result in enumerate(results, start=1):
-                sql_result = SQLJobResult(
-                    job_id=job.id,
-                    result_id=result.result_id,
-                    sequence=sequence,
-                    url=result.url,
-                    size=result.size,
-                    mime_type=result.mime_type,
-                )
-                self._session.add(sql_result)
-
-    @retry_transaction
-    def mark_errored(self, job_id: str, error: JobError) -> None:
-        """Mark a job as failed with an error."""
-        with self._session.begin():
-            job = self._get_job(job_id)
-            job.phase = ExecutionPhase.ERROR
-            job.end_time = datetime_to_db(current_datetime())
-            job.error_type = error.error_type
-            job.error_code = error.error_code
-            job.error_message = error.message
-            job.error_detail = error.detail
-
-    @retry_transaction
-    def start_executing(
-        self, job_id: str, message_id: str, start_time: datetime
-    ) -> None:
-        """Mark a job as executing.
-
-        Parameters
-        ----------
-        job_id
-            The identifier of the job.
-        message_id
-            The identifier for the execution of that job in the work queuing
-            system.
-        start_time
-            The time at which the job started executing.
-        """
-        with self._session.begin():
-            job = self._get_job(job_id)
-            if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
-                job.phase = ExecutionPhase.EXECUTING
-            job.start_time = datetime_to_db(start_time)
-            job.message_id = message_id
-
-    def _get_job(self, job_id: str) -> SQLJob:
-        """Retrieve a job from the database by job ID."""
-        stmt = select(SQLJob).where(SQLJob.id == int(job_id))
-        job = self._session.execute(stmt).scalar_one_or_none()
         if not job:
             raise UnknownJobError(job_id)
         return job

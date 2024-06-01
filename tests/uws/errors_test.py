@@ -8,7 +8,7 @@ import pytest
 from httpx import AsyncClient
 
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.models import UWSJobParameter
 
 
 @dataclass
@@ -26,8 +26,8 @@ async def test_errors(client: AsyncClient, uws_factory: UWSFactory) -> None:
         "user",
         run_id="some-run-id",
         params=[
-            JobParameter(parameter_id="id", value="bar"),
-            JobParameter(parameter_id="circle", value="1 1 1"),
+            UWSJobParameter(parameter_id="id", value="bar"),
+            UWSJobParameter(parameter_id="circle", value="1 1 1"),
         ],
     )
 

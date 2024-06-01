@@ -25,7 +25,7 @@ from ..uws.dependencies import (
     uws_post_params_dependency,
 )
 from ..uws.handlers import uws_router
-from ..uws.models import ExecutionPhase, JobParameter
+from ..uws.models import ExecutionPhase, UWSJobParameter
 
 __all__ = ["external_router"]
 
@@ -120,7 +120,7 @@ async def get_capabilities(request: Request) -> Response:
 
 
 async def _sync_request(
-    params: list[JobParameter],
+    params: list[UWSJobParameter],
     user: str,
     runid: str | None,
     uws_factory: UWSFactory,
@@ -134,13 +134,12 @@ async def _sync_request(
     # Create the job, start it, and wait for it to complete.
     job_service = uws_factory.create_job_service()
     job = await job_service.create(user, run_id=runid, params=params)
+    logger = logger.bind(job_id=job.job_id)
     if runid:
         logger = logger.bind(run_id=runid)
-    logger.info(
-        "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
-    )
-    await job_service.start(user, job.job_id, access_token)
-    logger.info("Started job", job_id=job.job_id)
+    logger.info("Created job", params=[p.to_dict() for p in params])
+    metadata = await job_service.start(user, job.job_id, access_token)
+    logger.info("Started job", arq_job_id=metadata.id)
     job = await job_service.get(
         user,
         job.job_id,
@@ -150,7 +149,7 @@ async def _sync_request(
 
     # Check for error states.
     if job.phase not in (ExecutionPhase.COMPLETED, ExecutionPhase.ERROR):
-        logger.warning("Job timed out", job_id=job.job_id)
+        logger.warning("Job timed out", timeout=config.sync_timeout)
         return PlainTextResponse(
             f"Error Cutout did not complete in {config.sync_timeout}s",
             status_code=400,
@@ -158,7 +157,6 @@ async def _sync_request(
     if job.error:
         logger.warning(
             "Job failed",
-            job_id=job.job_id,
             error_code=job.error.error_code.value,
             error=job.error.message,
             error_detail=job.error.detail,
@@ -168,7 +166,7 @@ async def _sync_request(
             response += f"\n{job.error.detail}"
         return PlainTextResponse(response, status_code=400)
     if not job.results:
-        logger.warning("Job returned no results", job_id=job.job_id)
+        logger.warning("Job returned no results")
         return PlainTextResponse(
             "Error Job did not return any results", status_code=400
         )
@@ -266,7 +264,7 @@ async def get_sync(
     logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
 ) -> Response:
     params = [
-        JobParameter(parameter_id=k.lower(), value=v, is_post=False)
+        UWSJobParameter(parameter_id=k.lower(), value=v, is_post=False)
         for k, v in request.query_params.items()
     ]
     return await _sync_request(
@@ -355,7 +353,9 @@ async def post_sync(
             ),
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
@@ -444,7 +444,9 @@ async def create_job(
             ),
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
@@ -459,14 +461,13 @@ async def create_job(
     # Create the job and optionally start it.
     job_service = uws_factory.create_job_service()
     job = await job_service.create(user, run_id=runid, params=params)
+    logger = logger.bind(job_id=job.job_id)
     if runid:
         logger = logger.bind(run_id=runid)
-    logger.info(
-        "Created job", job_id=job.job_id, params=[p.to_dict() for p in params]
-    )
+    logger.info("Created job", params=[p.to_dict() for p in params])
     if phase == "RUN":
-        await job_service.start(user, job.job_id, access_token)
-        logger.info("Started job", job_id=job.job_id)
+        metadata = await job_service.start(user, job.job_id, access_token)
+        logger.info("Started job", arq_job_id=metadata.id)
 
     # Redirect to the new job.
     return str(request.url_for("get_job", job_id=job.job_id))

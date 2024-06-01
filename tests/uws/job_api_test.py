@@ -6,19 +6,17 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from dramatiq import Worker
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from safir.arq import MockArqQueue
 from safir.datetime import isodatetime
-from structlog.stdlib import BoundLogger
 
-from tests.support.uws import uws_broker, wait_for_job
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.models import UWSJobParameter, UWSJobResult
 
 PENDING_JOB = """
 <uws:job
@@ -99,19 +97,21 @@ JOB_RESULTS = """
 @pytest.mark.asyncio
 async def test_job_run(
     client: AsyncClient,
-    logger: BoundLogger,
+    arq_queue: MockArqQueue,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
 ) -> None:
     job_service = uws_factory.create_job_service()
+    job_storage = uws_factory.create_job_store()
     job = await job_service.create(
         "user",
         run_id="some-run-id",
         params=[
-            JobParameter(parameter_id="id", value="bar"),
-            JobParameter(parameter_id="circle", value="1 1 1"),
+            UWSJobParameter(parameter_id="id", value="bar"),
+            UWSJobParameter(parameter_id="circle", value="1 1 1"),
         ],
     )
+    assert job.creation_time.microsecond == 0
 
     # Check the retrieval of the job configuration.
     r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
@@ -160,51 +160,62 @@ async def test_job_run(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    # Start the job worker.
-    worker = Worker(uws_broker, worker_timeout=100)
-    worker.start()
+    # Tell the queue to start the job.
+    job = await job_service.get("user", "1")
+    assert job.message_id
+    await arq_queue.set_in_progress(job.message_id)
+    await job_storage.mark_executing("1", datetime.now(tz=UTC))
+
+    # Tell the queue the job is finished.
+    result = [
+        UWSJobResult(
+            result_id="cutout",
+            url="s3://some-bucket/some/path",
+            mime_type="application/fits",
+        )
+    ]
+    await arq_queue.set_complete(job.message_id, result=result)
+    job_result = await arq_queue.get_job_result(job.message_id)
+    await job_storage.mark_completed("1", job_result)
 
     # Check the job results.
-    try:
-        job = await wait_for_job(job_service, "user", "1")
-        assert job.start_time
-        assert job.end_time
-        assert job.end_time >= job.start_time >= job.creation_time
-        r = await client.get(
-            "/jobs/1", headers={"X-Auth-Request-User": "user"}
-        )
-        assert r.status_code == 200
-        assert r.headers["Content-Type"] == "application/xml"
-        assert r.text == FINISHED_JOB.strip().format(
-            isodatetime(job.creation_time),
-            isodatetime(job.start_time),
-            isodatetime(job.end_time),
-            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
-        )
+    job = await job_service.get("user", "1")
+    assert job.start_time
+    assert job.start_time.microsecond == 0
+    assert job.end_time
+    assert job.end_time.microsecond == 0
+    assert job.end_time >= job.start_time >= job.creation_time
+    r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
+    assert r.status_code == 200
+    assert r.headers["Content-Type"] == "application/xml"
+    assert r.text == FINISHED_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.end_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
 
-        # Check that the phase is now correct.
-        r = await client.get(
-            "/jobs/1/phase", headers={"X-Auth-Request-User": "user"}
-        )
-        assert r.status_code == 200
-        assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
-        assert r.text == "COMPLETED"
+    # Check that the phase is now correct.
+    r = await client.get(
+        "/jobs/1/phase", headers={"X-Auth-Request-User": "user"}
+    )
+    assert r.status_code == 200
+    assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
+    assert r.text == "COMPLETED"
 
-        # Retrieve them directly through the results resource.
-        r = await client.get(
-            "/jobs/1/results", headers={"X-Auth-Request-User": "user"}
-        )
-        assert r.status_code == 200
-        assert r.headers["Content-Type"] == "application/xml"
-        assert r.text == JOB_RESULTS.strip()
+    # Retrieve them directly through the results resource.
+    r = await client.get(
+        "/jobs/1/results", headers={"X-Auth-Request-User": "user"}
+    )
+    assert r.status_code == 200
+    assert r.headers["Content-Type"] == "application/xml"
+    assert r.text == JOB_RESULTS.strip()
 
-        # There should be no error message.
-        r = await client.get(
-            "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
-        )
-        assert r.status_code == 404
-    finally:
-        worker.stop()
+    # There should be no error message.
+    r = await client.get(
+        "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
+    )
+    assert r.status_code == 404
 
 
 @pytest.mark.asyncio
@@ -217,8 +228,8 @@ async def test_job_api(
         "user",
         run_id="some-run-id",
         params=[
-            JobParameter(parameter_id="id", value="bar"),
-            JobParameter(parameter_id="circle", value="1 1 1"),
+            UWSJobParameter(parameter_id="id", value="bar"),
+            UWSJobParameter(parameter_id="circle", value="1 1 1"),
         ],
     )
 
@@ -278,8 +289,8 @@ async def test_job_api(
     assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
     assert r.text == ""
 
-    # Modify various settings.  These go through the policy layer, which is
-    # mocked to do nothing.  Policy rejections will be tested elsewhere.
+    # Modify various settings. These go through the policy layer, which
+    # accepts all changes. Policy rejections will be tested elsewhere.
     r = await client.post(
         "/jobs/1/destruction",
         headers={"X-Auth-Request-User": "user"},
@@ -320,8 +331,8 @@ async def test_job_api(
         "user",
         run_id="some-run-id",
         params=[
-            JobParameter(parameter_id="id", value="bar"),
-            JobParameter(parameter_id="circle", value="1 1 1"),
+            UWSJobParameter(parameter_id="id", value="bar"),
+            UWSJobParameter(parameter_id="circle", value="1 1 1"),
         ],
     )
     r = await client.get("/jobs/2", headers={"X-Auth-Request-User": "user"})
@@ -361,16 +372,16 @@ async def test_redirects(
         "user",
         run_id="some-run-id",
         params=[
-            JobParameter(parameter_id="id", value="bar"),
-            JobParameter(parameter_id="circle", value="1 1 1"),
+            UWSJobParameter(parameter_id="id", value="bar"),
+            UWSJobParameter(parameter_id="circle", value="1 1 1"),
         ],
     )
 
     # Try various actions that result in redirects and ensure the redirect is
     # correct.
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        transport=transport, base_url="http://foo.com/"
+        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        base_url="http://foo.com/",
     ) as client:
         r = await client.post(
             "/jobs/1/destruction",

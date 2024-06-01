@@ -35,7 +35,7 @@ from .dependencies import (
     uws_post_params_dependency,
 )
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
-from .models import ExecutionPhase, JobParameter
+from .models import ExecutionPhase, UWSJobParameter
 
 __all__ = ["uws_router"]
 
@@ -170,7 +170,9 @@ async def delete_job_via_post(
             description="Mandatory, must be set to DELETE",
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
@@ -228,7 +230,9 @@ async def post_job_destruction(
             examples=["2021-09-10T10:01:02Z"],
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
@@ -318,7 +322,9 @@ async def post_job_execution_duration(
             examples=[14400],
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
@@ -419,7 +425,9 @@ async def post_job_phase(
             summary="RUN to start the job, ABORT to abort the job.",
         ),
     ] = None,
-    params: Annotated[list[JobParameter], Depends(uws_post_params_dependency)],
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
     user: Annotated[str, Depends(auth_dependency)],
     access_token: Annotated[str, Depends(auth_delegated_token_dependency)],
     uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
@@ -442,8 +450,8 @@ async def post_job_phase(
 
     # The only remaining case is starting the job.
     job_service = uws_factory.create_job_service()
-    await job_service.start(user, job_id, access_token)
-    logger.info("Started job", job_id=job_id)
+    metadata = await job_service.start(user, job_id, access_token)
+    logger.info("Started job", job_id=job_id, arq_job_id=metadata.id)
     return str(request.url_for("get_job", job_id=job_id))
 
 
