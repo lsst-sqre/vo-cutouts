@@ -28,15 +28,38 @@ class UWSError(Exception):
     SODA requires errors be in ``text/plain`` and start with an error code.
     Adopt that as a general representation of errors produced by the UWS
     layer to simplify generating error responses.
+
+    Parameters
+    ----------
+    error_code
+        SODA error code.
+    message
+        Exception message, which will be the stringification of the exception.
+    detail
+        Additional detail.
+
+    Notes
+    -----
+    To allow exceptions that inherit from UWSError to be pickled, which is
+    necessary to allow arq workers to throw them, all the arguments must be
+    passed to ``Exception.__init__``. ``__str__`` is overriden below so that
+    only the message is included in the stringification.
+
+    This hack will probably only work for subclasses that take the same
+    arguments, so beware if you need to pickle anything else.
     """
 
     def __init__(
         self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
-        super().__init__(message)
+        super().__init__(error_code, message, detail)
         self.error_code = error_code
+        self.message = message
         self.detail = detail
         self.status_code = 400
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class MultiValuedParameterError(UWSError):

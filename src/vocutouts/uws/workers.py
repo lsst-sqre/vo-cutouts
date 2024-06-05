@@ -178,7 +178,6 @@ async def job_started(
         await storage.mark_executing(job_id, start_time)
         logger.info(
             "Marked job as started",
-            job_id=job_id,
             start_time=format_datetime_for_logging(start_time),
         )
     except UnknownJobError:
@@ -235,12 +234,14 @@ async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
         )
         try:
             await storage.mark_failed(job_id, error)
+            logger.info("Marked job as failed")
         except UnknownJobError:
             logger.warning("Job not found to mark as failed")
         return
 
     try:
         await storage.mark_completed(job_id, result)
+        logger.info("Marked job as completed")
     except UnknownJobError:
         logger.warning("Job not found to mark as completed")
 
