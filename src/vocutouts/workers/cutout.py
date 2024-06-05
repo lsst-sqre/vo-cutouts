@@ -179,8 +179,8 @@ def cutout(
     # Return the result.
     result_url = result.geturl()
     result_scheme = urlparse(result_url).scheme
-    if result_scheme != "s3":
-        msg = f"Backend returned URL with scheme {result_scheme}, not s3"
+    if result_scheme not in ("gs", "s3"):
+        msg = f"Backend returned URL with scheme {result_scheme}, not gs or s3"
         raise TaskFatalError(ErrorCode.ERROR, msg)
     logger.info("Cutout successful")
     return [
