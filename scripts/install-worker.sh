@@ -33,6 +33,6 @@ scons install declare -t current
 
 # Install Python dependencies and the vo-cutouts code.
 cd "$1"
-pip install --no-cache-dir pydantic-settings google-auth google-cloud-storage
+pip install --no-cache-dir google-cloud-storage
 pip install --no-cache-dir 'safir[arq,db,gcs] @ git+https://github.com/lsst-sqre/safir@main'
 pip install --no-cache-dir --no-deps .
