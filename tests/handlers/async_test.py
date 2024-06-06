@@ -6,11 +6,12 @@ import asyncio
 import re
 
 import pytest
-from dramatiq import Worker
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from vocutouts.broker import broker
+from vocutouts.uws.models import UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -63,7 +64,7 @@ COMPLETED_JOB = """
 
 
 @pytest.mark.asyncio
-async def test_create_job(client: AsyncClient) -> None:
+async def test_create_job(client: AsyncClient, runner: MockJobRunner) -> None:
     r = await client.post(
         "/api/cutout/jobs",
         headers={"X-Auth-Request-User": "someone"},
@@ -78,54 +79,50 @@ async def test_create_job(client: AsyncClient) -> None:
     result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
     assert result == PENDING_JOB.strip()
 
-    # Start a worker.
-    worker = Worker(broker, worker_timeout=100)
-    worker.start()
+    # Try again but immediately queuing the job to run and mark the job as
+    # complete in parallel.
+    r = await client.post(
+        "/api/cutout/jobs",
+        headers={"X-Auth-Request-User": "someone"},
+        data={
+            "ID": "1:2:band:value",
+            "pos": "CIRCLE 0.5 0.8 2",
+            "runid": "some-run-id",
+        },
+        params={"phase": "RUN"},
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/api/cutout/jobs/2"
 
-    # Try again but immediately queuing the job to run.
-    try:
-        r = await client.post(
-            "/api/cutout/jobs",
-            headers={"X-Auth-Request-User": "someone"},
-            data={
-                "ID": "1:2:band:value",
-                "pos": "CIRCLE 0.5 0.8 2",
-                "runid": "some-run-id",
-            },
-            params={"phase": "RUN"},
-        )
-        assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/api/cutout/jobs/2"
-        r = await client.get(
+    async def run_job() -> None:
+        await runner.mark_in_progress("someone", "2", delay=0.2)
+        results = [
+            UWSJobResult(
+                result_id="cutout",
+                url="s3://some-bucket/some/path",
+                mime_type="application/fits",
+            )
+        ]
+        await runner.mark_complete("someone", "2", results, delay=0.2)
+
+    _, r = await asyncio.gather(
+        run_job(),
+        client.get(
             "/api/cutout/jobs/2",
             headers={"X-Auth-Request-User": "someone"},
             params={"wait": 2, "phase": "QUEUED"},
-        )
-        assert r.status_code == 200
-        if "EXECUTING" in r.text:
-            r = await client.get(
-                "/api/cutout/jobs/2",
-                headers={"X-Auth-Request-User": "someone"},
-                params={"wait": 10, "phase": "EXECUTING"},
-            )
-            assert r.status_code == 200
-
-        # Depending on sequencing, it's possible that the start time of the
-        # job has not yet been recorded.  If that is the case, wait a bit for
-        # that to happen and then request the job again.
-        if "startTime" not in r.text:
-            await asyncio.sleep(2.0)
-            r = await client.get(
-                "/api/cutout/jobs/2",
-                headers={"X-Auth-Request-User": "someone"},
-                params={"wait": 10, "phase": "EXECUTING"},
-            )
-            assert r.status_code == 200
-
-        result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
-        assert result == COMPLETED_JOB.strip()
-    finally:
-        worker.stop()
+        ),
+    )
+    assert r.status_code == 200
+    assert "EXECUTING" in r.text
+    r = await client.get(
+        "/api/cutout/jobs/2",
+        headers={"X-Auth-Request-User": "someone"},
+        params={"wait": 10, "phase": "EXECUTING"},
+    )
+    assert r.status_code == 200
+    result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
+    assert result == COMPLETED_JOB.strip()
 
 
 @pytest.mark.asyncio
@@ -137,9 +134,8 @@ async def test_redirect(app: FastAPI) -> None:
     the redirect to honor ``X-Forwarded-Proto`` and thus use ``https``.  Also
     test that the correct hostname is used if it is different.
     """
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        transport=transport,
+        transport=ASGITransport(app=app),  # type: ignore[arg-type]
         base_url="http://foo.com/",
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:

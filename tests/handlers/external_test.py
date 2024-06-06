@@ -83,9 +83,9 @@ async def test_capabilities_urls(app: FastAPI) -> None:
     the generated URLs to honor ``X-Forwarded-Proto`` and thus use ``https``.
     We also want to honor the ``Host`` header.
     """
-    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
-        transport=transport, base_url="http://foo.com/"
+        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        base_url="http://foo.com/",
     ) as client:
         r = await client.get(
             "/api/cutout/capabilities",

@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
-from dramatiq import Actor, Message
+from safir.arq import ArqQueue, JobMetadata
 from structlog.stdlib import BoundLogger
 
-from .actors import job_completed, job_failed
 from .exceptions import InvalidCutoutParameterError
 from .models.parameters import CutoutParameters
 from .models.stencils import RangeStencil
 from .uws.exceptions import MultiValuedParameterError, ParameterError
-from .uws.models import Job, JobParameter
+from .uws.models import UWSJob, UWSJobParameter
 from .uws.policy import UWSPolicy
 
 __all__ = ["ImageCutoutPolicy"]
@@ -26,20 +23,17 @@ class ImageCutoutPolicy(UWSPolicy):
 
     Parameters
     ----------
-    actor
-         The actor to call for a job.  This simple mapping is temporary;
-         eventually different types of cutouts will dispatch to different
-         actors.
+    config
+         UWS configuration.
     logger
          Logger to use to report errors when dispatching the request.
     """
 
-    def __init__(self, actor: Actor, logger: BoundLogger) -> None:
-        super().__init__()
-        self._actor = actor
+    def __init__(self, arq: ArqQueue, logger: BoundLogger) -> None:
+        super().__init__(arq)
         self._logger = logger
 
-    def dispatch(self, job: Job, access_token: str) -> Message:
+    async def dispatch(self, job: UWSJob, access_token: str) -> JobMetadata:
         """Dispatch a cutout request to the backend.
 
         Parameters
@@ -52,8 +46,8 @@ class ImageCutoutPolicy(UWSPolicy):
 
         Returns
         -------
-        dramatiq.Message
-            The dispatched message to the backend.
+        JobMetadata
+            Metadata about the running job.
 
         Notes
         -----
@@ -61,29 +55,15 @@ class ImageCutoutPolicy(UWSPolicy):
         This limitation is expected to be relaxed in a later version.
         """
         cutout_params = CutoutParameters.from_job_parameters(job.parameters)
-        return self._actor.send_with_options(
-            args=(
-                job.job_id,
-                cutout_params.ids,
-                [s.to_dict() for s in cutout_params.stencils],
-                access_token,
-            ),
-            time_limit=job.execution_duration * 1000,
-            on_success=job_completed,
-            on_failure=job_failed,
+        return await self.arq.enqueue(
+            "cutout",
+            job.job_id,
+            cutout_params.ids,
+            [s.to_dict() for s in cutout_params.stencils],
+            access_token,
         )
 
-    def validate_destruction(
-        self, destruction: datetime, job: Job
-    ) -> datetime:
-        return job.destruction_time
-
-    def validate_execution_duration(
-        self, execution_duration: int, job: Job
-    ) -> int:
-        return job.execution_duration
-
-    def validate_params(self, params: list[JobParameter]) -> None:
+    def validate_params(self, params: list[UWSJobParameter]) -> None:
         try:
             cutout_params = CutoutParameters.from_job_parameters(params)
         except InvalidCutoutParameterError as e:

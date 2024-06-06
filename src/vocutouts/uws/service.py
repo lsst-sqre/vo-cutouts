@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta
 
-from dramatiq import Message
+from safir.arq import JobMetadata
 from safir.datetime import current_datetime
 
 from .config import UWSConfig
@@ -14,12 +14,12 @@ from .models import (
     ACTIVE_PHASES,
     Availability,
     ExecutionPhase,
-    Job,
-    JobDescription,
-    JobParameter,
+    UWSJob,
+    UWSJobDescription,
+    UWSJobParameter,
 )
 from .policy import UWSPolicy
-from .storage import FrontendJobStore
+from .storage import JobStore
 
 __all__ = ["JobService"]
 
@@ -28,27 +28,26 @@ class JobService:
     """Dispatch and track UWS jobs.
 
     The goal of this layer is to encapsulate the machinery of a service that
-    dispatches jobs using Dramatiq, without making assumptions about what the
-    jobs do or what outputs they may return.  Workers do not use this layer
-    and instead talk directly to the `~vocutouts.uws.storage.WorkerJobStore`.
+    dispatches jobs using arq, without making assumptions about what the jobs
+    do or what outputs they may return.  Workers do not use this layer and
+    instead talk directly to the `~vocutouts.uws.storage.WorkerJobStore`.
 
     Parameters
     ----------
     config
-        The UWS configuration.
+        UWS configuration.
     policy
-        The policy layer for dispatching jobs and validating parameters,
+        Policy layer for dispatching jobs and validating parameters,
         destruction times, and execution durations.
     storage
-        The underlying storage for job metadata and result tracking.
+        Underlying storage for job metadata and result tracking.
     """
 
     def __init__(
         self,
-        *,
         config: UWSConfig,
         policy: UWSPolicy,
-        storage: FrontendJobStore,
+        storage: JobStore,
     ) -> None:
         self._config = config
         self._policy = policy
@@ -73,8 +72,8 @@ class JobService:
         user: str,
         *,
         run_id: str | None = None,
-        params: list[JobParameter],
-    ) -> Job:
+        params: list[UWSJobParameter],
+    ) -> UWSJob:
         """Create a pending job.
 
         This does not start execution of the job.  That must be done
@@ -128,7 +127,7 @@ class JobService:
         wait_seconds: int | None = None,
         wait_phase: ExecutionPhase | None = None,
         wait_for_completion: bool = False,
-    ) -> Job:
+    ) -> UWSJob:
         """Retrieve a job.
 
         This also supports long-polling, to implement UWS 1.1 blocking
@@ -203,7 +202,7 @@ class JobService:
         phases: list[ExecutionPhase] | None = None,
         after: datetime | None = None,
         count: int | None = None,
-    ) -> list[JobDescription]:
+    ) -> list[UWSJobDescription]:
         """List the jobs for a particular user.
 
         Parameters
@@ -229,7 +228,7 @@ class JobService:
 
     async def start(
         self, user: str, job_id: str, access_token: str
-    ) -> Message:
+    ) -> JobMetadata:
         """Start execution of a job.
 
         Parameters
@@ -244,8 +243,8 @@ class JobService:
 
         Returns
         -------
-        dramatiq.Message
-            The work queuing message representing this job.
+        JobMetadata
+            arq job metadata.
 
         Raises
         ------
@@ -258,9 +257,9 @@ class JobService:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         if job.phase not in (ExecutionPhase.PENDING, ExecutionPhase.HELD):
             raise InvalidPhaseError("Cannot start job in phase {job.phase}")
-        message = self._policy.dispatch(job, access_token)
-        await self._storage.mark_queued(job_id, message.message_id)
-        return message
+        metadata = await self._policy.dispatch(job, access_token)
+        await self._storage.mark_queued(job_id, metadata)
+        return metadata
 
     async def update_destruction(
         self, user: str, job_id: str, destruction: datetime
@@ -339,8 +338,8 @@ class JobService:
             return duration
 
     async def _wait_for_job(
-        self, job: Job, until_not: set[ExecutionPhase], timeout: timedelta
-    ) -> Job:
+        self, job: UWSJob, until_not: set[ExecutionPhase], timeout: timedelta
+    ) -> UWSJob:
         """Wait for the completion of a job.
 
         Parameters

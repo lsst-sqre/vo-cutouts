@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-import time
+import asyncio
 from datetime import timedelta
-from typing import Any
 
-import dramatiq
 import pytest
-from dramatiq import Worker
-from dramatiq.middleware import CurrentMessage
 from httpx import AsyncClient
 from safir.datetime import current_datetime, isodatetime
-from structlog.stdlib import BoundLogger
 
-from tests.support.uws import TrivialPolicy, job_started, uws_broker
-from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.dependencies import UWSFactory, uws_dependency
-from vocutouts.uws.models import JobParameter
+from vocutouts.uws.dependencies import UWSFactory
+from vocutouts.uws.models import UWSJobParameter, UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -89,28 +84,23 @@ FINISHED_JOB = """
 
 @pytest.mark.asyncio
 async def test_poll(
-    client: AsyncClient,
-    logger: BoundLogger,
-    uws_config: UWSConfig,
-    uws_factory: UWSFactory,
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
         "user",
-        params=[
-            JobParameter(parameter_id="id", value="bar"),
-        ],
+        params=[UWSJobParameter(parameter_id="id", value="bar")],
     )
 
-    # Poll for changes for two seconds.  Nothing will happen since there is no
-    # worker.
+    # Poll for changes for one second. Nothing will happen since nothing is
+    # changing the mock arq queue.
     now = current_datetime()
     r = await client.get(
         "/jobs/1",
         headers={"X-Auth-Request-User": "user"},
-        params={"WAIT": "2"},
+        params={"WAIT": "1"},
     )
-    assert (current_datetime() - now).total_seconds() >= 2
+    assert (current_datetime() - now).total_seconds() >= 1
     assert r.status_code == 200
     assert r.text == PENDING_JOB.strip().format(
         "PENDING",
@@ -118,23 +108,7 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    @dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
-    def wait_job(job_id: str) -> list[dict[str, Any]]:
-        message = CurrentMessage.get_current_message()
-        assert message
-        now = isodatetime(current_datetime())
-        job_started.send(job_id, message.message_id, now)
-        time.sleep(2)
-        return [
-            {
-                "result_id": "cutout",
-                "url": "s3://some-bucket/some/path",
-                "mime_type": "application/fits",
-            }
-        ]
-
     # Start the job and worker.
-    uws_dependency.override_policy(TrivialPolicy(wait_job))
     r = await client.post(
         "/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
@@ -148,41 +122,49 @@ async def test_poll(
         isodatetime(job.creation_time),
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
-    now = current_datetime()
-    worker = Worker(uws_broker, worker_timeout=100)
-    worker.start()
 
-    # Now, wait again.  We should get a reply after a couple of seconds when
-    # the job finishes.
-    try:
-        r = await client.get(
+    # Poll for a change from queued, which we should see after half a second.
+    now = current_datetime()
+    job, r = await asyncio.gather(
+        runner.mark_in_progress("user", "1", delay=0.5),
+        client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "QUEUED"},
+        ),
+    )
+    assert r.status_code == 200
+    assert job.start_time
+    assert r.text == EXECUTING_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+
+    # Now, wait again, in parallel with the job finishing. We should get a
+    # reply after a second and a half when the job finishes.
+    results = [
+        UWSJobResult(
+            result_id="cutout",
+            url="s3://some-bucket/some/path",
+            mime_type="application/fits",
         )
-        assert r.status_code == 200
-        job = await job_service.get("user", "1")
-        assert job.start_time
-        assert r.text == EXECUTING_JOB.strip().format(
-            isodatetime(job.creation_time),
-            isodatetime(job.start_time),
-            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
-        )
-        r = await client.get(
+    ]
+    job, r = await asyncio.gather(
+        runner.mark_complete("user", "1", results, delay=1.5),
+        client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "EXECUTING"},
-        )
-        assert r.status_code == 200
-        job = await job_service.get("user", "1")
-        assert job.start_time
-        assert job.end_time
-        assert r.text == FINISHED_JOB.strip().format(
-            isodatetime(job.creation_time),
-            isodatetime(job.start_time),
-            isodatetime(job.end_time),
-            isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
-        )
-        assert (current_datetime() - now).total_seconds() >= 2
-    finally:
-        worker.stop()
+        ),
+    )
+    assert r.status_code == 200
+    assert job.start_time
+    assert job.end_time
+    assert r.text == FINISHED_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.end_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+    assert (current_datetime() - now).total_seconds() >= 2

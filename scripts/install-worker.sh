@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # This script updates and installs the necessary prerequisites for an image
-# cutout backend starting with a stack container.
+# cutout backend starting with a stack container. It takes one parameter, the
+# directory in which to do the installation.
 
 # Bash "strict mode", to help catch problems and bugs in the shell
 # script. Every bash script you write should include this. See
@@ -30,5 +31,8 @@ cd image_cutout_backend
 setup -r .
 scons install declare -t current
 
-# Install Python dependencies.
-pip install --no-cache-dir 'dramatiq[redis]' safir structlog
+# Install Python dependencies and the vo-cutouts code.
+cd "$1"
+pip install --no-cache-dir pydantic-settings google-auth google-cloud-storage
+pip install --no-cache-dir 'safir[arq,db,gcs] @ git+https://github.com/lsst-sqre/safir@main'
+pip install --no-cache-dir --no-deps .

@@ -13,12 +13,11 @@ from importlib.metadata import metadata, version
 
 import structlog
 from fastapi import FastAPI
-from safir.dependencies.http_client import http_client_dependency
+from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 
-from .actors import cutout
 from .config import config
 from .handlers.external import external_router
 from .handlers.internal import internal_router
@@ -32,16 +31,17 @@ __all__ = ["app", "lifespan"]
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
+    if config.arq_mode == ArqMode.production:
+        settings = config.arq_redis_settings
+        arq: ArqQueue = await RedisArqQueue.initialize(settings)
+    else:
+        arq = MockArqQueue()
     logger = structlog.get_logger("vocutouts")
-    await uws_dependency.initialize(
-        config=config.uws_config(),
-        policy=ImageCutoutPolicy(cutout, logger),
-        logger=logger,
-    )
+    policy = ImageCutoutPolicy(arq, logger)
+    await uws_dependency.initialize(config.uws_config, policy)
 
     yield
 
-    await http_client_dependency.aclose()
     await uws_dependency.aclose()
 
 

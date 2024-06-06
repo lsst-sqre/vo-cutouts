@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
+from arq.connections import RedisSettings
 from pydantic import SecretStr
+from safir.arq import ArqMode
 
 __all__ = ["UWSConfig"]
 
@@ -40,8 +42,11 @@ class UWSConfig:
     database_url: str
     """URL for the metadata database."""
 
-    redis_url: str
-    """DSN of the Redis server used by Dramatiq."""
+    arq_mode: ArqMode
+    """What mode to use for the arq queue."""
+
+    arq_redis_settings: RedisSettings
+    """Settings for Redis for the arq queue."""
 
     signing_service_account: str
     """Email of service account to use for signed URLs.
@@ -53,9 +58,6 @@ class UWSConfig:
 
     database_password: SecretStr | None = None
     """Password for the database."""
-
-    redis_password: SecretStr | None = None
-    """Password for the Redis server used by Dramatiq."""
 
     url_lifetime: timedelta = timedelta(minutes=15)
     """How long result URLs should be valid for."""

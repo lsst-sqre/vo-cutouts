@@ -12,20 +12,20 @@ starlette
 uvicorn[standard]
 
 # Other dependencies.
+arq
 astropy
 asyncpg
 click
-dramatiq[redis]
 google-auth
 google-cloud-storage
 jinja2
 psycopg2
 pydantic
 pydantic-settings
-#safir[db,gcs]>=5.2.1
+#safir[arq,db,gcs]>=5.2.1
 sqlalchemy[asyncio]
 structlog
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
-safir[db,gcs] @ git+https://github.com/lsst-sqre/safir@main
+safir[arq,db,gcs] @ git+https://github.com/lsst-sqre/safir@main

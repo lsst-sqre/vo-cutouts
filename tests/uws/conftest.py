@@ -1,13 +1,4 @@
-"""pytest fixtures for UWS testing.
-
-The long-term goal is for the UWS library to move into Safir, so there is some
-attempt here to keep its tests independent.  The places where that is
-currently violated are module naming (unavoidable), use of the image cutouts
-app instead of a standalone app, use of the broker initialization from
-vocutouts.config, and the naming of the environment variables used to generate
-the UWSConfig.  These will all need to be fixed before this code can be moved
-to Safir.
-"""
+"""pytest fixtures for UWS testing."""
 
 from __future__ import annotations
 
@@ -19,12 +10,11 @@ import pytest
 import pytest_asyncio
 import structlog
 from asgi_lifespan import LifespanManager
-from dramatiq import Broker
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from safir.arq import MockArqQueue
 from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
-from safir.dependencies.http_client import http_client_dependency
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.testing.gcs import MockStorageClient, patch_google_storage
@@ -37,18 +27,12 @@ from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.schema import Base
 
-from ..support.uws import (
-    TrivialPolicy,
-    WorkerSession,
-    build_uws_config,
-    trivial_job,
-    uws_broker,
-)
+from ..support.uws import MockJobRunner, TrivialPolicy, build_uws_config
 
 
 @pytest_asyncio.fixture
 async def app(
-    stub_broker: Broker,
+    arq_queue: MockArqQueue,
     uws_config: UWSConfig,
     logger: BoundLogger,
 ) -> AsyncIterator[FastAPI]:
@@ -66,13 +50,9 @@ async def app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        await uws_dependency.initialize(
-            config=uws_config,
-            policy=TrivialPolicy(trivial_job),
-            logger=logger,
-        )
+        policy = TrivialPolicy(arq_queue, "trivial")
+        await uws_dependency.initialize(uws_config, policy)
         yield
-        await http_client_dependency.aclose()
         await uws_dependency.aclose()
 
     uws_app = FastAPI(lifespan=lifespan)
@@ -80,10 +60,14 @@ async def app(
     uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
     uws_app.add_middleware(XForwardedMiddleware)
     install_error_handlers(uws_app)
-    uws_broker.add_middleware(WorkerSession(uws_config))
 
     async with LifespanManager(uws_app):
         yield uws_app
+
+
+@pytest.fixture
+def arq_queue() -> MockArqQueue:
+    return MockArqQueue()
 
 
 @pytest_asyncio.fixture
@@ -110,6 +94,11 @@ def mock_google_storage() -> Iterator[MockStorageClient]:
     )
 
 
+@pytest.fixture
+def runner(uws_factory: UWSFactory, arq_queue: MockArqQueue) -> MockJobRunner:
+    return MockJobRunner(uws_factory, arq_queue)
+
+
 @pytest_asyncio.fixture
 async def session(app: FastAPI) -> AsyncIterator[async_scoped_session]:
     """Return a database session with no transaction open.
@@ -119,13 +108,6 @@ async def session(app: FastAPI) -> AsyncIterator[async_scoped_session]:
     """
     async for session in db_session_dependency():
         yield session
-
-
-@pytest.fixture
-def stub_broker() -> Broker:
-    uws_broker.emit_after("process_boot")
-    uws_broker.flush_all()
-    return uws_broker
 
 
 @pytest.fixture

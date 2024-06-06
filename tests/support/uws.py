@@ -4,135 +4,53 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
-import dramatiq
-import structlog
-from dramatiq import Actor, Broker, Message, Worker
-from dramatiq.brokers.stub import StubBroker
-from dramatiq.middleware import CurrentMessage, Middleware
-from dramatiq.results import Results
-from dramatiq.results.backends import StubBackend
+from arq.connections import RedisSettings
 from pydantic import SecretStr
-from safir.database import create_sync_session
-from safir.datetime import current_datetime, isodatetime, parse_isodatetime
-from sqlalchemy.future import select
-from sqlalchemy.orm import scoped_session
+from safir.arq import ArqMode, ArqQueue, JobMetadata, MockArqQueue
 
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.jobs import (
-    uws_job_completed,
-    uws_job_failed,
-    uws_job_started,
-)
-from vocutouts.uws.models import ExecutionPhase, Job, JobParameter
+from vocutouts.uws.dependencies import UWSFactory
+from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
 from vocutouts.uws.policy import UWSPolicy
-from vocutouts.uws.schema import Job as SQLJob
-from vocutouts.uws.service import JobService
 
-uws_broker = StubBroker()
-"""Dramatiq broker for use in tests."""
-
-results = StubBackend()
-"""Result backend used by UWS."""
-
-worker_session: scoped_session | None = None
-"""Shared scoped session used by the UWS worker."""
-
-uws_broker.add_middleware(CurrentMessage())
-uws_broker.add_middleware(Results(backend=results))
-
-
-class WorkerSession(Middleware):
-    """Middleware to create a SQLAlchemy scoped session for a worker."""
-
-    def __init__(self, config: UWSConfig) -> None:
-        self._config = config
-
-    def before_worker_boot(self, broker: Broker, worker: Worker) -> None:
-        """Initialize the database session before worker threads start.
-
-        This is run in the main process by the ``dramatiq`` CLI before
-        starting the worker threads, so it should run in a single-threaded
-        context.
-        """
-        global worker_session
-        if worker_session is None:
-            logger = structlog.get_logger("uws")
-            worker_session = create_sync_session(
-                self._config.database_url,
-                self._config.database_password,
-                logger,
-                isolation_level="REPEATABLE READ",
-                statement=select(SQLJob.id),
-            )
-
-
-@dramatiq.actor(broker=uws_broker, queue_name="job", store_results=True)
-def trivial_job(job_id: str) -> list[dict[str, Any]]:
-    message = CurrentMessage.get_current_message()
-    assert message
-    now = current_datetime()
-    job_started.send(job_id, message.message_id, isodatetime(now))
-    return [
-        {
-            "result_id": "cutout",
-            "url": "s3://some-bucket/some/path",
-            "mime_type": "application/fits",
-        }
-    ]
-
-
-@dramatiq.actor(broker=uws_broker, queue_name="uws", priority=0)
-def job_started(job_id: str, message_id: str, start_time: str) -> None:
-    logger = structlog.get_logger("uws")
-    start = parse_isodatetime(start_time)
-    assert worker_session
-    uws_job_started(job_id, message_id, start, worker_session, logger)
-
-
-@dramatiq.actor(broker=uws_broker, queue_name="uws", priority=10)
-def job_completed(
-    message: dict[str, Any], result: list[dict[str, str]]
-) -> None:
-    logger = structlog.get_logger("uws")
-    job_id = message["args"][0]
-    assert worker_session
-    uws_job_completed(job_id, result, worker_session, logger)
-
-
-@dramatiq.actor(broker=uws_broker, queue_name="uws", priority=20)
-def job_failed(message: dict[str, Any], exception: dict[str, str]) -> None:
-    logger = structlog.get_logger("uws")
-    job_id = message["args"][0]
-    assert worker_session
-    uws_job_failed(job_id, exception, worker_session, logger)
+__all__ = [
+    "MockJobRunner",
+    "TrivialPolicy",
+    "build_uws_config",
+]
 
 
 class TrivialPolicy(UWSPolicy):
-    def __init__(self, actor: Actor) -> None:
-        super().__init__()
-        self.actor = actor
+    """Trivial UWS policy that calls a worker with only one parameter.
 
-    def dispatch(self, job: Job, access_token: str) -> Message:
-        return self.actor.send_with_options(
-            args=(job.job_id,),
-            on_success=job_completed,
-            on_failure=job_failed,
-        )
+    Parameters
+    ----------
+    arq
+        Underlying arq queue.
+    function
+        Name of the function to run.
+    """
+
+    def __init__(self, arq: ArqQueue, function: str) -> None:
+        super().__init__(arq)
+        self._function = function
+
+    async def dispatch(self, job: UWSJob, access_token: str) -> JobMetadata:
+        return await self.arq.enqueue(self._function, job.job_id)
 
     def validate_destruction(
-        self, destruction: datetime, job: Job
+        self, destruction: datetime, job: UWSJob
     ) -> datetime:
         return destruction
 
     def validate_execution_duration(
-        self, execution_duration: int, job: Job
+        self, execution_duration: int, job: UWSJob
     ) -> int:
         return execution_duration
 
-    def validate_params(self, params: list[JobParameter]) -> None:
+    def validate_params(self, params: list[UWSJobParameter]) -> None:
         pass
 
 
@@ -141,46 +59,111 @@ def build_uws_config() -> UWSConfig:
 
     Exepcts the database hostname and port and the Redis hostname and port to
     be set in the environment following the conventions used by tox-docker,
-    plus ``POSTGRES_USER`` and ``POSTGRES_DATABASE`` to specify the username
-    and database.
+    plus ``POSTGRES_USER``, ``POSTGRES_DB``, and ``POSTGRES_PASSWORD`` to
+    specify the username, database, and password.
     """
     db_host = os.environ["POSTGRES_HOST"]
     db_port = os.environ["POSTGRES_5432_TCP_PORT"]
     db_user = os.environ["POSTGRES_USER"]
     db_name = os.environ["POSTGRES_DB"]
     database_url = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
-    redis_host = os.environ["REDIS_HOST"]
-    redis_port = os.environ["REDIS_6379_TCP_PORT"]
-    redis_url = f"redis://{redis_host}:{redis_port}/0"
     return UWSConfig(
         execution_duration=timedelta(minutes=10),
         lifetime=timedelta(days=1),
         database_url=database_url,
-        database_password=SecretStr(os.environ["CUTOUT_DATABASE_PASSWORD"]),
-        redis_url=redis_url,
-        redis_password=None,
+        database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
+        arq_mode=ArqMode.test,
+        arq_redis_settings=RedisSettings(
+            host=os.environ["REDIS_HOST"],
+            port=int(os.environ["REDIS_6379_TCP_PORT"]),
+        ),
         signing_service_account="",
     )
 
 
-async def wait_for_job(job_service: JobService, user: str, job_id: str) -> Job:
-    """Wait for a job that was just started and return it."""
-    job = await job_service.get(
-        "user", "1", wait_seconds=5, wait_phase=ExecutionPhase.QUEUED
-    )
-    while job.phase in (ExecutionPhase.QUEUED, ExecutionPhase.EXECUTING):
-        job = await job_service.get(
-            "user", "1", wait_seconds=5, wait_phase=job.phase
-        )
+class MockJobRunner:
+    """Simulate execution of jobs with a mock queue.
 
-    # Despite prioritization of messages, there can still be a race condition
-    # where the completion message is processed before the start message, so
-    # the job is seen as complete but the start time is not populated.  Wait
-    # for the start time to show up as well.
-    count = 0
-    while job.start_time is None and count < 10:
-        await asyncio.sleep(0.5)
-        count += 1
-        job = await job_service.get("user", "1")
+    When running the test suite, the arq queue is replaced with a mock queue
+    that doesn't execute workers. That execution has to be simulated by
+    manually updating state in the mock queue and running the UWS database
+    worker functions that normally would be run automatically by the queue.
 
-    return job
+    This class wraps that functionality. An instance of it is normally
+    provided as a fixture, initialized with the same test objects as the test
+    suite.
+
+    Parameters
+    ----------
+    factory
+        Factory for UWS components.
+    arq_queue
+        Mock arq queue for testing.
+    """
+
+    def __init__(self, factory: UWSFactory, arq_queue: MockArqQueue) -> None:
+        self._service = factory.create_job_service()
+        self._store = factory.create_job_store()
+        self._arq = arq_queue
+
+    async def mark_in_progress(
+        self, username: str, job_id: str, *, delay: float | None = None
+    ) -> UWSJob:
+        """Mark a queued job in progress.
+
+        Parameters
+        ----------
+        username
+            Owner of job.
+        job_id
+            Job ID.
+        delay
+            How long to delay in seconds before marking the job as complete.
+
+        Returns
+        -------
+        UWSJob
+            Record of the job.
+        """
+        if delay:
+            await asyncio.sleep(delay)
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        await self._arq.set_in_progress(job.message_id)
+        await self._store.mark_executing(job_id, datetime.now(tz=UTC))
+        return await self._service.get(username, job_id)
+
+    async def mark_complete(
+        self,
+        username: str,
+        job_id: str,
+        results: list[UWSJobResult] | Exception,
+        *,
+        delay: float | None = None,
+    ) -> UWSJob:
+        """Mark an in progress job as complete.
+
+        Parameters
+        ----------
+        username
+            Owner of job.
+        job_id
+            Job ID.
+        results
+            Results to return. May be an exception to simulate a job failure.
+        delay
+            How long to delay in seconds before marking the job as complete.
+
+        Returns
+        -------
+        UWSJob
+            Record of the job.
+        """
+        if delay:
+            await asyncio.sleep(delay)
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        await self._arq.set_complete(job.message_id, result=results)
+        job_result = await self._arq.get_job_result(job.message_id)
+        await self._store.mark_completed(job_id, job_result)
+        return await self._service.get(username, job_id)

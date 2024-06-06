@@ -6,7 +6,7 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
-from .models import ErrorCode, ErrorType, JobError
+from .models import ErrorCode, ErrorType, UWSJobError
 
 __all__ = [
     "DataMissingError",
@@ -28,15 +28,38 @@ class UWSError(Exception):
     SODA requires errors be in ``text/plain`` and start with an error code.
     Adopt that as a general representation of errors produced by the UWS
     layer to simplify generating error responses.
+
+    Parameters
+    ----------
+    error_code
+        SODA error code.
+    message
+        Exception message, which will be the stringification of the exception.
+    detail
+        Additional detail.
+
+    Notes
+    -----
+    To allow exceptions that inherit from UWSError to be pickled, which is
+    necessary to allow arq workers to throw them, all the arguments must be
+    passed to ``Exception.__init__``. ``__str__`` is overriden below so that
+    only the message is included in the stringification.
+
+    This hack will probably only work for subclasses that take the same
+    arguments, so beware if you need to pickle anything else.
     """
 
     def __init__(
         self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
-        super().__init__(message)
+        super().__init__(error_code, message, detail)
         self.error_code = error_code
+        self.message = message
         self.detail = detail
         self.status_code = 400
+
+    def __str__(self) -> str:
+        return self.message
 
 
 class MultiValuedParameterError(UWSError):
@@ -59,41 +82,27 @@ class TaskError(UWSError):
     """An error occurred during background task processing."""
 
     @classmethod
-    def from_callback(cls, exception: dict[str, str]) -> TaskError:
-        """Reconstitute the exception passed to an on_failure callback.
+    def from_exception(cls, exc: Exception) -> TaskError:
+        """Convert an arbitrary exception to a `TaskError` exception.
 
-        Notes
-        -----
-        Unfortunately, the ``dramatiq.middleware.Callbacks`` middleware only
-        provides the type of the error message and the body as strings, so we
-        have to parse the body of the exception to get the structured data we
-        want to store in the UWS database.
+        Parameters
+        ----------
+        exc
+            Exception.
+
+        Returns
+        -------
+        TaskError
+            Converted exception.
         """
-        exception_type = exception["type"]
-        exception_message = exception["message"]
-        detail = None
-        if exception_type in ("TaskFatalError", "TaskTransientError"):
-            try:
-                error_code_str, rest = exception_message.split(None, 1)
-                error_code = ErrorCode(error_code_str)
-                if "\n" in rest:
-                    message, detail = rest.split("\n", 1)
-                else:
-                    message = rest
-            except Exception:
-                error_code = ErrorCode.ERROR
-                message = exception_message
-            if exception_type == "TaskFatalError":
-                return TaskFatalError(error_code, message, detail)
-            else:
-                return TaskTransientError(error_code, message, detail)
-        else:
-            return cls(
-                ErrorType.TRANSIENT,
-                ErrorCode.ERROR,
-                "Unknown error executing task",
-                f"{exception_type}: {exception_message}",
-            )
+        if isinstance(exc, TaskError):
+            return exc
+        return cls(
+            ErrorType.TRANSIENT,
+            ErrorCode.ERROR,
+            "Unknown error executing task",
+            f"{type(exc).__name__}: {exc!s}",
+        )
 
     def __init__(
         self,
@@ -106,9 +115,9 @@ class TaskError(UWSError):
         self.error_type = error_type
         self.detail = detail
 
-    def to_job_error(self) -> JobError:
-        """Convert to a `~vocutouts.uws.models.JobError`."""
-        return JobError(
+    def to_job_error(self) -> UWSJobError:
+        """Convert to a `~vocutouts.uws.models.UWSJobError`."""
+        return UWSJobError(
             error_code=self.error_code,
             error_type=self.error_type,
             message=str(self),

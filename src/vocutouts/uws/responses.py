@@ -8,7 +8,7 @@ from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 from safir.datetime import isodatetime
 
-from .models import Availability, Job, JobDescription, JobError
+from .models import Availability, UWSJob, UWSJobDescription, UWSJobError
 from .results import ResultStore
 
 __all__ = ["UWSTemplates"]
@@ -40,7 +40,7 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    def error(self, request: Request, error: JobError) -> Response:
+    def error(self, request: Request, error: UWSJobError) -> Response:
         """Return the error of a job as an XML response."""
         return _templates.TemplateResponse(
             request,
@@ -49,7 +49,7 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    async def job(self, request: Request, job: Job) -> Response:
+    async def job(self, request: Request, job: UWSJob) -> Response:
         """Return a job as an XML response."""
         results = [
             await self._result_store.url_for_result(r) for r in job.results
@@ -62,7 +62,7 @@ class UWSTemplates:
         )
 
     def job_list(
-        self, request: Request, jobs: list[JobDescription], base_url: str
+        self, request: Request, jobs: list[UWSJobDescription], base_url: str
     ) -> Response:
         """Return a list of jobs as an XML response."""
         return _templates.TemplateResponse(
@@ -72,7 +72,7 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    def parameters(self, request: Request, job: Job) -> Response:
+    def parameters(self, request: Request, job: UWSJob) -> Response:
         """Return the parameters for a job as an XML response."""
         return _templates.TemplateResponse(
             request,
@@ -81,7 +81,7 @@ class UWSTemplates:
             media_type="application/xml",
         )
 
-    async def results(self, request: Request, job: Job) -> Response:
+    async def results(self, request: Request, job: UWSJob) -> Response:
         """Return the results for a job as an XML response."""
         results = [
             await self._result_store.url_for_result(r) for r in job.results

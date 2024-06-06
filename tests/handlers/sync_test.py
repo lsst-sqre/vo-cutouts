@@ -2,38 +2,52 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
-from dramatiq import Worker
 from httpx import AsyncClient
 
-from vocutouts.broker import broker
+from vocutouts.uws.models import UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 
 @pytest.mark.asyncio
-async def test_sync(client: AsyncClient) -> None:
-    worker = Worker(broker, worker_timeout=100)
-    worker.start()
+async def test_sync(client: AsyncClient, runner: MockJobRunner) -> None:
+    async def run_job(job_id: str) -> None:
+        await runner.mark_in_progress("someone", job_id, delay=0.2)
+        results = [
+            UWSJobResult(
+                result_id="cutout",
+                url="s3://some-bucket/some/path",
+                mime_type="application/fits",
+            )
+        ]
+        await runner.mark_complete("someone", job_id, results)
 
-    try:
-        # GET request.
-        r = await client.get(
+    # GET request.
+    _, r = await asyncio.gather(
+        run_job("1"),
+        client.get(
             "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
             params={"ID": "1:2:band:id", "Pos": "CIRCLE 0 -2 2"},
-        )
-        assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/some/path"
+        ),
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/some/path"
 
-        # POST request.
-        r = await client.post(
+    # POST request.
+    _, r = await asyncio.gather(
+        run_job("2"),
+        client.post(
             "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
             data={"ID": "3:4:band:id", "Pos": "CIRCLE 0 -2 2"},
-        )
-        assert r.status_code == 303
-        assert r.headers["Location"] == "https://example.com/some/path"
-    finally:
-        worker.stop()
+        ),
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/some/path"
 
 
 @pytest.mark.asyncio

@@ -16,7 +16,10 @@ classifiers = [
     "Operating System :: POSIX",
     "Typing :: Typed",
 ]
-requires-python = ">=3.12"
+# vo-cutouts really requires Python 3.12, but the backend worker runs on
+# Python 3.11 currently (2024-06-05) due to the stack container and we need to
+# be able to install vo-cutouts there so that we can use supporting code.
+requires-python = ">=3.11"
 # Use requirements/main.in for runtime dependencies instead.
 dependencies = []
 dynamic = ["version"]
@@ -181,7 +184,7 @@ select = ["ALL"]
 "src/vocutouts/handlers/**" = [
     "D103",    # FastAPI handlers should not have docstrings
 ]
-"src/vocutouts/workers.py" = [
+"src/vocutouts/workers/cutout.py" = [
     "S108",    # use of /tmp is safe in this context
 ]
 "tests/**" = [
