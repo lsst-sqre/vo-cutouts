@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from arq.connections import RedisSettings
 from pydantic import SecretStr
-from safir.arq import ArqMode, ArqQueue, JobMetadata
+from safir.arq import ArqMode, ArqQueue, JobMetadata, MockArqQueue
 
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.models import UWSJob, UWSJobParameter
+from vocutouts.uws.dependencies import UWSFactory
+from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
 from vocutouts.uws.policy import UWSPolicy
 
 __all__ = [
+    "MockJobRunner",
     "TrivialPolicy",
     "build_uws_config",
 ]
@@ -76,3 +79,91 @@ def build_uws_config() -> UWSConfig:
         ),
         signing_service_account="",
     )
+
+
+class MockJobRunner:
+    """Simulate execution of jobs with a mock queue.
+
+    When running the test suite, the arq queue is replaced with a mock queue
+    that doesn't execute workers. That execution has to be simulated by
+    manually updating state in the mock queue and running the UWS database
+    worker functions that normally would be run automatically by the queue.
+
+    This class wraps that functionality. An instance of it is normally
+    provided as a fixture, initialized with the same test objects as the test
+    suite.
+
+    Parameters
+    ----------
+    factory
+        Factory for UWS components.
+    arq_queue
+        Mock arq queue for testing.
+    """
+
+    def __init__(self, factory: UWSFactory, arq_queue: MockArqQueue) -> None:
+        self._service = factory.create_job_service()
+        self._store = factory.create_job_store()
+        self._arq = arq_queue
+
+    async def mark_in_progress(
+        self, username: str, job_id: str, *, delay: float | None = None
+    ) -> UWSJob:
+        """Mark a queued job in progress.
+
+        Parameters
+        ----------
+        username
+            Owner of job.
+        job_id
+            Job ID.
+        delay
+            How long to delay in seconds before marking the job as complete.
+
+        Returns
+        -------
+        UWSJob
+            Record of the job.
+        """
+        if delay:
+            await asyncio.sleep(delay)
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        await self._arq.set_in_progress(job.message_id)
+        await self._store.mark_executing(job_id, datetime.now(tz=UTC))
+        return await self._service.get(username, job_id)
+
+    async def mark_complete(
+        self,
+        username: str,
+        job_id: str,
+        results: list[UWSJobResult] | Exception,
+        *,
+        delay: float | None = None,
+    ) -> UWSJob:
+        """Mark an in progress job as complete.
+
+        Parameters
+        ----------
+        username
+            Owner of job.
+        job_id
+            Job ID.
+        results
+            Results to return. May be an exception to simulate a job failure.
+        delay
+            How long to delay in seconds before marking the job as complete.
+
+        Returns
+        -------
+        UWSJob
+            Record of the job.
+        """
+        if delay:
+            await asyncio.sleep(delay)
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        await self._arq.set_complete(job.message_id, result=results)
+        job_result = await self._arq.get_job_result(job.message_id)
+        await self._store.mark_completed(job_id, job_result)
+        return await self._service.get(username, job_id)

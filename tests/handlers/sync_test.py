@@ -3,45 +3,31 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-from safir.arq import MockArqQueue
 
-from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 
 @pytest.mark.asyncio
-async def test_sync(
-    client: AsyncClient, arq_queue: MockArqQueue, uws_factory: UWSFactory
-) -> None:
-    job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
-
-    async def set_result(job_id: str) -> None:
-        await asyncio.sleep(0.1)
-        job = await job_service.get("someone", job_id)
-        assert job.message_id
-        await arq_queue.set_in_progress(job.message_id)
-        await job_storage.mark_executing(job_id, datetime.now(tz=UTC))
-        result = [
+async def test_sync(client: AsyncClient, runner: MockJobRunner) -> None:
+    async def run_job(job_id: str) -> None:
+        await runner.mark_in_progress("someone", job_id, delay=0.2)
+        results = [
             UWSJobResult(
                 result_id="cutout",
                 url="s3://some-bucket/some/path",
                 mime_type="application/fits",
             )
         ]
-        job = await job_service.get("someone", job_id)
-        assert job.message_id
-        await arq_queue.set_complete(job.message_id, result=result)
-        job_result = await arq_queue.get_job_result(job.message_id)
-        await job_storage.mark_completed(job_id, job_result)
+        await runner.mark_complete("someone", job_id, results)
 
     # GET request.
     _, r = await asyncio.gather(
-        set_result("1"),
+        run_job("1"),
         client.get(
             "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},
@@ -53,7 +39,7 @@ async def test_sync(
 
     # POST request.
     _, r = await asyncio.gather(
-        set_result("2"),
+        run_job("2"),
         client.post(
             "/api/cutout/sync",
             headers={"X-Auth-Request-User": "someone"},

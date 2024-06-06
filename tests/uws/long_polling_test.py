@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from httpx import AsyncClient
-from safir.arq import MockArqQueue
 from safir.datetime import current_datetime, isodatetime
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobParameter, UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -83,12 +84,9 @@ FINISHED_JOB = """
 
 @pytest.mark.asyncio
 async def test_poll(
-    client: AsyncClient,
-    arq_queue: MockArqQueue,
-    uws_factory: UWSFactory,
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
     job = await job_service.create(
         "user",
         params=[UWSJobParameter(parameter_id="id", value="bar")],
@@ -125,17 +123,10 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    async def set_in_progress() -> None:
-        await asyncio.sleep(0.5)
-        job = await job_service.get("user", "1")
-        assert job.message_id
-        await arq_queue.set_in_progress(job.message_id)
-        await job_storage.mark_executing("1", datetime.now(tz=UTC))
-
-    # Poll for a change from queued, which we should see after about a second.
+    # Poll for a change from queued, which we should see after half a second.
     now = current_datetime()
-    _, r = await asyncio.gather(
-        set_in_progress(),
+    job, r = await asyncio.gather(
+        runner.mark_in_progress("user", "1", delay=0.5),
         client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
@@ -143,7 +134,6 @@ async def test_poll(
         ),
     )
     assert r.status_code == 200
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert r.text == EXECUTING_JOB.strip().format(
         isodatetime(job.creation_time),
@@ -151,25 +141,17 @@ async def test_poll(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
-    async def set_result() -> None:
-        result = [
-            UWSJobResult(
-                result_id="cutout",
-                url="s3://some-bucket/some/path",
-                mime_type="application/fits",
-            )
-        ]
-        await asyncio.sleep(1.5)
-        job = await job_service.get("user", "1")
-        assert job.message_id
-        await arq_queue.set_complete(job.message_id, result=result)
-        job_result = await arq_queue.get_job_result(job.message_id)
-        await job_storage.mark_completed("1", job_result)
-
     # Now, wait again, in parallel with the job finishing. We should get a
-    # reply after a couple of seconds when the job finishes.
-    _, r = await asyncio.gather(
-        set_result(),
+    # reply after a second and a half when the job finishes.
+    results = [
+        UWSJobResult(
+            result_id="cutout",
+            url="s3://some-bucket/some/path",
+            mime_type="application/fits",
+        )
+    ]
+    job, r = await asyncio.gather(
+        runner.mark_complete("user", "1", results, delay=1.5),
         client.get(
             "/jobs/1",
             headers={"X-Auth-Request-User": "user"},
@@ -177,7 +159,6 @@ async def test_poll(
         ),
     )
     assert r.status_code == 200
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert job.end_time
     assert r.text == FINISHED_JOB.strip().format(

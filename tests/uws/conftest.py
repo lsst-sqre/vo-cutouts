@@ -27,7 +27,7 @@ from vocutouts.uws.errors import install_error_handlers
 from vocutouts.uws.handlers import uws_router
 from vocutouts.uws.schema import Base
 
-from ..support.uws import TrivialPolicy, build_uws_config
+from ..support.uws import MockJobRunner, TrivialPolicy, build_uws_config
 
 
 @pytest_asyncio.fixture
@@ -92,6 +92,11 @@ def mock_google_storage() -> Iterator[MockStorageClient]:
     yield from patch_google_storage(
         expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
     )
+
+
+@pytest.fixture
+def runner(uws_factory: UWSFactory, arq_queue: MockArqQueue) -> MockJobRunner:
+    return MockJobRunner(uws_factory, arq_queue)
 
 
 @pytest_asyncio.fixture

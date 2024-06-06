@@ -22,6 +22,8 @@ from vocutouts.policy import ImageCutoutPolicy
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
 from vocutouts.uws.schema import Base
 
+from .support.uws import MockJobRunner
+
 
 @pytest_asyncio.fixture
 async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
@@ -65,6 +67,11 @@ def mock_google_storage() -> Iterator[MockStorageClient]:
     yield from patch_google_storage(
         expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
     )
+
+
+@pytest.fixture
+def runner(uws_factory: UWSFactory, arq_queue: MockArqQueue) -> MockJobRunner:
+    return MockJobRunner(uws_factory, arq_queue)
 
 
 @pytest_asyncio.fixture

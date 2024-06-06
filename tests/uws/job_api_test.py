@@ -6,17 +6,17 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from safir.arq import MockArqQueue
 from safir.datetime import isodatetime
 
-from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobParameter, UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -96,13 +96,9 @@ JOB_RESULTS = """
 
 @pytest.mark.asyncio
 async def test_job_run(
-    client: AsyncClient,
-    arq_queue: MockArqQueue,
-    uws_config: UWSConfig,
-    uws_factory: UWSFactory,
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
     job = await job_service.create(
         "user",
         run_id="some-run-id",
@@ -159,27 +155,19 @@ async def test_job_run(
         "600",
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
-
-    # Tell the queue to start the job.
-    job = await job_service.get("user", "1")
-    assert job.message_id
-    await arq_queue.set_in_progress(job.message_id)
-    await job_storage.mark_executing("1", datetime.now(tz=UTC))
+    await runner.mark_in_progress("user", "1")
 
     # Tell the queue the job is finished.
-    result = [
+    results = [
         UWSJobResult(
             result_id="cutout",
             url="s3://some-bucket/some/path",
             mime_type="application/fits",
         )
     ]
-    await arq_queue.set_complete(job.message_id, result=result)
-    job_result = await arq_queue.get_job_result(job.message_id)
-    await job_storage.mark_completed("1", job_result)
+    job = await runner.mark_complete("user", "1", results)
 
     # Check the job results.
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert job.start_time.microsecond == 0
     assert job.end_time

@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import pytest
 from httpx import AsyncClient
-from safir.arq import MockArqQueue
 from safir.datetime import isodatetime
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
 from vocutouts.uws.models import ErrorCode, UWSJobParameter
+
+from ..support.uws import MockJobRunner
 
 ERRORED_JOB = """
 <uws:job
@@ -50,12 +49,9 @@ JOB_ERROR_SUMMARY = """
 
 @pytest.mark.asyncio
 async def test_temporary_error(
-    client: AsyncClient,
-    arq_queue: MockArqQueue,
-    uws_factory: UWSFactory,
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
     await job_service.create(
         "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
     )
@@ -73,17 +69,11 @@ async def test_temporary_error(
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    job = await job_service.get("user", "1")
-    assert job.message_id
-    await arq_queue.set_in_progress(job.message_id)
-    await job_storage.mark_executing("1", datetime.now(tz=UTC))
+    await runner.mark_in_progress("user", "1")
     result = TaskTransientError(ErrorCode.USAGE_ERROR, "Something failed")
-    await arq_queue.set_complete(job.message_id, result=result)
-    job_result = await arq_queue.get_job_result(job.message_id)
-    await job_storage.mark_completed("1", job_result)
+    job = await runner.mark_complete("user", "1", result)
 
     # Check the results.
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert job.end_time
     r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
@@ -110,10 +100,9 @@ async def test_temporary_error(
 
 @pytest.mark.asyncio
 async def test_fatal_error(
-    client: AsyncClient, arq_queue: MockArqQueue, uws_factory: UWSFactory
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
     await job_service.create(
         "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
     )
@@ -125,17 +114,11 @@ async def test_fatal_error(
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    job = await job_service.get("user", "1")
-    assert job.message_id
-    await arq_queue.set_in_progress(job.message_id)
-    await job_storage.mark_executing("1", datetime.now(tz=UTC))
+    await runner.mark_in_progress("user", "1")
     result = TaskFatalError(ErrorCode.ERROR, "Whoops", "Some details")
-    await arq_queue.set_complete(job.message_id, result=result)
-    job_result = await arq_queue.get_job_result(job.message_id)
-    await job_storage.mark_completed("1", job_result)
+    job = await runner.mark_complete("user", "1", result)
 
     # Check the results.
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert job.end_time
     r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
@@ -162,12 +145,9 @@ async def test_fatal_error(
 
 @pytest.mark.asyncio
 async def test_unknown_error(
-    client: AsyncClient,
-    arq_queue: MockArqQueue,
-    uws_factory: UWSFactory,
+    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
 ) -> None:
     job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
     await job_service.create(
         "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
     )
@@ -179,17 +159,11 @@ async def test_unknown_error(
         data={"PHASE": "RUN"},
     )
     assert r.status_code == 303
-    job = await job_service.get("user", "1")
-    assert job.message_id
-    await arq_queue.set_in_progress(job.message_id)
-    await job_storage.mark_executing("1", datetime.now(tz=UTC))
+    await runner.mark_in_progress("user", "1")
     result = ValueError("Unknown exception")
-    await arq_queue.set_complete(job.message_id, result=result)
-    job_result = await arq_queue.get_job_result(job.message_id)
-    await job_storage.mark_completed("1", job_result)
+    job = await runner.mark_complete("user", "1", result)
 
     # Check the results.
-    job = await job_service.get("user", "1")
     assert job.start_time
     assert job.end_time
     r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import re
-from datetime import UTC, datetime
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from safir.arq import MockArqQueue
 
-from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobResult
+
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -65,12 +64,7 @@ COMPLETED_JOB = """
 
 
 @pytest.mark.asyncio
-async def test_create_job(
-    client: AsyncClient, arq_queue: MockArqQueue, uws_factory: UWSFactory
-) -> None:
-    job_service = uws_factory.create_job_service()
-    job_storage = uws_factory.create_job_store()
-
+async def test_create_job(client: AsyncClient, runner: MockJobRunner) -> None:
     r = await client.post(
         "/api/cutout/jobs",
         headers={"X-Auth-Request-User": "someone"},
@@ -100,28 +94,19 @@ async def test_create_job(
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/api/cutout/jobs/2"
 
-    async def set_result() -> None:
-        await asyncio.sleep(0.2)
-        job = await job_service.get("someone", "2")
-        assert job.message_id
-        await arq_queue.set_in_progress(job.message_id)
-        await job_storage.mark_executing("2", datetime.now(tz=UTC))
-        result = [
+    async def run_job() -> None:
+        await runner.mark_in_progress("someone", "2", delay=0.2)
+        results = [
             UWSJobResult(
                 result_id="cutout",
                 url="s3://some-bucket/some/path",
                 mime_type="application/fits",
             )
         ]
-        await asyncio.sleep(0.2)
-        job = await job_service.get("someone", "2")
-        assert job.message_id
-        await arq_queue.set_complete(job.message_id, result=result)
-        job_result = await arq_queue.get_job_result(job.message_id)
-        await job_storage.mark_completed("2", job_result)
+        await runner.mark_complete("someone", "2", results, delay=0.2)
 
     _, r = await asyncio.gather(
-        set_result(),
+        run_job(),
         client.get(
             "/api/cutout/jobs/2",
             headers={"X-Auth-Request-User": "someone"},
