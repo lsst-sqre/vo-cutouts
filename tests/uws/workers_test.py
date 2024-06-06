@@ -25,7 +25,11 @@ from vocutouts.uws.models import (
     UWSJobResult,
 )
 from vocutouts.uws.storage import JobStore
-from vocutouts.uws.workers import build_uws_worker, build_worker
+from vocutouts.uws.workers import (
+    UWSWorkerConfig,
+    build_uws_worker,
+    build_worker,
+)
 
 
 @pytest.mark.asyncio
@@ -43,7 +47,17 @@ async def test_build_worker(
         ]
 
     # Construct the arq configuration and check it.
-    settings = build_worker(worker, uws_config, logger)
+    redis_settings = uws_config.arq_redis_settings
+    worker_config = UWSWorkerConfig(
+        arq_mode=uws_config.arq_mode,
+        arq_queue_url=(
+            f"redis://{redis_settings.host}:{redis_settings.port}"
+            f"/{redis_settings.database}"
+        ),
+        arq_queue_password=redis_settings.password,
+        timeout=uws_config.execution_duration,
+    )
+    settings = build_worker(worker, worker_config, logger)
     assert len(settings.functions) == 1
     assert isinstance(settings.functions[0], Function)
     assert settings.functions[0].name == worker.__qualname__

@@ -9,13 +9,14 @@ import uuid
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Concatenate, ParamSpec
+from urllib.parse import urlsplit
 
 from arq import func
 from arq.connections import RedisSettings
 from arq.constants import default_queue_name
-from arq.typing import StartupShutdown, WorkerCoroutine
+from arq.typing import SecondsTimedelta, StartupShutdown, WorkerCoroutine
 from arq.worker import Function
 from safir.arq import (
     ArqMode,
@@ -40,9 +41,45 @@ P = ParamSpec("P")
 
 __all__ = [
     "WorkerSettings",
+    "UWSWorkerConfig",
     "build_worker",
     "build_uws_worker",
 ]
+
+
+@dataclass
+class UWSWorkerConfig:
+    """Minimal configuration needed for building a UWS backend worker."""
+
+    arq_mode: ArqMode
+    """What mode to use for the arq queue."""
+
+    arq_queue_url: str
+    """URL of the Redis arq queue."""
+
+    arq_queue_password: str | None
+    """Password of the Redis arq queue."""
+
+    timeout: timedelta
+    """Maximum execution time.
+
+    Jobs that run longer than this length of time will be automatically
+    aborted.
+    """
+
+    @property
+    def arq_redis_settings(self) -> RedisSettings:
+        """Redis settings for arq."""
+        database = 0
+        url = urlsplit(self.arq_queue_url)
+        if url.path:
+            database = int(url.path.lstrip("/"))
+        return RedisSettings(
+            host=url.hostname or "localhost",
+            port=url.port or 6379,
+            database=database,
+            password=self.arq_queue_password,
+        )
 
 
 @dataclass
@@ -62,6 +99,9 @@ class WorkerSettings:
     redis_settings: RedisSettings
     """Redis configuration for arq."""
 
+    job_timeout: SecondsTimedelta
+    """Timeout for all jobs."""
+
     queue_name: str = default_queue_name
     """Name of arq queue to listen to for jobs."""
 
@@ -77,7 +117,7 @@ class WorkerSettings:
 
 def build_worker(
     worker: Callable[Concatenate[str, P], list[UWSJobResult]],
-    config: UWSConfig,
+    config: UWSWorkerConfig,
     logger: BoundLogger,
 ) -> WorkerSettings:
     """Construct an arq worker for the provided backend function.
@@ -99,7 +139,7 @@ def build_worker(
         Synchronous function that does the actual work. This function will be
         run in a thread pool of size one.
     config
-        UWS configuration.
+        UWS worker configuration.
     logger
         Logger to use for messages.
     """
@@ -153,6 +193,7 @@ def build_worker(
     return WorkerSettings(
         functions=[func(run, name=worker.__qualname__)],
         redis_settings=config.arq_redis_settings,
+        job_timeout=config.timeout,
         on_startup=startup,
         on_shutdown=shutdown,
         allow_abort_jobs=True,
@@ -309,6 +350,7 @@ def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
     return WorkerSettings(
         functions=[job_started, job_completed],
         redis_settings=config.arq_redis_settings,
+        job_timeout=timedelta(seconds=30),
         queue_name=UWS_QUEUE_NAME,
         on_startup=startup,
         on_shutdown=shutdown,

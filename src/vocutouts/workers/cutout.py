@@ -7,6 +7,7 @@ the arq worker definition. Only this module is allowed to use stack packages.
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
@@ -17,13 +18,13 @@ from astropy.coordinates import Angle, SkyCoord
 from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
+from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
-from ..config import config
 from ..uws.exceptions import TaskFatalError, TaskTransientError
 from ..uws.models import ErrorCode, UWSJobResult
-from ..uws.workers import build_worker
+from ..uws.workers import UWSWorkerConfig, build_worker
 
 _BUTLER_FACTORY = LabeledButlerFactory()
 """Factory for creating Butler objects."""
@@ -191,10 +192,19 @@ def cutout(
 
 
 configure_logging(
-    name="vocutouts", profile=config.profile, log_level=config.log_level
+    name="vocutouts",
+    profile=os.getenv("CUTOUT_PROFILE", "development"),
+    log_level=os.getenv("CUTOUT_LOG_LEVEL", "INFO"),
 )
 
 WorkerSettings = build_worker(
-    cutout, config.uws_config, structlog.get_logger("vocutouts")
+    cutout,
+    UWSWorkerConfig(
+        arq_mode=ArqMode.production,
+        arq_queue_url=os.environ["CUTOUT_ARQ_QUEUE_URL"],
+        arq_queue_password=os.getenv("CUTOUT_ARQ_QUEUE_PASSWORD"),
+        timeout=timedelta(seconds=int(os.environ["CUTOUT_TIMEOUT"])),
+    ),
+    structlog.get_logger("vocutouts"),
 )
 """arq configuration for the cutout worker."""
