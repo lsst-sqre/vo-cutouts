@@ -8,6 +8,7 @@ from datetime import timedelta
 
 import pytest
 import pytest_asyncio
+import respx
 import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
@@ -18,6 +19,7 @@ from safir.dependencies.db_session import db_session_dependency
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.testing.gcs import MockStorageClient, patch_google_storage
+from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
@@ -91,6 +93,16 @@ def logger() -> BoundLogger:
 def mock_google_storage() -> Iterator[MockStorageClient]:
     yield from patch_google_storage(
         expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
+    )
+
+
+@pytest.fixture(autouse=True)
+def mock_slack(
+    uws_config: UWSConfig, respx_mock: respx.Router
+) -> MockSlackWebhook:
+    assert uws_config.slack_webhook
+    return mock_slack_webhook(
+        uws_config.slack_webhook.get_secret_value(), respx_mock
     )
 
 

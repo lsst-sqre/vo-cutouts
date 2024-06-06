@@ -8,6 +8,7 @@ import re
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 from vocutouts.uws.models import UWSJobResult
 
@@ -155,7 +156,9 @@ async def test_redirect(app: FastAPI) -> None:
 
 
 @pytest.mark.asyncio
-async def test_bad_parameters(client: AsyncClient) -> None:
+async def test_bad_parameters(
+    client: AsyncClient, mock_slack: MockSlackWebhook
+) -> None:
     bad_params: list[dict[str, str]] = [
         {},
         {"pos": "RANGE 0 360 -2 2"},
@@ -179,3 +182,6 @@ async def test_bad_parameters(client: AsyncClient) -> None:
         )
         assert r.status_code == 422, f"Parameters {params}"
         assert r.text.startswith("UsageError")
+
+    # None of these requests should have been reported to Slack.
+    assert mock_slack.messages == []

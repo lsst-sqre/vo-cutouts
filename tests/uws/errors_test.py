@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 from httpx import AsyncClient
+from safir.testing.slack import MockSlackWebhook
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobParameter
@@ -20,7 +21,9 @@ class PostTest:
 
 
 @pytest.mark.asyncio
-async def test_errors(client: AsyncClient, uws_factory: UWSFactory) -> None:
+async def test_errors(
+    client: AsyncClient, uws_factory: UWSFactory, mock_slack: MockSlackWebhook
+) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
         "user",
@@ -131,3 +134,6 @@ async def test_errors(client: AsyncClient, uws_factory: UWSFactory) -> None:
         )
         assert r.status_code == 422
         assert r.text.startswith("UsageError")
+
+    # None of these errors should have produced Slack errors.
+    assert mock_slack.messages == []

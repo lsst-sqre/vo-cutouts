@@ -6,6 +6,8 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
+from safir.slack.webhook import SlackIgnoredException
+
 from .models import ErrorCode, ErrorType, UWSJobError
 
 __all__ = [
@@ -62,7 +64,7 @@ class UWSError(Exception):
         return self.message
 
 
-class MultiValuedParameterError(UWSError):
+class MultiValuedParameterError(UWSError, SlackIgnoredException):
     """Multiple values not allowed for this parameter."""
 
     def __init__(self, message: str) -> None:
@@ -70,7 +72,7 @@ class MultiValuedParameterError(UWSError):
         self.status_code = 422
 
 
-class PermissionDeniedError(UWSError):
+class PermissionDeniedError(UWSError, SlackIgnoredException):
     """User does not have access to this resource."""
 
     def __init__(self, message: str) -> None:
@@ -150,7 +152,7 @@ class TaskTransientError(TaskError):
         super().__init__(ErrorType.TRANSIENT, error_code, message, detail)
 
 
-class UsageError(UWSError):
+class UsageError(UWSError, SlackIgnoredException):
     """Invalid parameters were passed to a UWS API."""
 
     def __init__(self, message: str, detail: str | None = None) -> None:
@@ -158,7 +160,7 @@ class UsageError(UWSError):
         self.status_code = 422
 
 
-class DataMissingError(UWSError):
+class DataMissingError(UWSError, SlackIgnoredException):
     """The data requested does not exist for that job."""
 
     def __init__(self, message: str) -> None:

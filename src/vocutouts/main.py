@@ -17,15 +17,16 @@ from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
+from safir.models import ErrorModel
+from safir.slack.webhook import SlackRouteErrorHandler
 
 from .config import config
-from .handlers.external import external_router
-from .handlers.internal import internal_router
+from .handlers import external, internal
 from .policy import ImageCutoutPolicy
 from .uws.dependencies import uws_dependency
 from .uws.errors import install_error_handlers
 
-__all__ = ["app", "lifespan"]
+__all__ = ["app"]
 
 
 @asynccontextmanager
@@ -63,11 +64,14 @@ app = FastAPI(
 """The main FastAPI application for vo-cutouts."""
 
 # Attach the routers.
-app.include_router(internal_router)
+app.include_router(internal.router)
 app.include_router(
-    external_router,
+    external.router,
     prefix=config.path_prefix,
-    responses={401: {"description": "Unauthenticated"}},
+    responses={
+        401: {"description": "Unauthenticated"},
+        403: {"description": "Permission denied", "model": ErrorModel},
+    },
 )
 
 # Install middleware.
@@ -76,3 +80,11 @@ app.add_middleware(CaseInsensitiveQueryMiddleware)
 
 # Install error handlers.
 install_error_handlers(app)
+
+# Configure Slack alerts.
+if config.slack_webhook:
+    logger = structlog.get_logger("vocutouts")
+    SlackRouteErrorHandler.initialize(
+        config.slack_webhook.get_secret_value(), "vo-cutouts", logger
+    )
+    logger.debug("Initialized Slack webhook")

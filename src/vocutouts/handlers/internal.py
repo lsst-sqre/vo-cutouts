@@ -1,8 +1,8 @@
 """Internal HTTP handlers that serve relative to the root path, ``/``.
 
 These handlers aren't externally visible since the app is available at a path,
-``/vocutouts``. See `vocutouts.handlers.external` for
-the external endpoint handlers.
+``/vocutouts``. See `vocutouts.handlers.external` for the external endpoint
+handlers.
 
 These handlers should be used for monitoring, health checks, internal status,
 or other information that should not be visible outside the Kubernetes cluster.
@@ -10,16 +10,17 @@ or other information that should not be visible outside the Kubernetes cluster.
 
 from fastapi import APIRouter
 from safir.metadata import Metadata, get_metadata
+from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..config import config
 
-__all__ = ["get_index", "internal_router"]
-
-internal_router = APIRouter()
+router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all internal handlers."""
 
+__all__ = ["router"]
 
-@internal_router.get(
+
+@router.get(
     "/",
     description=(
         "Return metadata about the running application. Can also be used as"
@@ -31,11 +32,6 @@ internal_router = APIRouter()
     summary="Application metadata",
 )
 async def get_index() -> Metadata:
-    """GET ``/`` (the app's internal root).
-
-    By convention, this endpoint returns only the application's metadata.
-    """
     return get_metadata(
-        package_name="vo-cutouts",
-        application_name=config.name,
+        package_name="vo-cutouts", application_name=config.name
     )
