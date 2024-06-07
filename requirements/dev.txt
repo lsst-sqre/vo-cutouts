@@ -118,7 +118,7 @@ sqlalchemy==2.0.30
     #   -r requirements/dev.in
 termcolor==2.4.0
     # via pytest-sugar
-typing-extensions==4.12.1
+typing-extensions==4.12.2
     # via
     #   -c requirements/main.txt
     #   mypy

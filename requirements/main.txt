@@ -57,7 +57,7 @@ google-api-core==2.19.0
     # via
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.29.0
+google-auth==2.30.0
     # via
     #   -r requirements/main.in
     #   google-api-core
@@ -173,7 +173,7 @@ rich==13.7.1
     # via typer
 rsa==4.9
     # via google-auth
-safir @ git+https://github.com/lsst-sqre/safir@53062ff688230856f89ce9a82b9ec3036dcb4beb
+safir @ git+https://github.com/lsst-sqre/safir@88363ffeee3b2db60e06b90702b84a7b0daf0ba2
     # via -r requirements/main.in
 shellingham==1.5.4
     # via typer
@@ -196,7 +196,7 @@ structlog==24.2.0
     #   safir
 typer==0.12.3
     # via fastapi-cli
-typing-extensions==4.12.1
+typing-extensions==4.12.2
     # via
     #   fastapi
     #   pydantic

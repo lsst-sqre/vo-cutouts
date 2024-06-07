@@ -6,6 +6,10 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
+from traceback import format_exception
+from typing import ClassVar
+
+from safir.slack.blockkit import SlackException
 from safir.slack.webhook import SlackIgnoredException
 
 from .models import ErrorCode, ErrorType, UWSJobError
@@ -18,6 +22,7 @@ __all__ = [
     "TaskError",
     "TaskFatalError",
     "TaskTransientError",
+    "TaskUserError",
     "UnknownJobError",
     "UsageError",
     "UWSError",
@@ -39,29 +44,15 @@ class UWSError(Exception):
         Exception message, which will be the stringification of the exception.
     detail
         Additional detail.
-
-    Notes
-    -----
-    To allow exceptions that inherit from UWSError to be pickled, which is
-    necessary to allow arq workers to throw them, all the arguments must be
-    passed to ``Exception.__init__``. ``__str__`` is overriden below so that
-    only the message is included in the stringification.
-
-    This hack will probably only work for subclasses that take the same
-    arguments, so beware if you need to pickle anything else.
     """
 
     def __init__(
         self, error_code: ErrorCode, message: str, detail: str | None = None
     ) -> None:
-        super().__init__(error_code, message, detail)
+        super().__init__(message)
         self.error_code = error_code
-        self.message = message
         self.detail = detail
         self.status_code = 400
-
-    def __str__(self) -> str:
-        return self.message
 
 
 class MultiValuedParameterError(UWSError, SlackIgnoredException):
@@ -80,51 +71,85 @@ class PermissionDeniedError(UWSError, SlackIgnoredException):
         self.status_code = 403
 
 
-class TaskError(UWSError):
-    """An error occurred during background task processing."""
+class TaskError(SlackException):
+    """An error occurred during background task processing.
 
-    @classmethod
-    def from_exception(cls, exc: Exception) -> TaskError:
-        """Convert an arbitrary exception to a `TaskError` exception.
+    Attributes
+    ----------
+    error_type
+        Indicates whether this exception represents a transient error that may
+        go away if the request is retried or a permanent error with the
+        request.
+    traceback
+        Traceback of the underlying triggering exception, if tracebacks were
+        requested and there is a cause set.
+    user
+        User whose action triggered this exception, for Slack reporting.
 
-        Parameters
-        ----------
-        exc
-            Exception.
+    Parameters
+    ----------
+    error_code
+        DALI-compatible error code.
+    message
+        Human-readable error message.
+    details
+        Additional details about the error.
+    add_traceback
+        Whether to add a traceback of the underlying cause to the error
+        details.
+    traceback
+        Expanded traceback, used to preserve the traceback across pickling.
+    """
 
-        Returns
-        -------
-        TaskError
-            Converted exception.
-        """
-        if isinstance(exc, TaskError):
-            return exc
-        return cls(
-            ErrorType.TRANSIENT,
-            ErrorCode.ERROR,
-            "Unknown error executing task",
-            f"{type(exc).__name__}: {exc!s}",
-        )
+    error_type: ClassVar[ErrorType] = ErrorType.TRANSIENT
+    """Type of error this exception represents."""
 
     def __init__(
         self,
-        error_type: ErrorType,
         error_code: ErrorCode,
         message: str,
         detail: str | None = None,
+        *,
+        add_traceback: bool = False,
     ) -> None:
-        super().__init__(error_code, message)
-        self.error_type = error_type
-        self.detail = detail
+        super().__init__(message)
+        self._error_code = error_code
+        self._message = message
+        self._detail = detail
+        self._add_traceback = add_traceback
+        self._traceback: str | None = None
+
+    def __reduce__(self) -> str | tuple:
+        # Ensure the traceback is serialized before pickling.
+        self._traceback = self._serialize_traceback()
+        return super().__reduce__()
+
+    @property
+    def traceback(self) -> str | None:
+        """Traceback of the underlying exception, if desired."""
+        if self._traceback:
+            return self._traceback
+        self._traceback = self._serialize_traceback()
+        return self._traceback
 
     def to_job_error(self) -> UWSJobError:
         """Convert to a `~vocutouts.uws.models.UWSJobError`."""
+        if self.traceback and self._detail:
+            detail: str | None = self._detail + "\n\n" + self.traceback
+        else:
+            detail = self._detail or self.traceback
         return UWSJobError(
-            error_code=self.error_code,
+            error_code=self._error_code,
             error_type=self.error_type,
             message=str(self),
-            detail=self.detail,
+            detail=detail,
         )
+
+    def _serialize_traceback(self) -> str | None:
+        """Serialize the traceback from ``__cause__``."""
+        if not self._add_traceback or not self.__cause__:
+            return None
+        return "".join(format_exception(self.__cause__))
 
 
 class TaskFatalError(TaskError):
@@ -134,10 +159,7 @@ class TaskFatalError(TaskError):
     never succeed.
     """
 
-    def __init__(
-        self, error_code: ErrorCode, message: str, detail: str | None = None
-    ) -> None:
-        super().__init__(ErrorType.FATAL, error_code, message, detail)
+    error_type = ErrorType.FATAL
 
 
 class TaskTransientError(TaskError):
@@ -146,10 +168,15 @@ class TaskTransientError(TaskError):
     The job may be retried with the same parameters and may succeed.
     """
 
-    def __init__(
-        self, error_code: ErrorCode, message: str, detail: str | None = None
-    ) -> None:
-        super().__init__(ErrorType.TRANSIENT, error_code, message, detail)
+
+class TaskUserError(TaskFatalError, SlackIgnoredException):
+    """Fatal user error occurred during background task processing.
+
+    The parameters or other job information was invalid and this job will
+    never succeed. This is the same as `TaskFatalError` except that it
+    represents a user error and will not be reported to Slack as a service
+    problem.
+    """
 
 
 class UsageError(UWSError, SlackIgnoredException):
