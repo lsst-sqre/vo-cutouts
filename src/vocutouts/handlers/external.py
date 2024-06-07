@@ -15,6 +15,7 @@ from safir.dependencies.gafaelfawr import (
     auth_logger_dependency,
 )
 from safir.metadata import get_metadata
+from safir.slack.webhook import SlackRouteErrorHandler
 from structlog.stdlib import BoundLogger
 
 from ..config import config
@@ -27,9 +28,7 @@ from ..uws.dependencies import (
 from ..uws.handlers import uws_router
 from ..uws.models import ExecutionPhase, UWSJobParameter
 
-__all__ = ["external_router"]
-
-external_router = APIRouter()
+router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
 
 _CAPABILITIES_TEMPLATE = """
@@ -61,8 +60,10 @@ _CAPABILITIES_TEMPLATE = """
 </capabilities>
 """
 
+__all__ = ["router"]
 
-@external_router.get(
+
+@router.get(
     "/",
     response_model=Index,
     response_model_exclude_none=True,
@@ -87,7 +88,7 @@ async def get_index() -> Index:
     return Index(metadata=metadata)
 
 
-@external_router.get(
+@router.get(
     "/availability",
     description="VOSI-availability resource for the image cutout service",
     responses={200: {"content": {"application/xml": {}}}},
@@ -103,7 +104,7 @@ async def get_availability(
     return templates.availability(request, availability)
 
 
-@external_router.get(
+@router.get(
     "/capabilities",
     description="VOSI-capabilities resource for the image cutout service",
     responses={200: {"content": {"application/xml": {}}}},
@@ -177,7 +178,7 @@ async def _sync_request(
     return RedirectResponse(result.url, status_code=303)
 
 
-@external_router.get(
+@router.get(
     "/sync",
     description=(
         "Synchronously request a cutout. This will wait for the cutout to be"
@@ -272,7 +273,7 @@ async def get_sync(
     )
 
 
-@external_router.post(
+@router.post(
     "/sync",
     description=(
         "Synchronously request a cutout. This will wait for the cutout to be"
@@ -473,7 +474,7 @@ async def create_job(
     return str(request.url_for("get_job", job_id=job.job_id))
 
 
-# Add the UWS routes to our external routes.  This must be done after defining
+# Add the UWS routes to our external routes. This must be done after defining
 # the POST handler for /jobs because of oddities in the implementation details
 # of include_router.
-external_router.include_router(uws_router, prefix="/jobs")
+router.include_router(uws_router, prefix="/jobs")

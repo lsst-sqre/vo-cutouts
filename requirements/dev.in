@@ -7,12 +7,7 @@
 
 -c main.txt
 
-# Development
-pre-commit
-tox
-tox-uv
-
-# Testing and linting
+# Testing
 asgi-lifespan
 coverage[toml]
 httpx
@@ -20,7 +15,9 @@ mypy
 pytest
 pytest-asyncio
 pytest-cov
+pytest-sugar
 pytest-timeout
+respx
 sqlalchemy[mypy]
 
 # Documentation

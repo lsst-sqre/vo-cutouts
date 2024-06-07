@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 from safir.datetime import isodatetime
+from safir.testing.slack import MockSlackWebhook
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
@@ -49,7 +50,10 @@ JOB_ERROR_SUMMARY = """
 
 @pytest.mark.asyncio
 async def test_temporary_error(
-    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    mock_slack: MockSlackWebhook,
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
@@ -97,10 +101,16 @@ async def test_temporary_error(
         "UsageError Something failed"
     )
 
+    # For now, this shouldn't have resulted in Slack errors.
+    assert mock_slack.messages == []
+
 
 @pytest.mark.asyncio
 async def test_fatal_error(
-    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    mock_slack: MockSlackWebhook,
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
@@ -142,10 +152,16 @@ async def test_fatal_error(
         "Error Whoops\n\nSome details"
     )
 
+    # For now, this shouldn't have resulted in Slack errors.
+    assert mock_slack.messages == []
+
 
 @pytest.mark.asyncio
 async def test_unknown_error(
-    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    mock_slack: MockSlackWebhook,
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
@@ -187,3 +203,6 @@ async def test_unknown_error(
         "Error Unknown error executing task\n\n"
         "ValueError: Unknown exception"
     )
+
+    # For now, this shouldn't have resulted in Slack errors.
+    assert mock_slack.messages == []

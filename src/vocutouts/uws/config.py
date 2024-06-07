@@ -24,6 +24,12 @@ class UWSConfig:
     `vocutouts.uws.dependencies.UWSDependency` object.
     """
 
+    arq_mode: ArqMode
+    """What mode to use for the arq queue."""
+
+    arq_redis_settings: RedisSettings
+    """Settings for Redis for the arq queue."""
+
     execution_duration: timedelta
     """Maximum execution time in seconds.
 
@@ -42,12 +48,6 @@ class UWSConfig:
     database_url: str
     """URL for the metadata database."""
 
-    arq_mode: ArqMode
-    """What mode to use for the arq queue."""
-
-    arq_redis_settings: RedisSettings
-    """Settings for Redis for the arq queue."""
-
     signing_service_account: str
     """Email of service account to use for signed URLs.
 
@@ -58,6 +58,9 @@ class UWSConfig:
 
     database_password: SecretStr | None = None
     """Password for the database."""
+
+    slack_webhook: SecretStr | None = None
+    """Slack incoming webhook for reporting errors."""
 
     url_lifetime: timedelta = timedelta(minutes=15)
     """How long result URLs should be valid for."""

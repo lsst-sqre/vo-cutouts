@@ -7,6 +7,7 @@ from datetime import timedelta
 
 import pytest
 import pytest_asyncio
+import respx
 import structlog
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
@@ -15,6 +16,7 @@ from safir.arq import MockArqQueue
 from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
 from safir.testing.gcs import MockStorageClient, patch_google_storage
+from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from vocutouts import main
 from vocutouts.config import config
@@ -67,6 +69,13 @@ def mock_google_storage() -> Iterator[MockStorageClient]:
     yield from patch_google_storage(
         expected_expiration=timedelta(minutes=15), bucket_name="some-bucket"
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_slack(respx_mock: respx.Router) -> MockSlackWebhook:
+    assert config.slack_webhook
+    webhook = config.slack_webhook.get_secret_value()
+    return mock_slack_webhook(webhook, respx_mock)
 
 
 @pytest.fixture

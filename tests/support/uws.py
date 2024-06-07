@@ -68,16 +68,17 @@ def build_uws_config() -> UWSConfig:
     db_name = os.environ["POSTGRES_DB"]
     database_url = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
     return UWSConfig(
-        execution_duration=timedelta(minutes=10),
-        lifetime=timedelta(days=1),
-        database_url=database_url,
-        database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
         arq_mode=ArqMode.test,
         arq_redis_settings=RedisSettings(
             host=os.environ["REDIS_HOST"],
             port=int(os.environ["REDIS_6379_TCP_PORT"]),
         ),
+        execution_duration=timedelta(minutes=10),
+        lifetime=timedelta(days=1),
+        database_url=database_url,
+        database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
         signing_service_account="",
+        slack_webhook=SecretStr("https://example.com/fake-webhook"),
     )
 
 

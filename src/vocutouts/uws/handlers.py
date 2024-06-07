@@ -13,7 +13,7 @@ example:
 
 .. code-block:: python
 
-   external_router.include_router(uws_router, prefix="/jobs")
+   router.include_router(uws_router, prefix="/jobs")
 """
 
 from datetime import datetime
@@ -27,6 +27,7 @@ from safir.dependencies.gafaelfawr import (
     auth_dependency,
     auth_logger_dependency,
 )
+from safir.slack.webhook import SlackRouteErrorHandler
 from structlog.stdlib import BoundLogger
 
 from .dependencies import (
@@ -37,10 +38,10 @@ from .dependencies import (
 from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
 from .models import ExecutionPhase, UWSJobParameter
 
-__all__ = ["uws_router"]
-
-uws_router = APIRouter()
+uws_router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
+
+__all__ = ["uws_router"]
 
 
 @uws_router.get(

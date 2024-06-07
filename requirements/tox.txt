@@ -2,7 +2,6 @@
 #    uv pip compile --output-file requirements/tox.txt requirements/tox.in
 cachetools==5.3.3
     # via
-    #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   tox
 certifi==2024.6.2
@@ -11,27 +10,20 @@ certifi==2024.6.2
     #   -c requirements/main.txt
     #   requests
 chardet==5.2.0
-    # via
-    #   -c requirements/dev.txt
-    #   tox
+    # via tox
 charset-normalizer==3.3.2
     # via
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   requests
 colorama==0.4.6
-    # via
-    #   -c requirements/dev.txt
-    #   tox
+    # via tox
 distlib==0.3.8
-    # via
-    #   -c requirements/dev.txt
-    #   virtualenv
+    # via virtualenv
 docker==7.1.0
     # via tox-docker
 filelock==3.14.0
     # via
-    #   -c requirements/dev.txt
     #   tox
     #   virtualenv
 idna==3.7
@@ -48,7 +40,6 @@ packaging==24.0
     #   tox-uv
 platformdirs==4.2.2
     # via
-    #   -c requirements/dev.txt
     #   tox
     #   virtualenv
 pluggy==1.5.0
@@ -56,9 +47,7 @@ pluggy==1.5.0
     #   -c requirements/dev.txt
     #   tox
 pyproject-api==1.6.1
-    # via
-    #   -c requirements/dev.txt
-    #   tox
+    # via tox
 requests==2.32.3
     # via
     #   -c requirements/dev.txt
@@ -66,27 +55,20 @@ requests==2.32.3
     #   docker
 tox==4.15.1
     # via
-    #   -c requirements/dev.txt
     #   -r requirements/tox.in
     #   tox-docker
     #   tox-uv
 tox-docker==5.0.0
     # via -r requirements/tox.in
 tox-uv==1.9.0
-    # via
-    #   -c requirements/dev.txt
-    #   -r requirements/tox.in
+    # via -r requirements/tox.in
 urllib3==2.2.1
     # via
     #   -c requirements/dev.txt
     #   -c requirements/main.txt
     #   docker
     #   requests
-uv==0.2.8
-    # via
-    #   -c requirements/dev.txt
-    #   tox-uv
+uv==0.2.9
+    # via tox-uv
 virtualenv==20.26.2
-    # via
-    #   -c requirements/dev.txt
-    #   tox
+    # via tox

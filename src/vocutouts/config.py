@@ -83,12 +83,19 @@ class Config(BaseSettings):
         ),
     )
 
+    slack_webhook: SecretStr | None = Field(
+        None,
+        title="Slack webhook for alerts",
+        description="If set, alerts will be posted to this Slack webhook",
+    )
+
     storage_url: str = Field(
         ...,
         title="Root URL for cutout results",
         description=(
-            "Must be an ``s3`` URL pointing to a Google Cloud Storage bucket"
-            " that is writable by the backend and readable by the frontend."
+            "Must be a ``gs`` or ``s3`` URL pointing to a Google Cloud Storage"
+            " bucket that is writable by the backend and readable by the"
+            " frontend."
         ),
     )
 
@@ -200,13 +207,14 @@ class Config(BaseSettings):
     def uws_config(self) -> UWSConfig:
         """Corresponding configuration for the UWS subsystem."""
         return UWSConfig(
+            arq_mode=self.arq_mode,
+            arq_redis_settings=self.arq_redis_settings,
             execution_duration=self.timeout,
             lifetime=self.lifetime,
             database_url=self.database_url,
             database_password=self.database_password,
-            arq_mode=self.arq_mode,
-            arq_redis_settings=self.arq_redis_settings,
             signing_service_account=self.service_account,
+            slack_webhook=self.slack_webhook,
         )
 
 
