@@ -12,6 +12,7 @@ from arq.jobs import JobStatus
 from arq.worker import Function
 from safir.arq import JobMetadata, MockArqQueue
 from safir.datetime import current_datetime
+from safir.testing.slack import MockSlackWebhook
 from structlog.stdlib import BoundLogger
 
 from vocutouts.uws.config import UWSConfig
@@ -115,6 +116,7 @@ async def test_build_uws_worker(
     arq_queue: MockArqQueue,
     uws_config: UWSConfig,
     uws_factory: UWSFactory,
+    mock_slack: MockSlackWebhook,
     logger: BoundLogger,
 ) -> None:
     settings = build_uws_worker(uws_config, logger)
@@ -170,6 +172,19 @@ async def test_build_uws_worker(
     assert job.end_time.microsecond == 0
     assert now <= job.end_time <= current_datetime()
     assert job.results == results
+    assert mock_slack.messages == []
+
+    def nonnegative(value: int) -> None:
+        if value < 0:
+            raise ValueError("Value not nonnegative")
+
+    def make_exception() -> None:
+        try:
+            nonnegative(-1)
+        except Exception as e:
+            raise TaskFatalError(
+                ErrorCode.ERROR, "Something", "went wrong", add_traceback=True
+            ) from e
 
     # Test starting and erroring a job with a TaskError.
     job = await job_service.create("user", params=[])
@@ -178,7 +193,10 @@ async def test_build_uws_worker(
     assert job.message_id
     await arq_queue.set_in_progress(job.message_id)
     await job_started(ctx, job.job_id, now)
-    error = TaskFatalError(ErrorCode.ERROR, "Something", "went wrong")
+    try:
+        make_exception()
+    except TaskFatalError as e:
+        error = e
     await asyncio.gather(
         job_completed(ctx, job.job_id),
         arq_queue.set_complete(job.message_id, result=error, success=False),
@@ -192,9 +210,62 @@ async def test_build_uws_worker(
     assert job.error.error_type == ErrorType.FATAL
     assert job.error.error_code == ErrorCode.ERROR
     assert job.error.message == "Something"
-    assert job.error.detail == "went wrong"
+    assert job.error.detail
+    assert "went wrong" in job.error.detail
+    assert error.traceback
+    assert error.traceback in job.error.detail
+    assert mock_slack.messages == [
+        {
+            "blocks": [
+                {
+                    "text": {
+                        "text": "Error in vo-cutouts-db-worker: Something",
+                        "type": "mrkdwn",
+                        "verbatim": True,
+                    },
+                    "type": "section",
+                },
+                {
+                    "fields": [
+                        {
+                            "text": "*Exception type*\nTaskFatalError",
+                            "type": "mrkdwn",
+                            "verbatim": True,
+                        },
+                        {"text": ANY, "type": "mrkdwn", "verbatim": True},
+                    ],
+                    "type": "section",
+                },
+                {
+                    "text": {
+                        "text": "*Detail*\nwent wrong",
+                        "type": "mrkdwn",
+                        "verbatim": True,
+                    },
+                    "type": "section",
+                },
+            ],
+            "attachments": [
+                {
+                    "blocks": [
+                        {
+                            "text": {
+                                "text": (
+                                    f"*Traceback*\n```\n{error.traceback}```"
+                                ),
+                                "type": "mrkdwn",
+                                "verbatim": True,
+                            },
+                            "type": "section",
+                        }
+                    ]
+                }
+            ],
+        },
+    ]
 
     # Test starting and erroring a job with an unknown exception.
+    mock_slack.messages = []
     job = await job_service.create("user", params=[])
     await job_service.start("user", job.job_id, "some-token")
     job = await job_service.get("user", job.job_id)
@@ -213,3 +284,39 @@ async def test_build_uws_worker(
     assert job.error.error_code == ErrorCode.ERROR
     assert job.error.message == "Unknown error executing task"
     assert job.error.detail == "ValueError: some error"
+    assert mock_slack.messages == [
+        {
+            "blocks": [
+                {
+                    "text": {
+                        "text": "Uncaught exception in vo-cutouts-db-worker",
+                        "type": "mrkdwn",
+                        "verbatim": True,
+                    },
+                    "type": "section",
+                },
+                {
+                    "fields": [
+                        {
+                            "text": "*Exception type*\nValueError",
+                            "type": "mrkdwn",
+                            "verbatim": True,
+                        },
+                        {"text": ANY, "type": "mrkdwn", "verbatim": True},
+                    ],
+                    "type": "section",
+                },
+                {
+                    "text": {
+                        "text": (
+                            "*Exception*\n```\nValueError: some error\n```"
+                        ),
+                        "type": "mrkdwn",
+                        "verbatim": True,
+                    },
+                    "type": "section",
+                },
+                {"type": "divider"},
+            ],
+        },
+    ]

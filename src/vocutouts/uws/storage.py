@@ -271,27 +271,26 @@ class JobStore:
 
     @retry_async_transaction
     async def mark_completed(self, job_id: str, job_result: JobResult) -> None:
-        """Mark a job as completed."""
+        """Mark a job as completed.
+
+        Parameters
+        ----------
+        job_id
+            Identifier of the job.
+        job_result
+            Result of the job.
+        """
         end_time = job_result.finish_time.replace(microsecond=0)
-        if isinstance(job_result.result, Exception):
-            if isinstance(job_result.result, TaskError):
-                error = job_result.result.to_job_error()
-            else:
-                exc = job_result.result
-                error = UWSJobError(
-                    error_type=ErrorType.TRANSIENT,
-                    error_code=ErrorCode.ERROR,
-                    message="Unknown error executing task",
-                    detail=f"{type(exc).__name__}: {exc!s}",
-                )
-            await self.mark_failed(job_id, error, end_time=end_time)
+        results = job_result.result
+        if isinstance(results, Exception):
+            await self.mark_failed(job_id, results, end_time=end_time)
             return
 
         async with self._session.begin():
             job = await self._get_job(job_id)
             job.phase = ExecutionPhase.COMPLETED
             job.end_time = datetime_to_db(end_time)
-            for sequence, result in enumerate(job_result.result, start=1):
+            for sequence, result in enumerate(results, start=1):
                 sql_result = SQLJobResult(
                     job_id=job.id,
                     result_id=result.result_id,
@@ -304,13 +303,28 @@ class JobStore:
 
     @retry_async_transaction
     async def mark_failed(
-        self,
-        job_id: str,
-        error: UWSJobError,
-        *,
-        end_time: datetime | None = None,
+        self, job_id: str, exc: Exception, *, end_time: datetime | None = None
     ) -> None:
-        """Mark a job as failed with an error."""
+        """Mark a job as failed with an error.
+
+        Parameters
+        ----------
+        job_id
+            Identifier of the job.
+        error
+            Exception of failed job.
+        end_time
+            When the job failed, if known.
+        """
+        if isinstance(exc, TaskError):
+            error = exc.to_job_error()
+        else:
+            error = UWSJobError(
+                error_type=ErrorType.TRANSIENT,
+                error_code=ErrorCode.ERROR,
+                message="Unknown error executing task",
+                detail=f"{type(exc).__name__}: {exc!s}",
+            )
         async with self._session.begin():
             job = await self._get_job(job_id)
             job.phase = ExecutionPhase.ERROR

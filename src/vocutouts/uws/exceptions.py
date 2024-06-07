@@ -9,7 +9,12 @@ from __future__ import annotations
 from traceback import format_exception
 from typing import ClassVar
 
-from safir.slack.blockkit import SlackException
+from safir.slack.blockkit import (
+    SlackCodeBlock,
+    SlackException,
+    SlackMessage,
+    SlackTextBlock,
+)
 from safir.slack.webhook import SlackIgnoredException
 
 from .models import ErrorCode, ErrorType, UWSJobError
@@ -144,6 +149,16 @@ class TaskError(SlackException):
             message=str(self),
             detail=detail,
         )
+
+    def to_slack(self) -> SlackMessage:
+        message = super().to_slack()
+        if self._detail:
+            text = self._detail
+            message.blocks.append(SlackTextBlock(heading="Detail", text=text))
+        if self.traceback:
+            block = SlackCodeBlock(heading="Traceback", code=self.traceback)
+            message.attachments.append(block)
+        return message
 
     def _serialize_traceback(self) -> str | None:
         """Serialize the traceback from ``__cause__``."""
