@@ -22,7 +22,7 @@ from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
-from ..uws.exceptions import TaskFatalError, TaskTransientError
+from ..uws.exceptions import TaskFatalError
 from ..uws.models import ErrorCode, UWSJobResult
 from ..uws.workers import UWSWorkerConfig, build_worker
 
@@ -169,16 +169,16 @@ def cutout(
         sky_stencils.append(stencil)
 
     # Perform the cutout. We have no idea if unknown exceptions here are
-    # transient or fatal and can only guess. Hope that they're transient.
-    # Provide a traceback in the error details to give the user more of a
-    # chance at understanding the problem, and hope it doesn't contain any
+    # transient or fatal, so conservatively assume they are fatal. Provide a
+    # traceback in the error details to give the user more of a chance at
+    # understanding the problem, and hope it doesn't contain any
     # security-sensitive data. (When running with workload identity, it really
     # shoudln't.)
     logger.info("Starting cutout request")
     try:
         result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
     except Exception as e:
-        raise TaskTransientError(
+        raise TaskFatalError(
             ErrorCode.ERROR, "Cutout processing failed", add_traceback=True
         ) from e
 
