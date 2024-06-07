@@ -133,6 +133,8 @@ def cutout(
     logger = logger.bind(dataset_ids=dataset_ids, stencils=stencils)
 
     # Currently, only a single dataset ID and a single stencil are supported.
+    # These constraints should have been applied by the policy layer, so if we
+    # see them here, there's some bug in the cutout service.
     if len(dataset_ids) != 1:
         msg = "Only one dataset ID supported"
         raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
@@ -166,15 +168,18 @@ def cutout(
             raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
         sky_stencils.append(stencil)
 
-    # Perform the cutout.
+    # Perform the cutout. We have no idea if unknown exceptions here are
+    # transient or fatal and can only guess. Hope that they're transient.
+    # Provide a traceback in the error details to give the user more of a
+    # chance at understanding the problem, and hope it doesn't contain any
+    # security-sensitive data. (When running with workload identity, it really
+    # shoudln't.)
     logger.info("Starting cutout request")
     try:
         result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
     except Exception as e:
         raise TaskTransientError(
-            ErrorCode.ERROR,
-            "Cutout processing failed",
-            f"{type(e).__name__}: {e!s}",
+            ErrorCode.ERROR, "Cutout processing failed", add_traceback=True
         ) from e
 
     # Return the result.
@@ -182,7 +187,7 @@ def cutout(
     result_scheme = urlparse(result_url).scheme
     if result_scheme not in ("gs", "s3"):
         msg = f"Backend returned URL with scheme {result_scheme}, not gs or s3"
-        raise TaskFatalError(ErrorCode.ERROR, msg)
+        raise TaskFatalError(ErrorCode.ERROR, msg, f"URL: {result_url}")
     logger.info("Cutout successful")
     return [
         UWSJobResult(

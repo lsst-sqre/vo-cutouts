@@ -18,6 +18,8 @@ from sqlalchemy.future import select
 from .exceptions import TaskError, UnknownJobError
 from .models import (
     Availability,
+    ErrorCode,
+    ErrorType,
     ExecutionPhase,
     UWSJob,
     UWSJobDescription,
@@ -272,7 +274,16 @@ class JobStore:
         """Mark a job as completed."""
         end_time = job_result.finish_time.replace(microsecond=0)
         if isinstance(job_result.result, Exception):
-            error = TaskError.from_exception(job_result.result).to_job_error()
+            if isinstance(job_result.result, TaskError):
+                error = job_result.result.to_job_error()
+            else:
+                exc = job_result.result
+                error = UWSJobError(
+                    error_type=ErrorType.TRANSIENT,
+                    error_code=ErrorCode.ERROR,
+                    message="Unknown error executing task",
+                    detail=f"{type(exc).__name__}: {exc!s}",
+                )
             await self.mark_failed(job_id, error, end_time=end_time)
             return
 

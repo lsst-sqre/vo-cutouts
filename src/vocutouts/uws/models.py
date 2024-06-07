@@ -78,7 +78,11 @@ ACTIVE_PHASES = {
 
 
 class ErrorCode(Enum):
-    """Possible error codes in ``text/plain`` SODA errors."""
+    """Possible error codes in ``text/plain`` responses.
+
+    The following list of errors is taken from the SODA specification and
+    therefore may not be appropriate for all DALI services.
+    """
 
     AUTHENTICATION_ERROR = "AuthenticationError"
     AUTHORIZATION_ERROR = "AuthorizationError"
