@@ -232,8 +232,27 @@ async def test_build_uws_worker(
                             "type": "mrkdwn",
                             "verbatim": True,
                         },
+                        {
+                            "text": "*UWS job ID*\n2",
+                            "type": "mrkdwn",
+                            "verbatim": True,
+                        },
                         {"text": ANY, "type": "mrkdwn", "verbatim": True},
+                        {"text": ANY, "type": "mrkdwn", "verbatim": True},
+                        {
+                            "text": "*User*\nuser",
+                            "type": "mrkdwn",
+                            "verbatim": True,
+                        },
                     ],
+                    "type": "section",
+                },
+                {
+                    "text": {
+                        "text": "*Original exception*\nValueError",
+                        "type": "mrkdwn",
+                        "verbatim": True,
+                    },
                     "type": "section",
                 },
                 {

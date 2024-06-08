@@ -6,14 +6,17 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
+from datetime import datetime
 from traceback import format_exception
 from typing import ClassVar
 
+from safir.datetime import format_datetime_for_logging
 from safir.slack.blockkit import (
     SlackCodeBlock,
     SlackException,
     SlackMessage,
     SlackTextBlock,
+    SlackTextField,
 )
 from safir.slack.webhook import SlackIgnoredException
 
@@ -85,6 +88,10 @@ class TaskError(SlackException):
         Indicates whether this exception represents a transient error that may
         go away if the request is retried or a permanent error with the
         request.
+    job_id
+        UWS job ID, if known.
+    started_at
+        When the task was started, if known.
     traceback
         Traceback of the underlying triggering exception, if tracebacks were
         requested and there is a cause set.
@@ -118,10 +125,13 @@ class TaskError(SlackException):
         add_traceback: bool = False,
     ) -> None:
         super().__init__(message)
+        self.job_id: str | None = None
+        self.started_at: datetime | None = None
         self._error_code = error_code
         self._message = message
         self._detail = detail
         self._add_traceback = add_traceback
+        self._cause_type: str | None = None
         self._traceback: str | None = None
 
     def __reduce__(self) -> str | tuple:
@@ -152,18 +162,32 @@ class TaskError(SlackException):
 
     def to_slack(self) -> SlackMessage:
         message = super().to_slack()
-        if self._detail:
-            text = self._detail
-            message.blocks.append(SlackTextBlock(heading="Detail", text=text))
         if self.traceback:
             block = SlackCodeBlock(heading="Traceback", code=self.traceback)
             message.attachments.append(block)
+        if self.started_at:
+            started_at = format_datetime_for_logging(self.started_at)
+            field = SlackTextField(heading="Started at", text=started_at)
+            message.fields.insert(1, field)
+        if self.job_id:
+            field = SlackTextField(heading="UWS job ID", text=self.job_id)
+            message.fields.insert(1, field)
+        if self._cause_type:
+            text = SlackTextBlock(
+                heading="Original exception", text=self._cause_type
+            )
+            message.blocks.append(text)
+
+        if self._detail:
+            text = SlackTextBlock(heading="Detail", text=self._detail)
+            message.blocks.append(text)
         return message
 
     def _serialize_traceback(self) -> str | None:
         """Serialize the traceback from ``__cause__``."""
         if not self._add_traceback or not self.__cause__:
             return None
+        self._cause_type = type(self.__cause__).__name__
         return "".join(format_exception(self.__cause__))
 
 

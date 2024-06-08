@@ -37,7 +37,7 @@ from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
 from .constants import JOB_RESULT_TIMEOUT, UWS_QUEUE_NAME
-from .exceptions import TaskTransientError, UnknownJobError
+from .exceptions import TaskError, TaskTransientError, UnknownJobError
 from .models import ErrorCode, UWSJobResult
 from .storage import JobStore
 
@@ -290,14 +290,22 @@ async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
             await storage.mark_failed(job_id, exc)
             return
 
-        # Mark the job as completed.
-        if slack:
-            if isinstance(result.result, SlackIgnoredException):
+        # If the job failed and Slack reporting is enabled, annotate the job
+        # with some more details and report it to Slack.
+        if slack and isinstance(result.result, Exception):
+            error = result.result
+            if isinstance(error, SlackIgnoredException):
                 pass
-            elif isinstance(result.result, SlackException):
-                await slack.post_exception(result.result)
-            elif isinstance(result.result, Exception):
-                await slack.post_uncaught_exception(result.result)
+            elif isinstance(error, SlackException):
+                error.user = job.owner
+                if isinstance(error, TaskError):
+                    error.job_id = job.job_id
+                    error.started_at = job.creation_time
+                await slack.post_exception(error)
+            else:
+                await slack.post_uncaught_exception(error)
+
+        # Mark the job as completed.
         await storage.mark_completed(job_id, result)
         logger.info("Marked job as completed")
     except UnknownJobError:
