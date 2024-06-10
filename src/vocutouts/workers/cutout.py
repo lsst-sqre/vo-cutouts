@@ -15,6 +15,7 @@ from uuid import UUID
 import astropy.units as u
 import structlog
 from astropy.coordinates import Angle, SkyCoord
+from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
@@ -22,7 +23,7 @@ from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
-from ..uws.exceptions import TaskFatalError
+from ..uws.exceptions import TaskFatalError, TaskUserError
 from ..uws.models import ErrorCode, UWSJobResult
 from ..uws.workers import UWSWorkerConfig, build_worker
 
@@ -177,6 +178,13 @@ def cutout(
     logger.info("Starting cutout request")
     try:
         result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
+    except SinglePolygonException as e:
+        raise TaskUserError(
+            ErrorCode.USAGE_ERROR,
+            "No intersection between cutout and image",
+            str(e),
+            add_traceback=True,
+        ) from e
     except Exception as e:
         raise TaskFatalError(
             ErrorCode.ERROR, "Cutout processing failed", add_traceback=True
