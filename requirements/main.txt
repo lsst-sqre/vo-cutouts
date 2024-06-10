@@ -173,7 +173,7 @@ rich==13.7.1
     # via typer
 rsa==4.9
     # via google-auth
-safir @ git+https://github.com/lsst-sqre/safir@88363ffeee3b2db60e06b90702b84a7b0daf0ba2
+safir @ git+https://github.com/lsst-sqre/safir@17720c6877e8523adeb2454a9b96ca137130007a
     # via -r requirements/main.in
 shellingham==1.5.4
     # via typer

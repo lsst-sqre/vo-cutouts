@@ -22,19 +22,23 @@ from safir.arq import (
     ArqMode,
     ArqQueue,
     JobNotFound,
+    JobResult,
     JobResultUnavailable,
     MockArqQueue,
     RedisArqQueue,
 )
 from safir.database import create_async_session, create_database_engine
 from safir.datetime import format_datetime_for_logging
+from safir.dependencies.http_client import http_client_dependency
+from safir.slack.blockkit import SlackException
+from safir.slack.webhook import SlackIgnoredException, SlackWebhookClient
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
 from .constants import JOB_RESULT_TIMEOUT, UWS_QUEUE_NAME
-from .exceptions import UnknownJobError
-from .models import ErrorCode, ErrorType, UWSJobError, UWSJobResult
+from .exceptions import TaskError, TaskTransientError, UnknownJobError
+from .models import ErrorCode, UWSJobResult
 from .storage import JobStore
 
 P = ParamSpec("P")
@@ -213,6 +217,7 @@ async def job_started(
         When the job was started.
     """
     logger: BoundLogger = ctx["logger"].bind(task="job_started", job_id=job_id)
+    slack: SlackWebhookClient | None = ctx["slack"]
     storage: JobStore = ctx["storage"]
 
     try:
@@ -223,6 +228,23 @@ async def job_started(
         )
     except UnknownJobError:
         logger.warning("Job not found to mark as started", job_id=job_id)
+    except Exception as e:
+        if slack:
+            await slack.post_uncaught_exception(e)
+        raise
+
+
+async def _get_job_result(arq: ArqQueue, arq_job_id: str) -> JobResult:
+    """Get the result of the job, which may require waiting for it."""
+    now = datetime.now(tz=UTC)
+    end = now + JOB_RESULT_TIMEOUT
+    while now < end:
+        await asyncio.sleep(0.5)
+        with contextlib.suppress(JobResultUnavailable):
+            return await arq.get_job_result(arq_job_id)
+
+    # If we fell off the end of the retry loop, try one more time.
+    return await arq.get_job_result(arq_job_id)
 
 
 async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
@@ -241,50 +263,57 @@ async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
     logger: BoundLogger = ctx["logger"].bind(
         task="job_completed", job_id=job_id
     )
+    slack: SlackWebhookClient | None = ctx["slack"]
     storage: JobStore = ctx["storage"]
 
     try:
         job = await storage.get(job_id)
-    except UnknownJobError:
-        logger.warning("Job not found to mark as completed")
-        return
-    arq_job_id = job.message_id
-    if not arq_job_id:
-        logger.error("Job has no associated arq job ID, cannot mark completed")
-        return
-    logger = logger.bind(arq_job_id=arq_job_id)
+        arq_job_id = job.message_id
+        if not arq_job_id:
+            msg = "Job has no associated arq job ID, cannot mark completed"
+            logger.error(msg)
+            return
+        logger = logger.bind(arq_job_id=arq_job_id)
 
-    try:
-        now = datetime.now(tz=UTC)
-        end = now + JOB_RESULT_TIMEOUT
-        result = None
-        while now < end:
-            await asyncio.sleep(0.5)
-            with contextlib.suppress(JobResultUnavailable):
-                result = await arq.get_job_result(arq_job_id)
-                break
-        if not result:
-            result = await arq.get_job_result(arq_job_id)
-    except (JobNotFound, JobResultUnavailable) as e:
-        logger.exception("Cannot retrieve job result")
-        error = UWSJobError(
-            error_type=ErrorType.TRANSIENT,
-            error_code=ErrorCode.SERVICE_UNAVAILABLE,
-            message="Cannot retrieve job result from job queue",
-            detail=f"{type(e).__name__}: {e!s}",
-        )
+        # Get the job results.
         try:
-            await storage.mark_failed(job_id, error)
-            logger.info("Marked job as failed")
-        except UnknownJobError:
-            logger.warning("Job not found to mark as failed")
-        return
+            result = await _get_job_result(arq, arq_job_id)
+        except (JobNotFound, JobResultUnavailable) as e:
+            logger.exception("Cannot retrieve job result")
+            exc = TaskTransientError(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                "Cannot retrieve job result from job queue",
+                f"{type(e).__name__}: {e!s}",
+                add_traceback=True,
+            )
+            exc.__cause__ = e
+            await storage.mark_failed(job_id, exc)
+            return
 
-    try:
+        # If the job failed and Slack reporting is enabled, annotate the job
+        # with some more details and report it to Slack.
+        if slack and isinstance(result.result, Exception):
+            error = result.result
+            if isinstance(error, SlackIgnoredException):
+                pass
+            elif isinstance(error, SlackException):
+                error.user = job.owner
+                if isinstance(error, TaskError):
+                    error.job_id = job.job_id
+                    error.started_at = job.creation_time
+                await slack.post_exception(error)
+            else:
+                await slack.post_uncaught_exception(error)
+
+        # Mark the job as completed.
         await storage.mark_completed(job_id, result)
         logger.info("Marked job as completed")
     except UnknownJobError:
         logger.warning("Job not found to mark as completed")
+    except Exception as e:
+        if slack:
+            await slack.post_uncaught_exception(e)
+        raise
 
 
 def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
@@ -322,6 +351,13 @@ def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
         )
         session = await create_async_session(engine, logger)
         storage = JobStore(session)
+        slack = None
+        if config.slack_webhook:
+            slack = SlackWebhookClient(
+                config.slack_webhook.get_secret_value(),
+                "vo-cutouts-db-worker",
+                logger,
+            )
 
         # The queue from which to retrieve results is the main work queue,
         # which uses the default arq queue name. Note that this is not the
@@ -335,6 +371,7 @@ def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
         ctx["arq"] = arq
         ctx["logger"] = logger
         ctx["session"] = session
+        ctx["slack"] = slack
         ctx["storage"] = storage
 
         logger.info("Worker startup complete")
@@ -344,6 +381,9 @@ def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
         session: async_scoped_session = ctx["session"]
 
         await session.remove()
+
+        # Possibly initialized by the Slack webhook client.
+        await http_client_dependency.aclose()
 
         logger.info("Worker shutdown complete")
 
