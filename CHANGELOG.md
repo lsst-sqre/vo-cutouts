@@ -6,6 +6,27 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-2.0.0'></a>
+## 2.0.0 (2024-06-10)
+
+### Backwards-incompatible changes
+
+- Change the job queuing system from Dramatiq to [arq](https://arq-docs.helpmanual.io/). This change should be transparent to users when creating new jobs, but any in-progress jobs at the time of the upgrade will be orphaned.
+- Use workload identity for all authentication when deployed on Google Cloud. Separate service account keys are no longer required or used. The `vo-cutouts` Google service account now requires the `storage.legacyBucketWriter` role in addition to `storage.objectViewer`.
+
+### New features
+
+- Add support for `gs` storage URLs in addition to `s3` storage URLs. When a `gs` storage URL is used, the image cutout backend will use the Google Cloud Storage Python API to store the results instead of boto, which will work correctly with workload identity.
+- Catch the error thrown when the cutout has no overlap with the specified image and return a more specific error message to the user.
+- Add support for sending Slack notifications for uncaught exceptions in route handlers.
+- Add support for sending Slack notifications for unexpected errors when processing cutout jobs.
+- If the backend image processing code fails with an exception, include a traceback of that exception in the detail portion of the job error.
+
+### Bug fixes
+
+- Queuing a job for execution in the frontend is now async and will not block the event loop, which may help with performance under load.
+- Report fatal (not transient) errors on backend failures. We have no way of knowing whether a failure will go away on retry, so make the conservative assumption that it won't.
+
 <a id='changelog-1.1.1'></a>
 ## 1.1.1 (2024-04-11)
 

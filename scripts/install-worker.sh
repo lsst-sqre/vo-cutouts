@@ -18,21 +18,20 @@ setup lsst_distrib
 # Display each command as it's run.
 set -x
 
-# Download the image cutout backend.  This can be removed if RFC-828 is
+# Download the image cutout backend. This can be removed if RFC-828 is
 # implemented, since that will include the image cutout backend in
 # lsst-distrib.
 #
-# Currently, this uses the main branch because there appears to be no
-# alternative (no releases and no tags).
+# Currently, this uses the main branch because tags are not used regularly in
+# this repository.
 mkdir /backend
 cd /backend
-git clone --depth 1 -b tickets/DM-44710 https://github.com/lsst-dm/image_cutout_backend.git
+git clone --depth 1 -b main https://github.com/lsst-dm/image_cutout_backend.git
 cd image_cutout_backend
 setup -r .
 scons install declare -t current
 
 # Install Python dependencies and the vo-cutouts code.
 cd "$1"
-pip install --no-cache-dir google-cloud-storage
-pip install --no-cache-dir 'safir[arq,db,gcs] @ git+https://github.com/lsst-sqre/safir@main'
+pip install --no-cache-dir google-cloud-storage 'safir[arq]'
 pip install --no-cache-dir --no-deps .
