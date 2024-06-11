@@ -33,16 +33,16 @@ class ImageCutoutPolicy(UWSPolicy):
         super().__init__(arq)
         self._logger = logger
 
-    async def dispatch(self, job: UWSJob, access_token: str) -> JobMetadata:
+    async def dispatch(self, job: UWSJob, token: str) -> JobMetadata:
         """Dispatch a cutout request to the backend.
 
         Parameters
         ----------
         job
             The submitted job description.
-        access_token
-            Gafaelfawr access token used to authenticate to Butler server
-            in the backend.
+        token
+            Gafaelfawr token used to authenticate to the Butler server in the
+            backend.
 
         Returns
         -------
@@ -54,13 +54,9 @@ class ImageCutoutPolicy(UWSPolicy):
         Currently, only one dataset ID and only one stencil are supported.
         This limitation is expected to be relaxed in a later version.
         """
-        cutout_params = CutoutParameters.from_job_parameters(job.parameters)
+        params = CutoutParameters.from_job_parameters(job.parameters)
         return await self.arq.enqueue(
-            "cutout",
-            job.job_id,
-            cutout_params.ids,
-            [s.to_dict() for s in cutout_params.stencils],
-            access_token,
+            "cutout", job.job_id, params.ids, params.stencils, token=token
         )
 
     def validate_params(self, params: list[UWSJobParameter]) -> None:

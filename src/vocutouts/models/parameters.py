@@ -7,7 +7,7 @@ from typing import Self
 
 from ..exceptions import InvalidCutoutParameterError
 from ..uws.models import UWSJobParameter
-from .stencils import Stencil, parse_stencil
+from .stencils import CircleStencil, PolygonStencil, RangeStencil, Stencil
 
 
 @dataclass
@@ -46,8 +46,9 @@ class CutoutParameters:
                 if param.parameter_id == "id":
                     ids.append(param.value)
                 else:
-                    f = parse_stencil(param.parameter_id.upper(), param.value)
-                    stencils.append(f)
+                    stencil_type = param.parameter_id.upper()
+                    stencil = cls._parse_stencil(stencil_type, param.value)
+                    stencils.append(stencil)
         except Exception as e:
             msg = f"Invalid cutout parameter: {type(e).__name__}: {e!s}"
             raise InvalidCutoutParameterError(msg, params) from e
@@ -58,3 +59,18 @@ class CutoutParameters:
                 "No cutout stencil given", params
             )
         return cls(ids=ids, stencils=stencils)
+
+    @staticmethod
+    def _parse_stencil(stencil_type: str, params: str) -> Stencil:
+        """Convert a string stencil parameter to its representation."""
+        if stencil_type == "POS":
+            stencil_type, params = params.split(None, 1)
+        match stencil_type:
+            case "CIRCLE":
+                return CircleStencil.from_string(params)
+            case "POLYGON":
+                return PolygonStencil.from_string(params)
+            case "RANGE":
+                return RangeStencil.from_string(params)
+            case _:
+                raise ValueError(f"Unknown stencil type {stencil_type}")
