@@ -40,7 +40,7 @@ class UWSPolicy(ABC):
         self.arq = arq
 
     @abstractmethod
-    async def dispatch(self, job: UWSJob, access_token: str) -> JobMetadata:
+    async def dispatch(self, job: UWSJob, token: str) -> JobMetadata:
         """Dispatch a job to a backend worker.
 
         This method is responsible for converting UWS job parameters to the
@@ -51,9 +51,9 @@ class UWSPolicy(ABC):
         ----------
         job
             Job to start.
-        access_token
-            Gafaelfawr access token used to authenticate to services used
-            by the backend on the user's behalf.
+        token
+            Gafaelfawr token used to authenticate to services used by the
+            backend on the user's behalf.
 
         Returns
         -------

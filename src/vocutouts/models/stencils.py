@@ -4,12 +4,21 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Any, Self, TypeAlias
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 
-Range = tuple[float, float]
+Range: TypeAlias = tuple[float, float]
+"""Type representing a range of a coordinate."""
+
+__all__ = [
+    "CircleStencil",
+    "PolygonStencil",
+    "Range",
+    "RangeStencil",
+    "Stencil",
+]
 
 
 class Stencil(ABC):
@@ -22,7 +31,7 @@ class Stencil(ABC):
 
     @abstractmethod
     def to_dict(self) -> dict[str, Any]:
-        """Convert the stencil to a JSON-serializable form for queuing."""
+        """Convert the stencil to a dictionary for logging."""
 
 
 @dataclass
@@ -30,7 +39,10 @@ class CircleStencil(Stencil):
     """Represents a ``CIRCLE`` or ``POS=CIRCLE`` stencil."""
 
     center: SkyCoord
+    """Center of the circle."""
+
     radius: Angle
+    """Radius of the circle."""
 
     @classmethod
     def from_string(cls, params: str) -> Self:
@@ -60,6 +72,7 @@ class PolygonStencil(Stencil):
     """
 
     vertices: SkyCoord
+    """Vertices of the polygon."""
 
     @classmethod
     def from_string(cls, params: str) -> Self:
@@ -90,7 +103,10 @@ class RangeStencil(Stencil):
     """Represents a ``POS=RANGE`` stencil."""
 
     ra: Range
+    """Range of ra values."""
+
     dec: Range
+    """Range of dec values."""
 
     @classmethod
     def from_string(cls, params: str) -> Self:
@@ -106,17 +122,3 @@ class RangeStencil(Stencil):
             "ra": self.ra,
             "dec": self.dec,
         }
-
-
-def parse_stencil(stencil_type: str, params: str) -> Stencil:
-    """Convert a string stencil parameter to its internal representation."""
-    if stencil_type == "POS":
-        stencil_type, params = params.split(None, 1)
-    if stencil_type == "CIRCLE":
-        return CircleStencil.from_string(params)
-    elif stencil_type == "POLYGON":
-        return PolygonStencil.from_string(params)
-    elif stencil_type == "RANGE":
-        return RangeStencil.from_string(params)
-    else:
-        raise ValueError(f"Unknown stencil type {stencil_type}")

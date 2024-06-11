@@ -226,9 +226,7 @@ class JobService:
             user, phases=phases, after=after, count=count
         )
 
-    async def start(
-        self, user: str, job_id: str, access_token: str
-    ) -> JobMetadata:
+    async def start(self, user: str, job_id: str, token: str) -> JobMetadata:
         """Start execution of a job.
 
         Parameters
@@ -237,9 +235,9 @@ class JobService:
             User on behalf of whom this operation is performed.
         job_id
             Identifier of the job to start.
-        access_token
-            Gafaelfawr access token used to authenticate to services used
-            by the backend on the user's behalf.
+        token
+            Gafaelfawr token used to authenticate to services used by the
+            backend on the user's behalf.
 
         Returns
         -------
@@ -257,7 +255,7 @@ class JobService:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         if job.phase not in (ExecutionPhase.PENDING, ExecutionPhase.HELD):
             raise InvalidPhaseError("Cannot start job in phase {job.phase}")
-        metadata = await self._policy.dispatch(job, access_token)
+        metadata = await self._policy.dispatch(job, token)
         await self._storage.mark_queued(job_id, metadata)
         return metadata
 

@@ -8,13 +8,10 @@ from __future__ import annotations
 
 import os
 from datetime import timedelta
-from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-import astropy.units as u
 import structlog
-from astropy.coordinates import Angle, SkyCoord
 from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
@@ -23,6 +20,7 @@ from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
+from ..models.stencils import CircleStencil, PolygonStencil, Stencil
 from ..uws.exceptions import TaskFatalError, TaskUserError
 from ..uws.models import ErrorCode, UWSJobResult
 from ..uws.workers import UWSWorkerConfig, build_worker
@@ -33,7 +31,7 @@ _BUTLER_FACTORY = LabeledButlerFactory()
 __all__ = ["WorkerSettings"]
 
 
-def _get_backend(butler_label: str, access_token: str) -> ImageCutoutBackend:
+def _get_backend(butler_label: str, token: str) -> ImageCutoutBackend:
     """Given the Butler label, retrieve or build a backend.
 
     The dataset ID will be a URI of the form ``butler://<label>/<uuid>``.
@@ -44,8 +42,8 @@ def _get_backend(butler_label: str, access_token: str) -> ImageCutoutBackend:
     ----------
     butler_label
         Label portion of the Butler URI.
-    access_token
-        Gafaelfawr access token, used to access the Butler service.
+    token
+        Gafaelfawr token, used to access the Butler service.
 
     Returns
     -------
@@ -53,7 +51,7 @@ def _get_backend(butler_label: str, access_token: str) -> ImageCutoutBackend:
         Backend to use.
     """
     butler = _BUTLER_FACTORY.create_butler(
-        label=butler_label, access_token=access_token
+        label=butler_label, access_token=token
     )
 
     # At present, projection finders and image cutout backend have no internal
@@ -87,9 +85,9 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
 def cutout(
     job_id: str,
     dataset_ids: list[str],
-    stencils: list[dict[str, Any]],
-    access_token: str,
+    stencils: list[Stencil],
     *,
+    token: str,
     logger: BoundLogger,
 ) -> list[UWSJobResult]:
     """Perform a cutout.
@@ -103,17 +101,15 @@ def cutout(
     Parameters
     ----------
     job_id
-        UWS job ID, used as the key for storing results.
+        UWS job ID, provided by the UWS layer but not used here.
     dataset_ids
         Data objects on which to perform cutouts. These are opaque identifiers
         passed as-is to the backend. The user will normally discover them via
         some service such as ObsTAP.
     stencils
-        Serialized stencils for the cutouts to perform. These are
-        `~vocutouts.models.stencils.Stencil` objects corresponding to the
-        user's request.
-    access_token
-        Gafaelfawr access token used to authenticate to Butler server.
+        Serialized stencils for the cutouts to perform.
+    token
+        Gafaelfawr token used to authenticate to Butler server.
     logger
         Logger to use for logging.
 
@@ -131,7 +127,9 @@ def cutout(
         Raised if the cutout failed for reasons that may go away if the cutout
         is retried.
     """
-    logger = logger.bind(dataset_ids=dataset_ids, stencils=stencils)
+    logger = logger.bind(
+        dataset_ids=dataset_ids, stencils=[s.to_dict() for s in stencils]
+    )
 
     # Currently, only a single dataset ID and a single stencil are supported.
     # These constraints should have been applied by the policy layer, so if we
@@ -145,29 +143,21 @@ def cutout(
 
     # Parse the dataset ID and retrieve an appropriate backend.
     butler_label, uuid = _parse_uri(dataset_ids[0])
-    backend = _get_backend(butler_label, access_token)
+    backend = _get_backend(butler_label, token)
 
     # Convert the stencils to SkyStencils.
     sky_stencils = []
-    for stencil_dict in stencils:
-        if stencil_dict["type"] == "circle":
-            center = SkyCoord(
-                stencil_dict["center"]["ra"] * u.degree,
-                stencil_dict["center"]["dec"] * u.degree,
-                frame="icrs",
-            )
-            radius = Angle(stencil_dict["radius"] * u.degree)
-            stencil = SkyCircle.from_astropy(center, radius, clip=True)
-        elif stencil_dict["type"] == "polygon":
-            ras = [v[0] for v in stencil_dict["vertices"]]
-            decs = [v[1] for v in stencil_dict["vertices"]]
-            vertices = SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
-            stencil = SkyPolygon.from_astropy(vertices, clip=True)
-        else:
-            msg = f'Unknown stencil type {stencil_dict["type"]}'
-            logger.warning(msg)
-            raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
-        sky_stencils.append(stencil)
+    for stencil in stencils:
+        match stencil:
+            case CircleStencil(center, radius):
+                sky_stencil = SkyCircle.from_astropy(center, radius, clip=True)
+            case PolygonStencil(vertices):
+                sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
+            case _:
+                msg = f"Unknown stencil type {type(stencil).__name__}"
+                logger.warning(msg)
+                raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
+        sky_stencils.append(sky_stencil)
 
     # Perform the cutout. We have no idea if unknown exceptions here are
     # transient or fatal, so conservatively assume they are fatal. Provide a
