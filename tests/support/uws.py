@@ -5,53 +5,44 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import UTC, datetime, timedelta
+from typing import Annotated, Self
 
 from arq.connections import RedisSettings
+from fastapi import Form, Query
 from pydantic import SecretStr
-from safir.arq import ArqMode, ArqQueue, JobMetadata, MockArqQueue
+from safir.arq import ArqMode, MockArqQueue
 
-from vocutouts.uws.config import UWSConfig
+from vocutouts.uws.config import ParametersModel, UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
-from vocutouts.uws.policy import UWSPolicy
 
 __all__ = [
     "MockJobRunner",
-    "TrivialPolicy",
+    "SimpleParameters",
     "build_uws_config",
 ]
 
 
-class TrivialPolicy(UWSPolicy):
-    """Trivial UWS policy that calls a worker with only one parameter.
+class SimpleParameters(ParametersModel):
+    name: str
 
-    Parameters
-    ----------
-    arq
-        Underlying arq queue.
-    function
-        Name of the function to run.
-    """
+    @classmethod
+    def from_job_parameters(cls, params: list[UWSJobParameter]) -> Self:
+        assert len(params) == 1
+        assert params[0].parameter_id == "name"
+        return cls(name=params[0].value)
 
-    def __init__(self, arq: ArqQueue, function: str) -> None:
-        super().__init__(arq)
-        self._function = function
 
-    async def dispatch(self, job: UWSJob, access_token: str) -> JobMetadata:
-        return await self.arq.enqueue(self._function, job.job_id)
+async def _get_dependency(
+    name: Annotated[str, Query()],
+) -> list[UWSJobParameter]:
+    return [UWSJobParameter(parameter_id="name", value=name, is_post=True)]
 
-    def validate_destruction(
-        self, destruction: datetime, job: UWSJob
-    ) -> datetime:
-        return destruction
 
-    def validate_execution_duration(
-        self, execution_duration: int, job: UWSJob
-    ) -> int:
-        return execution_duration
-
-    def validate_params(self, params: list[UWSJobParameter]) -> None:
-        pass
+async def _post_dependency(
+    name: Annotated[str, Form()],
+) -> list[UWSJobParameter]:
+    return [UWSJobParameter(parameter_id="name", value=name, is_post=True)]
 
 
 def build_uws_config() -> UWSConfig:
@@ -73,12 +64,17 @@ def build_uws_config() -> UWSConfig:
             host=os.environ["REDIS_HOST"],
             port=int(os.environ["REDIS_6379_TCP_PORT"]),
         ),
-        execution_duration=timedelta(minutes=10),
-        lifetime=timedelta(days=1),
+        async_post_dependency=_post_dependency,
         database_url=database_url,
         database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
-        signing_service_account="",
+        execution_duration=timedelta(minutes=10),
+        lifetime=timedelta(days=1),
+        parameters_type=SimpleParameters,
+        signing_service_account="signer@example.com",
         slack_webhook=SecretStr("https://example.com/fake-webhook"),
+        sync_get_dependency=_get_dependency,
+        sync_post_dependency=_post_dependency,
+        worker="hello",
     )
 
 

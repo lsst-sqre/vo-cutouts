@@ -11,25 +11,23 @@ import pytest_asyncio
 import respx
 import structlog
 from asgi_lifespan import LifespanManager
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
-from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
+from safir.slack.webhook import SlackRouteErrorHandler
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
+from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
-from vocutouts.uws.errors import install_error_handlers
-from vocutouts.uws.handlers import uws_router
-from vocutouts.uws.schema import Base
 
-from ..support.uws import MockJobRunner, TrivialPolicy, build_uws_config
+from ..support.uws import MockJobRunner, build_uws_config
 
 
 @pytest_asyncio.fixture
@@ -44,27 +42,26 @@ async def app(
     application so that the UWS routes can be tested without reference to
     the pieces added by an application.
     """
-    engine = create_database_engine(
-        uws_config.database_url, uws_config.database_password
-    )
-    await initialize_database(engine, logger, schema=Base.metadata, reset=True)
-    await engine.dispose()
+    uws = UWSApplication(uws_config)
+    await uws.initialize_uws_database(logger, reset=True)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        policy = TrivialPolicy(arq_queue, "trivial")
-        await uws_dependency.initialize(uws_config, policy)
+        await uws_dependency.initialize(uws_config)
+        uws_dependency.override_arq_queue(arq_queue)
         yield
         await uws_dependency.aclose()
 
-    uws_app = FastAPI(lifespan=lifespan)
-    uws_app.include_router(uws_router, prefix="/jobs")
-    uws_app.add_middleware(CaseInsensitiveQueryMiddleware)
-    uws_app.add_middleware(XForwardedMiddleware)
-    install_error_handlers(uws_app)
+    app = FastAPI(lifespan=lifespan)
+    app.add_middleware(CaseInsensitiveQueryMiddleware)
+    app.add_middleware(XForwardedMiddleware)
+    router = APIRouter(route_class=SlackRouteErrorHandler)
+    uws.install_handlers(router)
+    app.include_router(router, prefix="/test")
+    uws.install_error_handlers(app)
 
-    async with LifespanManager(uws_app):
-        yield uws_app
+    async with LifespanManager(app):
+        yield app
 
 
 @pytest.fixture

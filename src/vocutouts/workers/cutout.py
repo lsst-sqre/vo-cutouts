@@ -20,10 +20,16 @@ from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
-from ..models.stencils import CircleStencil, PolygonStencil, Stencil
+from ..models.parameters import CutoutParameters
+from ..models.stencils import CircleStencil, PolygonStencil
 from ..uws.exceptions import TaskFatalError, TaskUserError
-from ..uws.models import ErrorCode, UWSJobResult
-from ..uws.workers import UWSWorkerConfig, build_worker
+from ..uws.models import ErrorCode
+from ..uws.uwsworker import (
+    WorkerConfig,
+    WorkerJobInfo,
+    WorkerResult,
+    build_worker,
+)
 
 _BUTLER_FACTORY = LabeledButlerFactory()
 """Factory for creating Butler objects."""
@@ -83,13 +89,8 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
 
 
 def cutout(
-    job_id: str,
-    dataset_ids: list[str],
-    stencils: list[Stencil],
-    *,
-    token: str,
-    logger: BoundLogger,
-) -> list[UWSJobResult]:
+    params: CutoutParameters, info: WorkerJobInfo, logger: BoundLogger
+) -> list[WorkerResult]:
     """Perform a cutout.
 
     This is a queue worker for the vo-cutouts service. It takes a serialized
@@ -100,22 +101,16 @@ def cutout(
 
     Parameters
     ----------
-    job_id
-        UWS job ID, provided by the UWS layer but not used here.
-    dataset_ids
-        Data objects on which to perform cutouts. These are opaque identifiers
-        passed as-is to the backend. The user will normally discover them via
-        some service such as ObsTAP.
-    stencils
-        Serialized stencils for the cutouts to perform.
-    token
-        Gafaelfawr token used to authenticate to Butler server.
+    params
+        Cutout parameters.
+    info
+        Information about the UWS job we're executing.
     logger
         Logger to use for logging.
 
     Returns
     -------
-    list of UWSJobResult
+    list of WorkerResult
         Results of the job.
 
     Raises
@@ -127,31 +122,27 @@ def cutout(
         Raised if the cutout failed for reasons that may go away if the cutout
         is retried.
     """
-    logger = logger.bind(
-        dataset_ids=dataset_ids, stencils=[s.to_dict() for s in stencils]
-    )
-
     # Currently, only a single dataset ID and a single stencil are supported.
-    # These constraints should have been applied by the policy layer, so if we
-    # see them here, there's some bug in the cutout service.
-    if len(dataset_ids) != 1:
+    # These constraints should have been enforced by the web service, so if we
+    # see them here, there's some sort of internal bug.
+    if len(params.dataset_ids) != 1:
         msg = "Only one dataset ID supported"
         raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
-    if len(stencils) != 1:
+    if len(params.stencils) != 1:
         msg = "Only one stencil supported"
         raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
 
     # Parse the dataset ID and retrieve an appropriate backend.
-    butler_label, uuid = _parse_uri(dataset_ids[0])
-    backend = _get_backend(butler_label, token)
+    butler_label, uuid = _parse_uri(params.dataset_ids[0])
+    backend = _get_backend(butler_label, info.token)
 
     # Convert the stencils to SkyStencils.
     sky_stencils = []
-    for stencil in stencils:
+    for stencil in params.stencils:
         match stencil:
-            case CircleStencil(center, radius):
+            case CircleStencil(center=center, radius=radius):
                 sky_stencil = SkyCircle.from_astropy(center, radius, clip=True)
-            case PolygonStencil(vertices):
+            case PolygonStencil(vertices=vertices):
                 sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
             case _:
                 msg = f"Unknown stencil type {type(stencil).__name__}"
@@ -188,7 +179,7 @@ def cutout(
         raise TaskFatalError(ErrorCode.ERROR, msg, f"URL: {result_url}")
     logger.info("Cutout successful")
     return [
-        UWSJobResult(
+        WorkerResult(
             result_id="cutout", url=result_url, mime_type="application/fits"
         )
     ]
@@ -202,7 +193,7 @@ configure_logging(
 
 WorkerSettings = build_worker(
     cutout,
-    UWSWorkerConfig(
+    WorkerConfig(
         arq_mode=ArqMode.production,
         arq_queue_url=os.environ["CUTOUT_ARQ_QUEUE_URL"],
         arq_queue_password=os.getenv("CUTOUT_ARQ_QUEUE_PASSWORD"),

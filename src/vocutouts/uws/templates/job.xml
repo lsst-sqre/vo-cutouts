@@ -18,7 +18,7 @@
   {%- if job.end_time %}
   <uws:endTime>{{ job.end_time | isodatetime }}</uws:endTime>
   {%- endif %}
-  <uws:executionDuration>{{ job.execution_duration }}</uws:executionDuration>
+  <uws:executionDuration>{{ job.execution_duration.total_seconds() | int }}</uws:executionDuration>
   <uws:destruction>{{ job.destruction_time | isodatetime }}</uws:destruction>
   <uws:parameters>
     {%- for param in job.parameters %}

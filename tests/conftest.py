@@ -13,16 +13,13 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
-from safir.database import create_database_engine, initialize_database
 from safir.dependencies.db_session import db_session_dependency
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
 from vocutouts import main
-from vocutouts.config import config
-from vocutouts.policy import ImageCutoutPolicy
+from vocutouts.config import config, uws
 from vocutouts.uws.dependencies import UWSFactory, uws_dependency
-from vocutouts.uws.schema import Base
 
 from .support.uws import MockJobRunner
 
@@ -35,16 +32,12 @@ async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
     dropped from a persistent database between test cases.
     """
     logger = structlog.get_logger("vocutouts")
-    engine = create_database_engine(
-        config.database_url, config.database_password
-    )
-    await initialize_database(engine, logger, schema=Base.metadata, reset=True)
-    await engine.dispose()
+    await uws.initialize_uws_database(logger, reset=True)
     async with LifespanManager(main.app):
         # Ensure that all the components use the same mock arq queue.
         # Otherwise, the web application will use the one created in its
         # lifespan context manager.
-        uws_dependency.override_policy(ImageCutoutPolicy(arq_queue, logger))
+        uws_dependency.override_arq_queue(arq_queue)
         yield main.app
 
 

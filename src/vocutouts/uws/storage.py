@@ -64,7 +64,7 @@ def _convert_job(job: SQLJob) -> UWSJob:
         start_time=datetime_from_db(job.start_time),
         end_time=datetime_from_db(job.end_time),
         destruction_time=datetime_from_db(job.destruction_time),
-        execution_duration=job.execution_duration,
+        execution_duration=timedelta(seconds=job.execution_duration),
         quote=job.quote,
         parameters=[
             UWSJobParameter(
@@ -391,7 +391,7 @@ class JobStore:
             job.destruction_time = datetime_to_db(destruction)
 
     async def update_execution_duration(
-        self, job_id: str, execution_duration: int
+        self, job_id: str, execution_duration: timedelta
     ) -> None:
         """Update the destruction time of a job.
 
@@ -404,7 +404,7 @@ class JobStore:
         """
         async with self._session.begin():
             job = await self._get_job(job_id)
-            job.execution_duration = execution_duration
+            job.execution_duration = int(execution_duration.total_seconds())
 
     async def _get_job(self, job_id: str) -> SQLJob:
         """Retrieve a job from the database by job ID."""
