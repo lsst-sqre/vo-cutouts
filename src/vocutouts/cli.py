@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import click
 import structlog
-import uvicorn
 from safir.asyncio import run_with_asyncio
 from safir.click import display_help
 
@@ -23,17 +22,6 @@ def main() -> None:
 def help(ctx: click.Context, topic: str | None) -> None:
     """Show help for any command."""
     display_help(main, ctx, topic)
-
-
-@main.command()
-@click.option(
-    "--port", default=8080, type=int, help="Port to run the application on."
-)
-def run(port: int) -> None:
-    """Run the application (for testing only)."""
-    uvicorn.run(
-        "vocutouts.main:app", port=port, reload=True, reload_dirs=["src"]
-    )
 
 
 @main.command()
