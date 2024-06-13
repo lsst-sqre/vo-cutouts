@@ -23,6 +23,7 @@ from structlog.stdlib import BoundLogger
 from .config import ParametersDependency
 from .dependencies import (
     UWSFactory,
+    runid_post_dependency,
     uws_dependency,
     uws_post_params_dependency,
 )
@@ -515,17 +516,7 @@ def install_async_post_handler(
         phase: Annotated[
             Literal["RUN"] | None, Query(title="Immediately start job")
         ] = None,
-        runid: Annotated[
-            str | None,
-            Form(
-                title="Run ID for job",
-                description=(
-                    "An opaque string that is returned in the job metadata and"
-                    " job listings. Maybe used by the client to associate jobs"
-                    " with specific larger operations."
-                ),
-            ),
-        ] = None,
+        runid: Annotated[str | None, Depends(runid_post_dependency)],
         params: Annotated[
             list[UWSJobParameter], Depends(uws_post_params_dependency)
         ],
@@ -535,18 +526,10 @@ def install_async_post_handler(
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
         logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
     ) -> str:
-        runid = None
-        for param in params:
-            if param.parameter_id == "runid":
-                runid = param.value
-
-        # Create the job and optionally start it.
         job_service = uws_factory.create_job_service()
         job = await job_service.create(user, run_id=runid, params=parameters)
         if phase == "RUN":
             await job_service.start(user, job.job_id, token)
-
-        # Redirect to the new job.
         return str(request.url_for("get_job", job_id=job.job_id))
 
 
@@ -571,15 +554,12 @@ def install_sync_post_handler(
     )
     async def post_sync(
         *,
+        runid: Annotated[str | None, Depends(runid_post_dependency)],
         params: Annotated[list[UWSJobParameter], Depends(dependency)],
         user: Annotated[str, Depends(auth_dependency)],
         token: Annotated[str, Depends(auth_delegated_token_dependency)],
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     ) -> str:
-        runid = None
-        for param in params:
-            if param.parameter_id == "runid":
-                runid = param.value
         job_service = uws_factory.create_job_service()
         return await job_service.run_sync(
             user, params, token=token, runid=runid
@@ -605,7 +585,7 @@ def install_sync_get_handler(
         status_code=303,
         summary="Create sync job",
     )
-    async def post_sync(
+    async def get_sync(
         *,
         params: Annotated[list[UWSJobParameter], Depends(dependency)],
         runid: Annotated[
@@ -614,8 +594,8 @@ def install_sync_get_handler(
                 title="Run ID for job",
                 description=(
                     "An opaque string that is returned in the job metadata and"
-                    " job listings. Maybe used by the client to associate jobs"
-                    " with specific larger operations."
+                    " job listings. May be used by the client to associate"
+                    " jobs with specific larger operations."
                 ),
             ),
         ] = None,

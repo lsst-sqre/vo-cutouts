@@ -8,7 +8,7 @@ objects.
 
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Form, Request
 from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from safir.dependencies.db_session import db_session_dependency
 from safir.dependencies.logger import logger_dependency
@@ -25,6 +25,7 @@ from .storage import JobStore
 __all__ = [
     "UWSDependency",
     "UWSFactory",
+    "runid_post_dependency",
     "uws_dependency",
     "uws_post_params_dependency",
 ]
@@ -164,3 +165,32 @@ async def uws_post_params_dependency(
             )
         )
     return parameters
+
+
+async def runid_post_dependency(
+    *,
+    runid: Annotated[
+        str | None,
+        Form(
+            title="Run ID for job",
+            description=(
+                "An opaque string that is returned in the job metadata and"
+                " job listings. May be used by the client to associate jobs"
+                " with specific larger operations."
+            ),
+        ),
+    ] = None,
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
+) -> str | None:
+    """Parse the run ID from POST parameters.
+
+    This is annoyingly complex because DALI defines all parameters as
+    case-insensitive, so we have to list the field as a dependency but then
+    parse it out of the case-canonicalized job parameters.
+    """
+    for param in params:
+        if param.parameter_id == "runid":
+            runid = param.value
+    return runid
