@@ -4,20 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import functools
 import uuid
-from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Concatenate, ParamSpec
+from typing import Any, ParamSpec
 from urllib.parse import urlsplit
 
-from arq import func
 from arq.connections import RedisSettings
-from arq.constants import default_queue_name
-from arq.typing import SecondsTimedelta, StartupShutdown, WorkerCoroutine
-from arq.worker import Function
 from safir.arq import (
     ArqMode,
     ArqQueue,
@@ -36,18 +29,18 @@ from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
-from .constants import JOB_RESULT_TIMEOUT, UWS_QUEUE_NAME
+from .constants import JOB_RESULT_TIMEOUT
 from .exceptions import TaskError, TaskTransientError, UnknownJobError
-from .models import ErrorCode, UWSJobResult
+from .models import ErrorCode
 from .storage import JobStore
 
 P = ParamSpec("P")
 
 __all__ = [
-    "WorkerSettings",
-    "UWSWorkerConfig",
-    "build_worker",
-    "build_uws_worker",
+    "close_uws_worker_context",
+    "create_uws_worker_context",
+    "uws_job_completed",
+    "uws_job_started",
 ]
 
 
@@ -86,125 +79,84 @@ class UWSWorkerConfig:
         )
 
 
-@dataclass
-class WorkerSettings:
-    """Configuration class for an arq worker.
+async def create_uws_worker_context(
+    config: UWSConfig, logger: BoundLogger
+) -> dict[str, Any]:
+    """Construct the arq context for UWS workers.
 
-    The arq command-line tool reads a class of the name ``WorkerSettings`` in
-    the module it was given on the command line and turns its attributes into
-    parameters to `arq.worker.Worker`. This dataclass is not a valid
-    configuration class for arq; it exists only to define the contents of the
-    class returned by other functions.
-    """
-
-    functions: Sequence[Function | WorkerCoroutine]
-    """Coroutines to register as arq worker entry points."""
-
-    redis_settings: RedisSettings
-    """Redis configuration for arq."""
-
-    job_timeout: SecondsTimedelta
-    """Timeout for all jobs."""
-
-    queue_name: str = default_queue_name
-    """Name of arq queue to listen to for jobs."""
-
-    on_startup: StartupShutdown | None = None
-    """Coroutine to run on startup."""
-
-    on_shutdown: StartupShutdown | None = None
-    """Coroutine to run on shutdown."""
-
-    allow_abort_jobs: bool = False
-    """Whether to allow jobs to be aborted."""
-
-
-def build_worker(
-    worker: Callable[Concatenate[str, P], list[UWSJobResult]],
-    config: UWSWorkerConfig,
-    logger: BoundLogger,
-) -> WorkerSettings:
-    """Construct an arq worker for the provided backend function.
-
-    Builds an arq worker configuration that wraps the provided sync function
-    and executes it on messages to the default arq queue. Messages to the UWS
-    queue will be sent on job start and after job completion so that the UWS
-    database can be updated.
-
-    Unfortunately, the built-in arq ``on_job_start`` and ``after_job_end``
-    hooks can't be used because they don't receive any arguments to the job
-    and we need to tell the UWS handlers the job ID to act on. This means that
-    we'll send the UWS queue message before the results are recorded in Redis,
-    so the UWS handler has to deal with that.
+    The return value is a dictionary that should be merged with the ``ctx``
+    dictionary that is passed to each worker.
 
     Parameters
     ----------
-    worker
-        Synchronous function that does the actual work. This function will be
-        run in a thread pool of size one.
     config
-        UWS worker configuration.
+        UWS configuration.
     logger
-        Logger to use for messages.
+        Logger for the worker to use.
+
+    Returns
+    -------
+    dict
+        Keys to add to the ``ctx`` dictionary.
     """
-
-    async def startup(ctx: dict[Any, Any]) -> None:
-        nonlocal logger
-        logger = logger.bind(worker_instance=uuid.uuid4().hex)
-
-        # The queue to which to send UWS notification messages.
-        if config.arq_mode == ArqMode.production:
-            settings = config.arq_redis_settings
-            arq: ArqQueue = await RedisArqQueue.initialize(
-                settings, default_queue_name=UWS_QUEUE_NAME
-            )
-        else:
-            arq = MockArqQueue(default_queue_name=UWS_QUEUE_NAME)
-
-        ctx["arq"] = arq
-        ctx["logger"] = logger
-        ctx["pool"] = ThreadPoolExecutor(1)
-
-        logger.info("Worker startup complete")
-
-    async def shutdown(ctx: dict[Any, Any]) -> None:
-        logger: BoundLogger = ctx["logger"]
-        pool: ThreadPoolExecutor = ctx["pool"]
-
-        pool.shutdown(wait=True, cancel_futures=True)
-
-        logger.info("Worker shutdown complete")
-
-    async def run(
-        ctx: dict[Any, Any], job_id: str, *args: P.args, **kwargs: P.kwargs
-    ) -> list[UWSJobResult]:
-        arq: ArqQueue = ctx["arq"]
-        logger: BoundLogger = ctx["logger"].bind(
-            task=worker.__qualname__, job_id=job_id
-        )
-        pool: ThreadPoolExecutor = ctx["pool"]
-
-        await arq.enqueue("job_started", job_id, datetime.now(tz=UTC))
-        loop = asyncio.get_running_loop()
-        worker_call = functools.partial(
-            worker, job_id, *args, **kwargs, logger=logger
-        )
-        try:
-            return await loop.run_in_executor(pool, worker_call)
-        finally:
-            await arq.enqueue("job_completed", job_id)
-
-    return WorkerSettings(
-        functions=[func(run, name=worker.__qualname__)],
-        redis_settings=config.arq_redis_settings,
-        job_timeout=config.timeout,
-        on_startup=startup,
-        on_shutdown=shutdown,
-        allow_abort_jobs=True,
+    logger = logger.bind(worker_instance=uuid.uuid4().hex)
+    engine = create_database_engine(
+        config.database_url,
+        config.database_password,
+        isolation_level="REPEATABLE READ",
     )
+    session = await create_async_session(engine, logger)
+    storage = JobStore(session)
+    slack = None
+    if config.slack_webhook:
+        slack = SlackWebhookClient(
+            config.slack_webhook.get_secret_value(),
+            "vo-cutouts-db-worker",
+            logger,
+        )
+
+    # The queue from which to retrieve results is the main work queue,
+    # which uses the default arq queue name. Note that this is not the
+    # separate UWS queue this worker is running against.
+    if config.arq_mode == ArqMode.production:
+        settings = config.arq_redis_settings
+        arq: ArqQueue = await RedisArqQueue.initialize(settings)
+    else:
+        arq = MockArqQueue()
+
+    logger.info("Worker startup complete")
+    return {
+        "arq": arq,
+        "logger": logger,
+        "session": session,
+        "slack": slack,
+        "storage": storage,
+    }
 
 
-async def job_started(
+async def close_uws_worker_context(ctx: dict[Any, Any]) -> None:
+    """Close the context used by the UWS workers.
+
+    Performs any necessary cleanup of persistent objects stored in the ``ctx``
+    argument passed to each worker.
+
+    Parameters
+    ----------
+    ctx
+        Worker context.
+    """
+    logger: BoundLogger = ctx["logger"]
+    session: async_scoped_session = ctx["session"]
+
+    await session.remove()
+
+    # Possibly initialized by the Slack webhook client.
+    await http_client_dependency.aclose()
+
+    logger.info("Worker shutdown complete")
+
+
+async def uws_job_started(
     ctx: dict[Any, Any], job_id: str, start_time: datetime
 ) -> None:
     """Mark a UWS job as executing.
@@ -247,7 +199,7 @@ async def _get_job_result(arq: ArqQueue, arq_job_id: str) -> JobResult:
     return await arq.get_job_result(arq_job_id)
 
 
-async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
+async def uws_job_completed(ctx: dict[Any, Any], job_id: str) -> None:
     """Mark a UWS job as completed.
 
     Recover the exception if the job failed and record that as the job error.
@@ -314,84 +266,3 @@ async def job_completed(ctx: dict[Any, Any], job_id: str) -> None:
         if slack:
             await slack.post_uncaught_exception(e)
         raise
-
-
-def build_uws_worker(config: UWSConfig, logger: BoundLogger) -> WorkerSettings:
-    """Construct an arq worker configuration for the UWS tracking worker.
-
-    All UWS job status and results must be stored in the underlying database,
-    since the API serves job information from there. To minimize dependencies
-    for the worker, which may (for example) pin its own version of SQLAlchemy
-    that may not be compatible with that used by the application, the actual
-    worker is not responsible for storing the results in SQL. Instead, it
-    returns results via arq, which temporarily puts them in Redis then uses
-    ``on_job_start`` and ``after_job_end`` to notify a different queue. Those
-    results are recovered and stored in the database by separate a separate
-    arq worker.
-
-    This function returns a class suitable for being assigned to
-    ``WorkerSettings``, which defines the arq worker that does this database
-    state tracking.
-
-    Parameters
-    ----------
-    config
-        UWS configuration.
-    logger
-        Logger to use for messages.
-    """
-
-    async def startup(ctx: dict[Any, Any]) -> None:
-        nonlocal logger
-        logger = logger.bind(worker_instance=uuid.uuid4().hex)
-        engine = create_database_engine(
-            config.database_url,
-            config.database_password,
-            isolation_level="REPEATABLE READ",
-        )
-        session = await create_async_session(engine, logger)
-        storage = JobStore(session)
-        slack = None
-        if config.slack_webhook:
-            slack = SlackWebhookClient(
-                config.slack_webhook.get_secret_value(),
-                "vo-cutouts-db-worker",
-                logger,
-            )
-
-        # The queue from which to retrieve results is the main work queue,
-        # which uses the default arq queue name. Note that this is not the
-        # separate UWS queue this worker is running against.
-        if config.arq_mode == ArqMode.production:
-            settings = config.arq_redis_settings
-            arq: ArqQueue = await RedisArqQueue.initialize(settings)
-        else:
-            arq = MockArqQueue()
-
-        ctx["arq"] = arq
-        ctx["logger"] = logger
-        ctx["session"] = session
-        ctx["slack"] = slack
-        ctx["storage"] = storage
-
-        logger.info("Worker startup complete")
-
-    async def shutdown(ctx: dict[Any, Any]) -> None:
-        logger: BoundLogger = ctx["logger"]
-        session: async_scoped_session = ctx["session"]
-
-        await session.remove()
-
-        # Possibly initialized by the Slack webhook client.
-        await http_client_dependency.aclose()
-
-        logger.info("Worker shutdown complete")
-
-    return WorkerSettings(
-        functions=[job_started, job_completed],
-        redis_settings=config.arq_redis_settings,
-        job_timeout=timedelta(seconds=30),
-        queue_name=UWS_QUEUE_NAME,
-        on_startup=startup,
-        on_shutdown=shutdown,
-    )

@@ -1,14 +1,15 @@
 """Models for UWS services.
 
-See https://www.ivoa.net/documents/UWS/20161024/REC-UWS-1.1-20161024.html.
-Descriptive language here is paraphrased from this standard.
+See https://www.ivoa.net/documents/UWS/20161024/REC-UWS-1.1-20161024.html for
+most of these models. Descriptive language here is paraphrased from this
+standard.
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime
-from enum import Enum
+from datetime import datetime, timedelta
+from enum import Enum, StrEnum
 
 __all__ = [
     "Availability",
@@ -77,7 +78,7 @@ ACTIVE_PHASES = {
 """Phases in which the job is active and can be waited on."""
 
 
-class ErrorCode(Enum):
+class ErrorCode(StrEnum):
     """Possible error codes in ``text/plain`` responses.
 
     The following list of errors is taken from the SODA specification and
@@ -92,7 +93,7 @@ class ErrorCode(Enum):
     USAGE_ERROR = "UsageError"
 
 
-class ErrorType(Enum):
+class ErrorType(StrEnum):
     """Types of job errors."""
 
     TRANSIENT = "transient"
@@ -118,6 +119,10 @@ class UWSJobError:
 
     detail: str | None = None
     """Extended error message with additional detail."""
+
+    def to_dict(self) -> dict[str, str | None]:
+        """Convert to a dictionary, primarily for logging."""
+        return asdict(self)
 
 
 @dataclass
@@ -250,7 +255,7 @@ class UWSJob:
     all jobs will have a destruction time, so it is not marked as optional.
     """
 
-    execution_duration: int
+    execution_duration: timedelta
     """Allowed maximum execution duration in seconds.
 
     This is specified in elapsed wall clock time, or 0 for unlimited execution

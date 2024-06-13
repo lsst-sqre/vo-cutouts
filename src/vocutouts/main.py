@@ -13,18 +13,15 @@ from importlib.metadata import metadata, version
 
 import structlog
 from fastapi import FastAPI
-from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
-from .config import config
+from .config import config, uws
 from .handlers import external, internal
-from .policy import ImageCutoutPolicy
 from .uws.dependencies import uws_dependency
-from .uws.errors import install_error_handlers
 
 __all__ = ["app"]
 
@@ -32,17 +29,8 @@ __all__ = ["app"]
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
-    if config.arq_mode == ArqMode.production:
-        settings = config.arq_redis_settings
-        arq: ArqQueue = await RedisArqQueue.initialize(settings)
-    else:
-        arq = MockArqQueue()
-    logger = structlog.get_logger("vocutouts")
-    policy = ImageCutoutPolicy(arq, logger)
-    await uws_dependency.initialize(config.uws_config, policy)
-
+    await uws_dependency.initialize(config.uws_config)
     yield
-
     await uws_dependency.aclose()
 
 
@@ -65,6 +53,7 @@ app = FastAPI(
 
 # Attach the routers.
 app.include_router(internal.router)
+uws.install_handlers(external.router)
 app.include_router(
     external.router,
     prefix=config.path_prefix,
@@ -79,7 +68,7 @@ app.add_middleware(XForwardedMiddleware)
 app.add_middleware(CaseInsensitiveQueryMiddleware)
 
 # Install error handlers.
-install_error_handlers(app)
+uws.install_error_handlers(app)
 
 # Configure Slack alerts.
 if config.slack_webhook:

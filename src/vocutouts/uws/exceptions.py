@@ -6,7 +6,7 @@ The types of exceptions here control the error handling behavior configured in
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from traceback import format_exception
 from typing import ClassVar
 
@@ -27,6 +27,9 @@ __all__ = [
     "InvalidPhaseError",
     "ParameterError",
     "PermissionDeniedError",
+    "SyncJobFailedError",
+    "SyncJobNoResultsError",
+    "SyncJobTimeoutError",
     "TaskError",
     "TaskFatalError",
     "TaskTransientError",
@@ -37,7 +40,7 @@ __all__ = [
 ]
 
 
-class UWSError(Exception):
+class UWSError(SlackIgnoredException):
     """An error with an associated error code.
 
     SODA requires errors be in ``text/plain`` and start with an error code.
@@ -63,7 +66,7 @@ class UWSError(Exception):
         self.status_code = 400
 
 
-class MultiValuedParameterError(UWSError, SlackIgnoredException):
+class MultiValuedParameterError(UWSError):
     """Multiple values not allowed for this parameter."""
 
     def __init__(self, message: str) -> None:
@@ -71,12 +74,38 @@ class MultiValuedParameterError(UWSError, SlackIgnoredException):
         self.status_code = 422
 
 
-class PermissionDeniedError(UWSError, SlackIgnoredException):
+class PermissionDeniedError(UWSError):
     """User does not have access to this resource."""
 
     def __init__(self, message: str) -> None:
         super().__init__(ErrorCode.AUTHORIZATION_ERROR, message)
         self.status_code = 403
+
+
+class SyncJobFailedError(UWSError):
+    """A sync job failed."""
+
+    def __init__(self, error: UWSJobError) -> None:
+        super().__init__(error.error_code, error.message, error.detail)
+        self.status_code = 500
+
+
+class SyncJobNoResultsError(UWSError):
+    """A sync job returned no results."""
+
+    def __init__(self) -> None:
+        msg = "Job completed but produced no results"
+        super().__init__(ErrorCode.ERROR, msg)
+        self.status_code = 500
+
+
+class SyncJobTimeoutError(UWSError):
+    """A sync job timed out before it completed."""
+
+    def __init__(self, timeout: timedelta) -> None:
+        msg = f"Job did not complete in {timeout.total_seconds()}s"
+        super().__init__(ErrorCode.ERROR, msg)
+        self.status_code = 500
 
 
 class TaskError(SlackException):
@@ -218,7 +247,7 @@ class TaskUserError(TaskFatalError, SlackIgnoredException):
     """
 
 
-class UsageError(UWSError, SlackIgnoredException):
+class UsageError(UWSError):
     """Invalid parameters were passed to a UWS API."""
 
     def __init__(self, message: str, detail: str | None = None) -> None:
@@ -226,7 +255,7 @@ class UsageError(UWSError, SlackIgnoredException):
         self.status_code = 422
 
 
-class DataMissingError(UWSError, SlackIgnoredException):
+class DataMissingError(UWSError):
     """The data requested does not exist for that job."""
 
     def __init__(self, message: str) -> None:

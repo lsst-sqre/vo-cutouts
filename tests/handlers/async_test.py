@@ -167,11 +167,9 @@ async def test_bad_parameters(
         {"id": "foo", "pos": "POLYHEDRON 10"},
         {"id": "foo", "pos": "CIRCLE 1 1"},
         {"id": "foo", "pos": "POLYGON 1 1"},
-        {"id": "foo", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"id": "foo", "circle": "1"},
         {"id": "foo", "polygon": "1 2 3"},
-        {"id": "foo", "circle": "1 1 1", "phase": "STOP"},
-        {"id": "foo", "circle": "1 1 1", "PHASE": "STOP"},
+        {"id": "foo", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"ID": "some-id", "pos": "RANGE 1 1 2 2", "phase": "RUN"},
     ]
     for params in bad_params:
@@ -182,6 +180,15 @@ async def test_bad_parameters(
         )
         assert r.status_code == 422, f"Parameters {params}"
         assert r.text.startswith("UsageError")
+
+    # Test requesting two stencils.
+    r = await client.post(
+        "/api/cutout/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"id": "foo", "circle": "1 1 1", "pos": "CIRCLE 2 2 2"},
+    )
+    assert r.status_code == 422, f"Parameters {params}"
+    assert r.text.startswith("MultiValuedParamNotSupported")
 
     # None of these requests should have been reported to Slack.
     assert mock_slack.messages == []

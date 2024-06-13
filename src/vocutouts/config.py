@@ -21,6 +21,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.arq import ArqMode
 from safir.logging import LogLevel, Profile
 
+from .dependencies import get_params_dependency, post_params_dependency
+from .models.parameters import CutoutParameters
+from .uws.app import UWSApplication
 from .uws.config import UWSConfig
 
 _postgres_dsn_adapter = TypeAdapter(PostgresDsn)
@@ -34,6 +37,7 @@ __all__ = [
     "Config",
     "PostgresDsnString",
     "config",
+    "uws",
 ]
 
 
@@ -211,12 +215,21 @@ class Config(BaseSettings):
             arq_redis_settings=self.arq_redis_settings,
             execution_duration=self.timeout,
             lifetime=self.lifetime,
+            parameters_type=CutoutParameters,
+            signing_service_account=self.service_account,
+            worker="cutout",
             database_url=self.database_url,
             database_password=self.database_password,
-            signing_service_account=self.service_account,
             slack_webhook=self.slack_webhook,
+            sync_timeout=self.sync_timeout,
+            async_post_dependency=post_params_dependency,
+            sync_get_dependency=get_params_dependency,
+            sync_post_dependency=post_params_dependency,
         )
 
 
 config = Config()
 """Configuration for vo-cutouts."""
+
+uws = UWSApplication(config.uws_config)
+"""The UWS application for this service."""

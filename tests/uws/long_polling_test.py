@@ -29,7 +29,7 @@ PENDING_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">bar</uws:parameter>
+    <uws:parameter id="name">Naomi</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -50,7 +50,7 @@ EXECUTING_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">bar</uws:parameter>
+    <uws:parameter id="name">Naomi</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -72,7 +72,7 @@ FINISHED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">bar</uws:parameter>
+    <uws:parameter id="name">Naomi</uws:parameter>
   </uws:parameters>
   <uws:results>
     <uws:result id="cutout" xlink:href="https://example.com/some/path"\
@@ -89,14 +89,14 @@ async def test_poll(
     job_service = uws_factory.create_job_service()
     job = await job_service.create(
         "user",
-        params=[UWSJobParameter(parameter_id="id", value="bar")],
+        params=[UWSJobParameter(parameter_id="name", value="Naomi")],
     )
 
     # Poll for changes for one second. Nothing will happen since nothing is
     # changing the mock arq queue.
     now = current_datetime()
     r = await client.get(
-        "/jobs/1",
+        "/test/jobs/1",
         headers={"X-Auth-Request-User": "user"},
         params={"WAIT": "1"},
     )
@@ -110,13 +110,13 @@ async def test_poll(
 
     # Start the job and worker.
     r = await client.post(
-        "/jobs/1/phase",
+        "/test/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
         follow_redirects=True,
     )
     assert r.status_code == 200
-    assert r.url == "https://example.com/jobs/1"
+    assert r.url == "https://example.com/test/jobs/1"
     assert r.text == PENDING_JOB.strip().format(
         "QUEUED",
         isodatetime(job.creation_time),
@@ -128,7 +128,7 @@ async def test_poll(
     job, r = await asyncio.gather(
         runner.mark_in_progress("user", "1", delay=0.5),
         client.get(
-            "/jobs/1",
+            "/test/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "QUEUED"},
         ),
@@ -153,7 +153,7 @@ async def test_poll(
     job, r = await asyncio.gather(
         runner.mark_complete("user", "1", results, delay=1.5),
         client.get(
-            "/jobs/1",
+            "/test/jobs/1",
             headers={"X-Auth-Request-User": "user"},
             params={"WAIT": "2", "phase": "EXECUTING"},
         ),

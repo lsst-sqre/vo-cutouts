@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from typing import Any
 from unittest.mock import ANY
 
@@ -15,6 +16,7 @@ from safir.datetime import current_datetime
 from safir.testing.slack import MockSlackWebhook
 from structlog.stdlib import BoundLogger
 
+from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.constants import UWS_QUEUE_NAME
 from vocutouts.uws.dependencies import UWSFactory
@@ -23,33 +25,36 @@ from vocutouts.uws.models import (
     ErrorCode,
     ErrorType,
     ExecutionPhase,
+    UWSJobParameter,
     UWSJobResult,
 )
 from vocutouts.uws.storage import JobStore
-from vocutouts.uws.workers import (
-    UWSWorkerConfig,
-    build_uws_worker,
+from vocutouts.uws.uwsworker import (
+    WorkerConfig,
+    WorkerJobInfo,
+    WorkerResult,
     build_worker,
 )
+
+from ..support.uws import SimpleParameters
 
 
 @pytest.mark.asyncio
 async def test_build_worker(
     uws_config: UWSConfig, logger: BoundLogger
 ) -> None:
-    def worker(
-        job_id: str, name: str, *, greeting: str, logger: BoundLogger
-    ) -> list[UWSJobResult]:
+    def hello(
+        params: SimpleParameters, info: WorkerJobInfo, logger: BoundLogger
+    ) -> list[WorkerResult]:
         return [
-            UWSJobResult(
-                result_id="greeting",
-                url=f"https://example.com/{greeting}/{name}",
+            WorkerResult(
+                result_id="greeting", url=f"https://example.com/{params.name}"
             )
         ]
 
     # Construct the arq configuration and check it.
     redis_settings = uws_config.arq_redis_settings
-    worker_config = UWSWorkerConfig(
+    worker_config = WorkerConfig(
         arq_mode=uws_config.arq_mode,
         arq_queue_url=(
             f"redis://{redis_settings.host}:{redis_settings.port}"
@@ -58,10 +63,10 @@ async def test_build_worker(
         arq_queue_password=redis_settings.password,
         timeout=uws_config.execution_duration,
     )
-    settings = build_worker(worker, worker_config, logger)
+    settings = build_worker(hello, worker_config, logger)
     assert len(settings.functions) == 1
     assert isinstance(settings.functions[0], Function)
-    assert settings.functions[0].name == worker.__qualname__
+    assert settings.functions[0].name == hello.__qualname__
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert settings.queue_name == default_queue_name
     assert settings.allow_abort_jobs
@@ -79,11 +84,17 @@ async def test_build_worker(
 
     # Run the worker.
     function = settings.functions[0].coroutine
-    result = await function(ctx, "42", "Roger", greeting="Hello")
+    params = SimpleParameters(name="Roger")
+    info = WorkerJobInfo(
+        job_id="42",
+        user="someuser",
+        token="some-token",
+        timeout=timedelta(minutes=1),
+        run_id="some-run-id",
+    )
+    result = await function(ctx, params, info)
     assert result == [
-        UWSJobResult(
-            result_id="greeting", url="https://example.com/Hello/Roger"
-        )
+        WorkerResult(result_id="greeting", url="https://example.com/Roger")
     ]
     assert list(arq._job_metadata[UWS_QUEUE_NAME].values()) == [
         JobMetadata(
@@ -119,9 +130,11 @@ async def test_build_uws_worker(
     mock_slack: MockSlackWebhook,
     logger: BoundLogger,
 ) -> None:
-    settings = build_uws_worker(uws_config, logger)
+    uws = UWSApplication(uws_config)
     job_service = uws_factory.create_job_service()
-    job = await job_service.create("user", params=[])
+    job = await job_service.create(
+        "user", params=[UWSJobParameter(parameter_id="name", value="Ahmed")]
+    )
     results = [UWSJobResult(result_id="greeting", url="https://example.com")]
     await job_service.start("user", job.job_id, "some-token")
     job = await job_service.get("user", job.job_id)
@@ -129,7 +142,7 @@ async def test_build_uws_worker(
     assert job.phase == ExecutionPhase.QUEUED
 
     # Construct the arq configuration and check it.
-    settings = build_uws_worker(uws_config, logger)
+    settings = uws.build_worker(logger)
     assert len(settings.functions) == 2
     job_started = settings.functions[0]
     assert callable(job_started)
@@ -187,7 +200,9 @@ async def test_build_uws_worker(
             ) from e
 
     # Test starting and erroring a job with a TaskError.
-    job = await job_service.create("user", params=[])
+    job = await job_service.create(
+        "user", params=[UWSJobParameter(parameter_id="name", value="Ahmed")]
+    )
     await job_service.start("user", job.job_id, "some-token")
     job = await job_service.get("user", job.job_id)
     assert job.message_id
@@ -285,7 +300,9 @@ async def test_build_uws_worker(
 
     # Test starting and erroring a job with an unknown exception.
     mock_slack.messages = []
-    job = await job_service.create("user", params=[])
+    job = await job_service.create(
+        "user", params=[UWSJobParameter(parameter_id="name", value="Ahmed")]
+    )
     await job_service.start("user", job.job_id, "some-token")
     job = await job_service.get("user", job.job_id)
     assert job.message_id

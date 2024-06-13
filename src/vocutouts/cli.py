@@ -7,10 +7,8 @@ import structlog
 import uvicorn
 from safir.asyncio import run_with_asyncio
 from safir.click import display_help
-from safir.database import create_database_engine, initialize_database
 
-from .config import config
-from .uws.schema import Base
+from .config import uws
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -46,10 +44,4 @@ def run(port: int) -> None:
 async def init(*, reset: bool) -> None:
     """Initialize the database storage."""
     logger = structlog.get_logger("vocutouts")
-    engine = create_database_engine(
-        config.database_url, config.database_password
-    )
-    await initialize_database(
-        engine, logger, schema=Base.metadata, reset=reset
-    )
-    await engine.dispose()
+    await uws.initialize_uws_database(logger, reset=reset)

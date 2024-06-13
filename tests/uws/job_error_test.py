@@ -30,7 +30,7 @@ ERRORED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id">1:2:a:b</uws:parameter>
+    <uws:parameter id="name">Sarah</uws:parameter>
   </uws:parameters>
   <uws:errorSummary type="{}" hasDetail="{}">
     <uws:message>{}</uws:message>
@@ -57,18 +57,18 @@ async def test_temporary_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
-        "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
+        "user", params=[UWSJobParameter(parameter_id="name", value="Sarah")]
     )
 
     # The pending job has no error.
     r = await client.get(
-        "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
+        "/test/jobs/1/error", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 404
 
     # Execute the job.
     r = await client.post(
-        "/jobs/1/phase",
+        "/test/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
@@ -80,7 +80,9 @@ async def test_temporary_error(
     # Check the results.
     assert job.start_time
     assert job.end_time
-    r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
+    r = await client.get(
+        "/test/jobs/1", headers={"X-Auth-Request-User": "user"}
+    )
     assert r.status_code == 200
     assert r.text == ERRORED_JOB.strip().format(
         isodatetime(job.creation_time),
@@ -94,7 +96,7 @@ async def test_temporary_error(
 
     # Retrieve the error separately.
     r = await client.get(
-        "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
+        "/test/jobs/1/error", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 200
     assert r.text == JOB_ERROR_SUMMARY.strip().format(
@@ -114,12 +116,12 @@ async def test_fatal_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
-        "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
+        "user", params=[UWSJobParameter(parameter_id="name", value="Sarah")]
     )
 
     # Start the job.
     r = await client.post(
-        "/jobs/1/phase",
+        "/test/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
@@ -131,7 +133,9 @@ async def test_fatal_error(
     # Check the results.
     assert job.start_time
     assert job.end_time
-    r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
+    r = await client.get(
+        "/test/jobs/1", headers={"X-Auth-Request-User": "user"}
+    )
     assert r.status_code == 200
     assert r.text == ERRORED_JOB.strip().format(
         isodatetime(job.creation_time),
@@ -145,7 +149,7 @@ async def test_fatal_error(
 
     # Retrieve the error separately.
     r = await client.get(
-        "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
+        "/test/jobs/1/error", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 200
     assert r.text == JOB_ERROR_SUMMARY.strip().format(
@@ -165,12 +169,12 @@ async def test_unknown_error(
 ) -> None:
     job_service = uws_factory.create_job_service()
     await job_service.create(
-        "user", params=[UWSJobParameter(parameter_id="id", value="1:2:a:b")]
+        "user", params=[UWSJobParameter(parameter_id="name", value="Sarah")]
     )
 
     # Start the job.
     r = await client.post(
-        "/jobs/1/phase",
+        "/test/jobs/1/phase",
         headers={"X-Auth-Request-User": "user"},
         data={"PHASE": "RUN"},
     )
@@ -182,7 +186,9 @@ async def test_unknown_error(
     # Check the results.
     assert job.start_time
     assert job.end_time
-    r = await client.get("/jobs/1", headers={"X-Auth-Request-User": "user"})
+    r = await client.get(
+        "/test/jobs/1", headers={"X-Auth-Request-User": "user"}
+    )
     assert r.status_code == 200
     assert r.text == ERRORED_JOB.strip().format(
         isodatetime(job.creation_time),
@@ -196,7 +202,7 @@ async def test_unknown_error(
 
     # Retrieve the error separately.
     r = await client.get(
-        "/jobs/1/error", headers={"X-Auth-Request-User": "user"}
+        "/test/jobs/1/error", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 200
     assert r.text == JOB_ERROR_SUMMARY.strip().format(

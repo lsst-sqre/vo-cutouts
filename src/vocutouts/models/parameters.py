@@ -2,27 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Self
 
+from pydantic import ValidationError
+
 from ..exceptions import InvalidCutoutParameterError
+from ..uws.config import ParametersModel
+from ..uws.exceptions import MultiValuedParameterError
 from ..uws.models import UWSJobParameter
-from .stencils import CircleStencil, PolygonStencil, RangeStencil, Stencil
+from .request import (
+    CircleStencil,
+    CutoutRequest,
+    PolygonStencil,
+    RangeStencil,
+    Stencil,
+)
 
 
-@dataclass
-class CutoutParameters:
-    """The parameters to a cutout request."""
-
-    ids: list[str]
-    """The dataset IDs on which to operate."""
-
-    stencils: list[Stencil]
-    """The cutout stencils to apply."""
+class CutoutParameters(CutoutRequest, ParametersModel):
+    """Parameters to a cutout request."""
 
     @classmethod
     def from_job_parameters(cls, params: list[UWSJobParameter]) -> Self:
-        """Convert generic UWS parameters to the iamge cutout parameters.
+        """Convert generic UWS parameters to the image cutout parameters.
 
         Parameters
         ----------
@@ -32,12 +34,15 @@ class CutoutParameters:
         Returns
         -------
         CutoutParameters
-            The parsed cutout parameters specific to the image cutout service.
+            Parsed cutout parameters specific to the image cutout service.
 
         Raises
         ------
-        vocutouts.exceptions.InvalidCutoutParameterError
-            One of the parameters could not be parsed.
+        InvalidCutoutParameterError
+            Raised if one of the parameters could not be parsed.
+        MultiValuedParameterError
+            Raised if more than one dataset ID or more than one stencil is
+            provided.
         """
         ids = []
         stencils = []
@@ -52,13 +57,19 @@ class CutoutParameters:
         except Exception as e:
             msg = f"Invalid cutout parameter: {type(e).__name__}: {e!s}"
             raise InvalidCutoutParameterError(msg, params) from e
-        if not ids:
-            raise InvalidCutoutParameterError("No dataset ID given", params)
-        if not stencils:
-            raise InvalidCutoutParameterError(
-                "No cutout stencil given", params
-            )
-        return cls(ids=ids, stencils=stencils)
+
+        # For now, only support a single ID and stencil. These have to be
+        # checked outside of the validator because the SODA standard requires
+        # returning a different error in this case.
+        if len(ids) > 1:
+            raise MultiValuedParameterError("Only one ID supported")
+        if len(stencils) > 1:
+            raise MultiValuedParameterError("Only one stencil is supported")
+
+        try:
+            return cls(dataset_ids=ids, stencils=stencils)
+        except ValidationError as e:
+            raise InvalidCutoutParameterError(str(e), params) from e
 
     @staticmethod
     def _parse_stencil(stencil_type: str, params: str) -> Stencil:

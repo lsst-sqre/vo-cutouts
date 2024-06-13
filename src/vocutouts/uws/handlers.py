@@ -1,22 +1,12 @@
 """Handlers for the UWS API to a service.
 
-These handlers should be reusable for any IVOA service that implements UWS.
-The user of these handlers must provide an additional handler for POST at the
-root of the job list, since that handler has to specify the input parameters
-for a job, which will vary by service.
-
-Notes
------
-To use these handlers, include the ``uws_router`` in an appropriate FastAPI
-router, generally with a prefix matching the URL root for the async API.  For
-example:
-
-.. code-block:: python
-
-   router.include_router(uws_router, prefix="/jobs")
+The handlers defined in ``uws_router`` should be reusable for any IVOA service
+that implements UWS. The other functions dynamically define additional
+handlers that use dependencies provided by the application, so that the
+application can define the parameters to a job.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response
@@ -30,6 +20,7 @@ from safir.dependencies.gafaelfawr import (
 from safir.slack.webhook import SlackRouteErrorHandler
 from structlog.stdlib import BoundLogger
 
+from .config import ParametersDependency
 from .dependencies import (
     UWSFactory,
     uws_dependency,
@@ -41,7 +32,12 @@ from .models import ExecutionPhase, UWSJobParameter
 uws_router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
 
-__all__ = ["uws_router"]
+__all__ = [
+    "install_async_post_handler",
+    "install_sync_get_handler",
+    "install_sync_post_handler",
+    "uws_router",
+]
 
 
 @uws_router.get(
@@ -302,7 +298,7 @@ async def get_job_execution_duration(
 ) -> str:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
-    return str(job.execution_duration)
+    return str(int(job.execution_duration.total_seconds()))
 
 
 @uws_router.post(
@@ -350,7 +346,7 @@ async def post_job_execution_duration(
     # None if it was not changed.
     job_service = uws_factory.create_job_service()
     new_executionduration = await job_service.update_execution_duration(
-        user, job_id, executionduration
+        user, job_id, timedelta(seconds=executionduration)
     )
     if new_executionduration is not None:
         logger.info(
@@ -492,3 +488,142 @@ async def get_job_results(
     job = await job_service.get(user, job_id)
     templates = uws_factory.create_templates()
     return await templates.results(request, job)
+
+
+def install_async_post_handler(
+    router: APIRouter, dependency: ParametersDependency
+) -> None:
+    """Construct the POST handler for creating an async job.
+
+    Parameters
+    ----------
+    router
+        Router into which to install the handler.
+    dependency
+        Dependency that returns the job parameters.
+    """
+
+    @router.post(
+        "/jobs",
+        response_class=RedirectResponse,
+        status_code=303,
+        summary="Create async job",
+    )
+    async def create_job(
+        *,
+        parameters: Annotated[list[UWSJobParameter], Depends(dependency)],
+        phase: Annotated[
+            Literal["RUN"] | None, Query(title="Immediately start job")
+        ] = None,
+        runid: Annotated[
+            str | None,
+            Form(
+                title="Run ID for job",
+                description=(
+                    "An opaque string that is returned in the job metadata and"
+                    " job listings. Maybe used by the client to associate jobs"
+                    " with specific larger operations."
+                ),
+            ),
+        ] = None,
+        params: Annotated[
+            list[UWSJobParameter], Depends(uws_post_params_dependency)
+        ],
+        request: Request,
+        user: Annotated[str, Depends(auth_dependency)],
+        token: Annotated[str, Depends(auth_delegated_token_dependency)],
+        uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+        logger: Annotated[BoundLogger, Depends(auth_logger_dependency)],
+    ) -> str:
+        runid = None
+        for param in params:
+            if param.parameter_id == "runid":
+                runid = param.value
+
+        # Create the job and optionally start it.
+        job_service = uws_factory.create_job_service()
+        job = await job_service.create(user, run_id=runid, params=parameters)
+        if phase == "RUN":
+            await job_service.start(user, job.job_id, token)
+
+        # Redirect to the new job.
+        return str(request.url_for("get_job", job_id=job.job_id))
+
+
+def install_sync_post_handler(
+    router: APIRouter, dependency: ParametersDependency
+) -> None:
+    """Construct the POST handler for creating a sync job.
+
+    Parameters
+    ----------
+    router
+        Router into which to install the handler.
+    dependency
+        Dependency that returns the job parameters.
+    """
+
+    @router.post(
+        "/sync",
+        response_class=RedirectResponse,
+        status_code=303,
+        summary="Create sync job",
+    )
+    async def post_sync(
+        *,
+        params: Annotated[list[UWSJobParameter], Depends(dependency)],
+        user: Annotated[str, Depends(auth_dependency)],
+        token: Annotated[str, Depends(auth_delegated_token_dependency)],
+        uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    ) -> str:
+        runid = None
+        for param in params:
+            if param.parameter_id == "runid":
+                runid = param.value
+        job_service = uws_factory.create_job_service()
+        return await job_service.run_sync(
+            user, params, token=token, runid=runid
+        )
+
+
+def install_sync_get_handler(
+    router: APIRouter, dependency: ParametersDependency
+) -> None:
+    """Construct the GET handler for creating a sync job.
+
+    Parameters
+    ----------
+    router
+        Router into which to install the handler.
+    dependency
+        Dependency that returns the job parameters.
+    """
+
+    @router.get(
+        "/sync",
+        response_class=RedirectResponse,
+        status_code=303,
+        summary="Create sync job",
+    )
+    async def post_sync(
+        *,
+        params: Annotated[list[UWSJobParameter], Depends(dependency)],
+        runid: Annotated[
+            str | None,
+            Query(
+                title="Run ID for job",
+                description=(
+                    "An opaque string that is returned in the job metadata and"
+                    " job listings. Maybe used by the client to associate jobs"
+                    " with specific larger operations."
+                ),
+            ),
+        ] = None,
+        user: Annotated[str, Depends(auth_dependency)],
+        token: Annotated[str, Depends(auth_delegated_token_dependency)],
+        uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    ) -> str:
+        job_service = uws_factory.create_job_service()
+        return await job_service.run_sync(
+            user, params, token=token, runid=runid
+        )

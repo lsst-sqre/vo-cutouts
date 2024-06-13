@@ -66,8 +66,6 @@ async def test_bad_parameters(
         {"id": "5:6:a:b", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"id": "5:6:a:b", "circle": "1"},
         {"id": "5:6:a:b", "polygon": "1 2 3"},
-        {"id": "5:6:a:b", "circle": "1 1 1", "phase": "STOP"},
-        {"id": "5:6:a:b", "circle": "1 1 1", "PHASE": "STOP"},
     ]
     for params in bad_params:
         r = await client.get(
