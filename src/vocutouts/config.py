@@ -19,6 +19,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.arq import ArqMode
+from safir.datetime import parse_timedelta
 from safir.logging import LogLevel, Profile
 
 from .dependencies import get_params_dependency, post_params_dependency
@@ -181,15 +182,11 @@ class Config(BaseSettings):
 
     @field_validator("lifetime", "sync_timeout", mode="before")
     @classmethod
-    def _parse_as_seconds(cls, v: int | str | timedelta) -> int | timedelta:
-        """Convert timedelta strings so they are parsed as seconds."""
-        if isinstance(v, timedelta):
+    def _parse_timedelta(cls, v: str | float | timedelta) -> float | timedelta:
+        """Support human-readable timedeltas."""
+        if not isinstance(v, str):
             return v
-        try:
-            return int(v)
-        except ValueError as e:
-            msg = f"value {v} must be an integer number of seconds"
-            raise ValueError(msg) from e
+        return parse_timedelta(v)
 
     @property
     def arq_redis_settings(self) -> RedisSettings:
