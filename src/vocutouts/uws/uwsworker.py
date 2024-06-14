@@ -88,6 +88,9 @@ class WorkerSettings:
     job_timeout: SecondsTimedelta
     """Maximum timeout for all jobs."""
 
+    max_jobs: int
+    """Maximum number of jobs that can be run at one time."""
+
     queue_name: str = default_queue_name
     """Name of arq queue to listen to for jobs."""
 
@@ -96,9 +99,6 @@ class WorkerSettings:
 
     on_shutdown: StartupShutdown | None = None
     """Coroutine to run on shutdown."""
-
-    allow_abort_jobs: bool = False
-    """Whether to allow jobs to be aborted."""
 
 
 @dataclass
@@ -115,7 +115,11 @@ class WorkerJobInfo:
     """Delegated Gafaelfawr token to act on behalf of the user."""
 
     timeout: timedelta
-    """Maximum execution time for the job."""
+    """Maximum execution time for the job.
+
+    Currently, this is ignored, since the backend workers do not support
+    cancellation.
+    """
 
     run_id: str | None = None
     """User-supplied run ID, if any."""
@@ -164,6 +168,27 @@ def build_worker(
         UWS worker configuration.
     logger
         Logger to use for messages.
+
+    Notes
+    -----
+    Timeouts and aborting jobs unfortunately are not supported due to
+    limitations in `concurrent.futures.ThreadPoolExecutor`. Once a thread has
+    been started, there is no way to stop it until it completes on its own.
+    Therefore, no job timeout is set or supported, and the timeout set on the
+    job (which comes from executionduration) is ignored.
+
+    Fixing this appears to be difficult since Python's `threading.Thread`
+    simply does not support cancellation. It would probably require rebuilding
+    the worker model on top of processes and killing those processes on
+    timeout. That would pose problems for cleanup of any temporary resources
+    created by the process such as temporary files, since Python cleanup code
+    would not be run.
+
+    The best fix would be for backend code to be rewritten to be async, so
+    await would become a cancellation point (although this still may not be
+    enough for compute-heavy code that doesn't use await frequently). However,
+    the Rubin pipelines code is all sync, so async worker support has not yet
+    been added due to lack of demand.
     """
 
     async def startup(ctx: dict[Any, Any]) -> None:
@@ -218,11 +243,19 @@ def build_worker(
         finally:
             await arq.enqueue("job_completed", info.job_id)
 
+    # Job timeouts are not actually supported since we have no way of stopping
+    # the sync worker. A timeout will just leave the previous worker running
+    # and will block all future jobs. Set it to an extremely long value, since
+    # it can't be disabled entirely.
+    #
+    # Since the worker is running sync jobs, run one job per pod since they
+    # will be serialized anyway and no parallelism is possible. If async
+    # worker support is added, consider making this configurable.
     return WorkerSettings(
         functions=[func(run, name=worker.__qualname__)],
         redis_settings=config.arq_redis_settings,
-        job_timeout=config.timeout,
+        job_timeout=3600,
+        max_jobs=1,
         on_startup=startup,
         on_shutdown=shutdown,
-        allow_abort_jobs=True,
     )

@@ -430,12 +430,15 @@ class JobService:
         if job.owner != user:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
 
-        # Validate the new value.
+        # Validate the new value. Only support changes to execution duration
+        # if a validator is set, which is a signal that the application
+        # supports cancellation of jobs. The current implementation does not
+        # support cancelling jobs and therefore cannot enforce a timeout, so
+        # an execution duration of 0 is currently the only correct value.
         if validator := self._config.validate_execution_duration:
             duration = validator(duration, job)
-        elif duration > self._config.execution_duration:
-            duration = self._config.execution_duration
-
+        else:
+            return None
         if duration == job.execution_duration:
             return None
         await self._storage.update_execution_duration(job_id, duration)

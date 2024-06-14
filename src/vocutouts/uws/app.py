@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, FastAPI, Request
@@ -13,7 +12,7 @@ from structlog.stdlib import BoundLogger
 
 from . import schema
 from .config import UWSConfig
-from .constants import UWS_QUEUE_NAME
+from .constants import UWS_DATABASE_TIMEOUT, UWS_QUEUE_NAME
 from .exceptions import UWSError
 from .handlers import (
     install_async_post_handler,
@@ -95,10 +94,13 @@ class UWSApplication:
         async def shutdown(ctx: dict[Any, Any]) -> None:
             await close_uws_worker_context(ctx)
 
+        # Running 10 jobs simultaneously is the arq default as of arq 0.26.0
+        # and seems reasonable for database workers.
         return WorkerSettings(
             functions=[uws_job_started, uws_job_completed],
             redis_settings=self._config.arq_redis_settings,
-            job_timeout=timedelta(seconds=30),
+            job_timeout=UWS_DATABASE_TIMEOUT,
+            max_jobs=10,
             queue_name=UWS_QUEUE_NAME,
             on_startup=startup,
             on_shutdown=shutdown,
