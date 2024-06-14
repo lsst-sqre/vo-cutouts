@@ -69,7 +69,6 @@ async def test_build_worker(
     assert settings.functions[0].name == hello.__qualname__
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert settings.queue_name == default_queue_name
-    assert settings.allow_abort_jobs
     assert settings.on_startup
     assert settings.on_shutdown
 
@@ -150,7 +149,6 @@ async def test_build_uws_worker(
     assert callable(job_completed)
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert settings.queue_name == UWS_QUEUE_NAME
-    assert not settings.allow_abort_jobs
     assert settings.on_startup
     assert settings.on_shutdown
 

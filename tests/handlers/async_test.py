@@ -26,7 +26,7 @@ PENDING_JOB = """
   <uws:ownerId>someone</uws:ownerId>
   <uws:phase>PENDING</uws:phase>
   <uws:creationTime>[DATE]</uws:creationTime>
-  <uws:executionDuration>600</uws:executionDuration>
+  <uws:executionDuration>0</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id" isPost="true">1:2:band:value</uws:parameter>
@@ -50,7 +50,7 @@ COMPLETED_JOB = """
   <uws:creationTime>[DATE]</uws:creationTime>
   <uws:startTime>[DATE]</uws:startTime>
   <uws:endTime>[DATE]</uws:endTime>
-  <uws:executionDuration>600</uws:executionDuration>
+  <uws:executionDuration>0</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id" isPost="true">1:2:band:value</uws:parameter>

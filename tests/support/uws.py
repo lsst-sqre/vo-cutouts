@@ -67,7 +67,6 @@ def build_uws_config() -> UWSConfig:
         async_post_dependency=_post_dependency,
         database_url=database_url,
         database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
-        execution_duration=timedelta(minutes=10),
         lifetime=timedelta(days=1),
         parameters_type=SimpleParameters,
         signing_service_account="signer@example.com",

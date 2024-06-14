@@ -27,7 +27,7 @@ ERRORED_JOB = """
   <uws:creationTime>{}</uws:creationTime>
   <uws:startTime>{}</uws:startTime>
   <uws:endTime>{}</uws:endTime>
-  <uws:executionDuration>600</uws:executionDuration>
+  <uws:executionDuration>0</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name">Sarah</uws:parameter>
