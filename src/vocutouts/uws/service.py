@@ -6,7 +6,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 from safir.arq import ArqQueue, JobMetadata
-from safir.datetime import current_datetime
+from safir.datetime import current_datetime, isodatetime
 from structlog.stdlib import BoundLogger
 
 from .config import ParametersModel, UWSConfig
@@ -136,7 +136,8 @@ class JobService:
         job = await self._storage.get(job_id)
         if job.owner != user:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
-        return await self._storage.delete(job_id)
+        await self._storage.delete(job_id)
+        self._logger.info("Deleted job", user=user, job_id=job_id)
 
     async def get(
         self,
@@ -283,12 +284,10 @@ class JobService:
         job = await self.create(user, params, run_id=runid)
         params_model = self._validate_parameters(params)
         logger = self._build_logger_for_job(job, params_model)
-        logger.info("Created job")
 
         # Start the job and wait for it to complete.
         metadata = await self.start(user, job.job_id, token)
         logger = logger.bind(arq_job_id=metadata.id)
-        logger.info("Started job")
         job = await self.get(
             user,
             job.job_id,
@@ -396,6 +395,12 @@ class JobService:
         if destruction == job.destruction_time:
             return None
         await self._storage.update_destruction(job_id, destruction)
+        self._logger.info(
+            "Changed job destruction time",
+            user=user,
+            job_id=job_id,
+            destruction=isodatetime(destruction),
+        )
         return destruction
 
     async def update_execution_duration(
@@ -442,6 +447,16 @@ class JobService:
         if duration == job.execution_duration:
             return None
         await self._storage.update_execution_duration(job_id, duration)
+        if duration.total_seconds() > 0:
+            duration_str = f"{duration.total_seconds()}s"
+        else:
+            duration_str = "unlimited"
+        self._logger.info(
+            "Changed job execution duration",
+            user=user,
+            job_id=job_id,
+            duration=duration_str,
+        )
         return duration
 
     def _build_logger_for_job(
@@ -461,7 +476,7 @@ class JobService:
         BoundLogger
             Logger with more bound metadata.
         """
-        logger = self._logger.bind(job_id=job.job_id)
+        logger = self._logger.bind(user=job.owner, job_id=job.job_id)
         if job.run_id:
             logger = logger.bind(run_id=job.run_id)
         if params:
