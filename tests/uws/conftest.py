@@ -14,13 +14,11 @@ from asgi_lifespan import LifespanManager
 from fastapi import APIRouter, FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
-from safir.dependencies.db_session import db_session_dependency
 from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.slack.webhook import SlackRouteErrorHandler
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
-from sqlalchemy.ext.asyncio import async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from vocutouts.uws.app import UWSApplication
@@ -108,17 +106,6 @@ def runner(uws_factory: UWSFactory, arq_queue: MockArqQueue) -> MockJobRunner:
     return MockJobRunner(uws_factory, arq_queue)
 
 
-@pytest_asyncio.fixture
-async def session(app: FastAPI) -> AsyncIterator[async_scoped_session]:
-    """Return a database session with no transaction open.
-
-    Depends on the ``app`` fixture to ensure that the database layer has
-    already been initialized.
-    """
-    async for session in db_session_dependency():
-        yield session
-
-
 @pytest.fixture
 def uws_config() -> UWSConfig:
     return build_uws_config()
@@ -126,6 +113,7 @@ def uws_config() -> UWSConfig:
 
 @pytest_asyncio.fixture
 async def uws_factory(
-    session: async_scoped_session, logger: BoundLogger
-) -> UWSFactory:
-    return await uws_dependency(session, logger)
+    app: FastAPI, logger: BoundLogger
+) -> AsyncIterator[UWSFactory]:
+    async for factory in uws_dependency(logger):
+        yield factory

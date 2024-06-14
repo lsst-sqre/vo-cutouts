@@ -13,7 +13,6 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
-from safir.dependencies.db_session import db_session_dependency
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 
@@ -84,5 +83,5 @@ async def uws_factory(app: FastAPI) -> AsyncIterator[UWSFactory]:
     already been initialized.
     """
     logger = structlog.get_logger("vocutouts")
-    async for session in db_session_dependency():
-        yield await uws_dependency(session, logger)
+    async for factory in uws_dependency(logger):
+        yield factory
