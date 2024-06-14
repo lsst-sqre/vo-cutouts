@@ -30,9 +30,10 @@ from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
 from .constants import JOB_RESULT_TIMEOUT
-from .exceptions import TaskError, TaskTransientError, UnknownJobError
-from .models import ErrorCode
+from .exceptions import TaskError, UnknownJobError
+from .models import UWSJob
 from .storage import JobStore
+from .uwsworker import WorkerError, WorkerTransientError
 
 P = ParamSpec("P")
 
@@ -186,6 +187,52 @@ async def uws_job_started(
         raise
 
 
+async def _annotate_worker_error(
+    exc: Exception, job: UWSJob, slack: SlackWebhookClient | None = None
+) -> Exception:
+    """Convert and possibly report a backend worker error.
+
+    Convert the backend worker error to a task error and annotate it with task
+    information. Report the error to Slack if Slack is configured and the
+    error is not ignored for Slack reporting purposes.
+
+    Parameters
+    ----------
+    exc
+        Worker exception.
+    job
+        Associated UWS job.
+    slack
+        Class for reporting errors to Slack, if Slack error reporting is
+        enabled.
+
+    Returns
+    -------
+    TaskError
+        Exception converted to a `~vocutouts.uws.exceptions.TaskError`.
+    """
+    match exc:
+        case WorkerError():
+            error = TaskError.from_worker_error(exc)
+            error.job_id = job.job_id
+            error.started_at = job.creation_time
+            error.user = job.owner
+            if slack and not error.slack_ignore:
+                await slack.post_exception(error)
+            return error
+        case SlackIgnoredException():
+            return exc
+        case SlackException():
+            exc.user = job.owner
+            if slack:
+                await slack.post_exception(exc)
+            return exc
+        case _:
+            if slack:
+                await slack.post_uncaught_exception(exc)
+            return exc
+
+
 async def _get_job_result(arq: ArqQueue, arq_job_id: str) -> JobResult:
     """Get the result of the job, which may require waiting for it."""
     now = datetime.now(tz=UTC)
@@ -232,30 +279,21 @@ async def uws_job_completed(ctx: dict[Any, Any], job_id: str) -> None:
             result = await _get_job_result(arq, arq_job_id)
         except (JobNotFound, JobResultUnavailable) as e:
             logger.exception("Cannot retrieve job result")
-            exc = TaskTransientError(
-                ErrorCode.SERVICE_UNAVAILABLE,
+            exc = WorkerTransientError(
                 "Cannot retrieve job result from job queue",
                 f"{type(e).__name__}: {e!s}",
                 add_traceback=True,
             )
             exc.__cause__ = e
-            await storage.mark_failed(job_id, exc)
+            error = await _annotate_worker_error(exc, job, slack)
+            await storage.mark_failed(job_id, error)
             return
 
         # If the job failed and Slack reporting is enabled, annotate the job
         # with some more details and report it to Slack.
-        if slack and isinstance(result.result, Exception):
-            error = result.result
-            if isinstance(error, SlackIgnoredException):
-                pass
-            elif isinstance(error, SlackException):
-                error.user = job.owner
-                if isinstance(error, TaskError):
-                    error.job_id = job.job_id
-                    error.started_at = job.creation_time
-                await slack.post_exception(error)
-            else:
-                await slack.post_uncaught_exception(error)
+        if isinstance(result.result, Exception):
+            error = await _annotate_worker_error(result.result, job, slack)
+            result.result = error
 
         # Mark the job as completed.
         await storage.mark_completed(job_id, result)

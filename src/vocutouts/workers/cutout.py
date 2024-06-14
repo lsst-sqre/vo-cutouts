@@ -22,12 +22,12 @@ from structlog.stdlib import BoundLogger
 
 from ..models.parameters import CutoutParameters
 from ..models.stencils import CircleStencil, PolygonStencil
-from ..uws.exceptions import TaskFatalError, TaskUserError
-from ..uws.models import ErrorCode
 from ..uws.uwsworker import (
     WorkerConfig,
+    WorkerFatalError,
     WorkerJobInfo,
     WorkerResult,
+    WorkerUsageError,
     build_worker,
 )
 
@@ -115,22 +115,25 @@ def cutout(
 
     Raises
     ------
-    TaskFatalError
-        Raised if the cutout failed for reasons that are unlikely to be fixed
-        on retry, such as syntax errors.
-    TaskTransientError
-        Raised if the cutout failed for reasons that may go away if the cutout
-        is retried.
+    WorkerFatalError
+        Raised if the cutout failed for unknown reasons, or due to internal
+        errors. This is the normal failure exception, since we usually do not
+        know why the backend code failed and make the pessimistic assumption
+        that the failure is not transient.
+    WorkerUsageError
+        Raised if the cutout failed due to deficiencies in the parameters
+        submitted by the user that could not be detected by the frontend
+        service.
     """
     # Currently, only a single dataset ID and a single stencil are supported.
     # These constraints should have been enforced by the web service, so if we
     # see them here, there's some sort of internal bug.
     if len(params.dataset_ids) != 1:
-        msg = "Only one dataset ID supported"
-        raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
+        msg = "Internal error: only one dataset ID supported"
+        raise WorkerFatalError(msg)
     if len(params.stencils) != 1:
-        msg = "Only one stencil supported"
-        raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
+        msg = "Internal error: only one stencil supported"
+        raise WorkerFatalError(msg)
 
     # Parse the dataset ID and retrieve an appropriate backend.
     butler_label, uuid = _parse_uri(params.dataset_ids[0])
@@ -145,9 +148,10 @@ def cutout(
             case PolygonStencil(vertices=vertices):
                 sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
             case _:
-                msg = f"Unknown stencil type {type(stencil).__name__}"
+                type_str = type(stencil).__name__
+                msg = f"Internal error: unknown stencil type {type_str}"
                 logger.warning(msg)
-                raise TaskFatalError(ErrorCode.USAGE_ERROR, msg)
+                raise WorkerFatalError(msg)
         sky_stencils.append(sky_stencil)
 
     # Perform the cutout. We have no idea if unknown exceptions here are
@@ -160,15 +164,12 @@ def cutout(
     try:
         result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
     except SinglePolygonException as e:
-        raise TaskUserError(
-            ErrorCode.USAGE_ERROR,
-            "No intersection between cutout and image",
-            str(e),
-            add_traceback=True,
+        raise WorkerUsageError(
+            "No intersection between cutout and image", add_traceback=True
         ) from e
     except Exception as e:
-        raise TaskFatalError(
-            ErrorCode.ERROR, "Cutout processing failed", add_traceback=True
+        raise WorkerFatalError(
+            "Cutout processing failed", str(e), add_traceback=True
         ) from e
 
     # Return the result.
@@ -176,7 +177,7 @@ def cutout(
     result_scheme = urlparse(result_url).scheme
     if result_scheme not in ("gs", "s3"):
         msg = f"Backend returned URL with scheme {result_scheme}, not gs or s3"
-        raise TaskFatalError(ErrorCode.ERROR, msg, f"URL: {result_url}")
+        raise WorkerFatalError(msg, f"URL: {result_url}")
     logger.info("Cutout successful")
     return [
         WorkerResult(

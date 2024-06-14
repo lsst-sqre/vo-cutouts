@@ -8,8 +8,9 @@ from safir.datetime import isodatetime
 from safir.testing.slack import MockSlackWebhook
 
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.exceptions import TaskFatalError, TaskTransientError
-from vocutouts.uws.models import ErrorCode, UWSJobParameter
+from vocutouts.uws.exceptions import TaskError
+from vocutouts.uws.models import UWSJobParameter
+from vocutouts.uws.uwsworker import WorkerFatalError, WorkerTransientError
 
 from ..support.uws import MockJobRunner
 
@@ -74,7 +75,8 @@ async def test_temporary_error(
     )
     assert r.status_code == 303
     await runner.mark_in_progress("user", "1")
-    result = TaskTransientError(ErrorCode.USAGE_ERROR, "Something failed")
+    exc = WorkerTransientError("Something failed")
+    result = TaskError.from_worker_error(exc)
     job = await runner.mark_complete("user", "1", result)
 
     # Check the results.
@@ -91,7 +93,7 @@ async def test_temporary_error(
         isodatetime(job.destruction_time),
         "transient",
         "false",
-        "UsageError Something failed",
+        "ServiceUnavailable Something failed",
     )
 
     # Retrieve the error separately.
@@ -100,7 +102,7 @@ async def test_temporary_error(
     )
     assert r.status_code == 200
     assert r.text == JOB_ERROR_SUMMARY.strip().format(
-        "UsageError Something failed"
+        "ServiceUnavailable Something failed"
     )
 
     # For now, this shouldn't have resulted in Slack errors.
@@ -127,7 +129,8 @@ async def test_fatal_error(
     )
     assert r.status_code == 303
     await runner.mark_in_progress("user", "1")
-    result = TaskFatalError(ErrorCode.ERROR, "Whoops", "Some details")
+    exc = WorkerFatalError("Whoops", "Some details")
+    result = TaskError.from_worker_error(exc)
     job = await runner.mark_complete("user", "1", result)
 
     # Check the results.
@@ -195,7 +198,7 @@ async def test_unknown_error(
         isodatetime(job.start_time),
         isodatetime(job.end_time),
         isodatetime(job.destruction_time),
-        "transient",
+        "fatal",
         "true",
         "Error Unknown error executing task",
     )

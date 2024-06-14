@@ -7,8 +7,7 @@ The types of exceptions here control the error handling behavior configured in
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from traceback import format_exception
-from typing import ClassVar
+from typing import Self
 
 from safir.datetime import format_datetime_for_logging
 from safir.slack.blockkit import (
@@ -21,6 +20,7 @@ from safir.slack.blockkit import (
 from safir.slack.webhook import SlackIgnoredException
 
 from .models import ErrorCode, ErrorType, UWSJobError
+from .uwsworker import WorkerError, WorkerErrorType
 
 __all__ = [
     "DataMissingError",
@@ -31,9 +31,6 @@ __all__ = [
     "SyncJobNoResultsError",
     "SyncJobTimeoutError",
     "TaskError",
-    "TaskFatalError",
-    "TaskTransientError",
-    "TaskUserError",
     "UnknownJobError",
     "UsageError",
     "UWSError",
@@ -111,88 +108,116 @@ class SyncJobTimeoutError(UWSError):
 class TaskError(SlackException):
     """An error occurred during background task processing.
 
+    This exception is constructed based on
+    `~vocutouts.uws.uwsworker.WorkerError` exceptions raised by the backend
+    workers. Those exceptions are not used directly to avoid making them, and
+    therefore the worker backend code, depend on the Slack error reporting
+    code in Safir.
+
     Attributes
     ----------
-    error_type
-        Indicates whether this exception represents a transient error that may
-        go away if the request is retried or a permanent error with the
-        request.
     job_id
         UWS job ID, if known.
     started_at
         When the task was started, if known.
-    traceback
-        Traceback of the underlying triggering exception, if tracebacks were
-        requested and there is a cause set.
     user
         User whose action triggered this exception, for Slack reporting.
+    slack_ignore
+        Whether to ignore the error for the purposes of Slack reporting.
 
     Parameters
     ----------
     error_code
         DALI-compatible error code.
+    error_type
+        Whether the error is transient or permanent.
     message
         Human-readable error message.
-    details
+    detail
         Additional details about the error.
-    add_traceback
-        Whether to add a traceback of the underlying cause to the error
-        details.
+    cause_type
+        Type of the causing exception, if one is available.
     traceback
-        Expanded traceback, used to preserve the traceback across pickling.
+        Traceback, if one is available.
+    slack_ignore
+        Whether to ignore the error for the purposes of Slack reporting.
     """
-
-    error_type: ClassVar[ErrorType] = ErrorType.TRANSIENT
-    """Type of error this exception represents."""
 
     def __init__(
         self,
+        *,
         error_code: ErrorCode,
+        error_type: ErrorType,
         message: str,
         detail: str | None = None,
-        *,
-        add_traceback: bool = False,
+        cause_type: str | None = None,
+        traceback: str | None = None,
+        slack_ignore: bool = False,
     ) -> None:
         super().__init__(message)
         self.job_id: str | None = None
+        self.slack_ignore = slack_ignore
         self.started_at: datetime | None = None
         self._error_code = error_code
+        self._error_type = error_type
         self._message = message
         self._detail = detail
-        self._add_traceback = add_traceback
-        self._cause_type: str | None = None
-        self._traceback: str | None = None
+        self._cause_type = cause_type
+        self._traceback = traceback
 
-    def __reduce__(self) -> str | tuple:
-        # Ensure the traceback is serialized before pickling.
-        self._traceback = self._serialize_traceback()
-        return super().__reduce__()
+    @classmethod
+    def from_worker_error(cls, exc: WorkerError) -> Self:
+        """Create an exception based on a backend worker error.
 
-    @property
-    def traceback(self) -> str | None:
-        """Traceback of the underlying exception, if desired."""
-        if self._traceback:
-            return self._traceback
-        self._traceback = self._serialize_traceback()
-        return self._traceback
+        Parameters
+        ----------
+        exc
+            Backend worker exception.
+
+        Returns
+        -------
+        TaskError
+            Corresponding task exception.
+        """
+        slack_ignore = False
+        match exc.error_type:
+            case WorkerErrorType.FATAL:
+                error_code = ErrorCode.ERROR
+                error_type = ErrorType.FATAL
+            case WorkerErrorType.TRANSIENT:
+                error_code = ErrorCode.SERVICE_UNAVAILABLE
+                error_type = ErrorType.TRANSIENT
+            case WorkerErrorType.USAGE:
+                error_code = ErrorCode.USAGE_ERROR
+                error_type = ErrorType.FATAL
+                slack_ignore = True
+        return cls(
+            error_code=error_code,
+            error_type=error_type,
+            message=str(exc),
+            detail=exc.detail,
+            cause_type=exc.cause_type,
+            traceback=exc.traceback,
+            slack_ignore=slack_ignore,
+        )
 
     def to_job_error(self) -> UWSJobError:
         """Convert to a `~vocutouts.uws.models.UWSJobError`."""
-        if self.traceback and self._detail:
-            detail: str | None = self._detail + "\n\n" + self.traceback
+        if self._traceback and self._detail:
+            detail: str | None = self._detail + "\n\n" + self._traceback
         else:
-            detail = self._detail or self.traceback
+            detail = self._detail or self._traceback
         return UWSJobError(
             error_code=self._error_code,
-            error_type=self.error_type,
-            message=str(self),
+            error_type=self._error_type,
+            message=self._message,
             detail=detail,
         )
 
     def to_slack(self) -> SlackMessage:
         message = super().to_slack()
-        if self.traceback:
-            block = SlackCodeBlock(heading="Traceback", code=self.traceback)
+        if self._traceback:
+            block = SlackCodeBlock(heading="Traceback", code=self._traceback)
             message.attachments.append(block)
         if self.started_at:
             started_at = format_datetime_for_logging(self.started_at)
@@ -206,45 +231,10 @@ class TaskError(SlackException):
                 heading="Original exception", text=self._cause_type
             )
             message.blocks.append(text)
-
         if self._detail:
             text = SlackTextBlock(heading="Detail", text=self._detail)
             message.blocks.append(text)
         return message
-
-    def _serialize_traceback(self) -> str | None:
-        """Serialize the traceback from ``__cause__``."""
-        if not self._add_traceback or not self.__cause__:
-            return None
-        self._cause_type = type(self.__cause__).__name__
-        return "".join(format_exception(self.__cause__))
-
-
-class TaskFatalError(TaskError):
-    """Fatal error occurred during background task processing.
-
-    The parameters or other job information was invalid and this job will
-    never succeed.
-    """
-
-    error_type = ErrorType.FATAL
-
-
-class TaskTransientError(TaskError):
-    """Transient error occurred during background task processing.
-
-    The job may be retried with the same parameters and may succeed.
-    """
-
-
-class TaskUserError(TaskFatalError, SlackIgnoredException):
-    """Fatal user error occurred during background task processing.
-
-    The parameters or other job information was invalid and this job will
-    never succeed. This is the same as `TaskFatalError` except that it
-    represents a user error and will not be reported to Slack as a service
-    problem.
-    """
 
 
 class UsageError(UWSError):
