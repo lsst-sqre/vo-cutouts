@@ -158,5 +158,15 @@ class UWSApplication:
             install_sync_get_handler(router, dependency)
         if dependency := self._config.sync_post_dependency:
             install_sync_post_handler(router, dependency)
+
+        # This handler must be installed directly on the provided router. Do
+        # not install it on the UWS router before include_router. The process
+        # of copying handlers done by include_router loses the dependency
+        # information from the async post handler and causes it to not see any
+        # of its job parameters.
+        #
+        # This is probably because the dependency is a dynamic function not
+        # known statically, which may confuse the handler copying code in
+        # FastAPI. This problem was last verified in FastAPI 0.111.0.
         dependency = self._config.async_post_dependency
         install_async_post_handler(router, dependency)
