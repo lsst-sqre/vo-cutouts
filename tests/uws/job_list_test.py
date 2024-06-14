@@ -13,7 +13,6 @@ from httpx import AsyncClient
 from safir.database import datetime_to_db
 from safir.datetime import current_datetime, isodatetime
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import async_scoped_session
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobParameter
@@ -81,9 +80,7 @@ QUEUED_JOB_LIST = """
 
 
 @pytest.mark.asyncio
-async def test_job_list(
-    client: AsyncClient, session: async_scoped_session, uws_factory: UWSFactory
-) -> None:
+async def test_job_list(client: AsyncClient, uws_factory: UWSFactory) -> None:
     job_service = uws_factory.create_job_service()
     jobs = [
         await job_service.create(
@@ -108,7 +105,7 @@ async def test_job_list(
 
     # Adjust the creation time of the jobs so that searches are more
     # interesting.
-    async with session.begin():
+    async with uws_factory.session.begin():
         for i, job in enumerate(jobs):
             hours = (2 - i) * 2
             creation = current_datetime() - timedelta(hours=hours)
@@ -117,7 +114,7 @@ async def test_job_list(
                 .where(SQLJob.id == int(job.job_id))
                 .values(creation_time=datetime_to_db(creation))
             )
-            await session.execute(stmt)
+            await uws_factory.session.execute(stmt)
             job.creation_time = creation
 
     # Retrieve the job list and check it.
