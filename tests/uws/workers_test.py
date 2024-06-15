@@ -20,7 +20,6 @@ from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.constants import UWS_QUEUE_NAME
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.exceptions import TaskFatalError
 from vocutouts.uws.models import (
     ErrorCode,
     ErrorType,
@@ -31,6 +30,7 @@ from vocutouts.uws.models import (
 from vocutouts.uws.storage import JobStore
 from vocutouts.uws.uwsworker import (
     WorkerConfig,
+    WorkerFatalError,
     WorkerJobInfo,
     WorkerResult,
     build_worker,
@@ -193,8 +193,8 @@ async def test_build_uws_worker(
         try:
             nonnegative(-1)
         except Exception as e:
-            raise TaskFatalError(
-                ErrorCode.ERROR, "Something", "went wrong", add_traceback=True
+            raise WorkerFatalError(
+                "Something", "went wrong", add_traceback=True
             ) from e
 
     # Test starting and erroring a job with a TaskError.
@@ -208,7 +208,7 @@ async def test_build_uws_worker(
     await job_started(ctx, job.job_id, now)
     try:
         make_exception()
-    except TaskFatalError as e:
+    except WorkerFatalError as e:
         error = e
     await asyncio.gather(
         job_completed(ctx, job.job_id),
@@ -241,7 +241,7 @@ async def test_build_uws_worker(
                 {
                     "fields": [
                         {
-                            "text": "*Exception type*\nTaskFatalError",
+                            "text": "*Exception type*\nTaskError",
                             "type": "mrkdwn",
                             "verbatim": True,
                         },
@@ -314,7 +314,7 @@ async def test_build_uws_worker(
     job = await job_service.get("user", job.job_id)
     assert job.phase == ExecutionPhase.ERROR
     assert job.error
-    assert job.error.error_type == ErrorType.TRANSIENT
+    assert job.error.error_type == ErrorType.FATAL
     assert job.error.error_code == ErrorCode.ERROR
     assert job.error.message == "Unknown error executing task"
     assert job.error.detail == "ValueError: some error"

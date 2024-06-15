@@ -322,7 +322,7 @@ class JobStore:
             error = exc.to_job_error()
         else:
             error = UWSJobError(
-                error_type=ErrorType.TRANSIENT,
+                error_type=ErrorType.FATAL,
                 error_code=ErrorCode.ERROR,
                 message="Unknown error executing task",
                 detail=f"{type(exc).__name__}: {exc!s}",

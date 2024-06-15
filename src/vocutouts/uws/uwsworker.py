@@ -8,7 +8,9 @@ from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, TypeVar
+from enum import Enum
+from traceback import format_exception
+from typing import Any, ClassVar, TypeVar
 from urllib.parse import urlsplit
 
 from arq import func
@@ -26,9 +28,14 @@ T = TypeVar("T", bound="BaseModel")
 
 __all__ = [
     "WorkerConfig",
+    "WorkerError",
+    "WorkerErrorType",
+    "WorkerFatalError",
     "WorkerJobInfo",
     "WorkerResult",
     "WorkerSettings",
+    "WorkerTransientError",
+    "WorkerUsageError",
     "build_worker",
 ]
 
@@ -139,6 +146,122 @@ class WorkerResult(BaseModel):
 
     mime_type: str | None = None
     """MIME type of the result."""
+
+
+class WorkerErrorType(Enum):
+    """Types of errors that may be reported by a worker."""
+
+    FATAL = "fatal"
+    TRANSIENT = "transient"
+    USAGE = "usage"
+
+
+class WorkerError(Exception):
+    """An error occurred during background task processing.
+
+    Attributes
+    ----------
+    cause_type
+        Type of the underlying exception, if there is one.
+    detail
+        Additional error detail, not including the traceback if any.
+    error_type
+        Indicates whether this exception represents a transient error that may
+        go away if the request is retried or a permanent error with the
+        request.
+    traceback
+        Traceback of the underlying triggering exception, if tracebacks were
+        requested and there is a cause set.
+    user
+        User whose action triggered this exception, for Slack reporting.
+
+    Parameters
+    ----------
+    message
+        Human-readable error message.
+    detail
+        Additional details about the error.
+    add_traceback
+        Whether to add a traceback of the underlying cause to the error
+        details.
+    """
+
+    error_type: ClassVar[WorkerErrorType] = WorkerErrorType.FATAL
+    """Type of error this exception represents."""
+
+    def __init__(
+        self,
+        message: str,
+        detail: str | None = None,
+        *,
+        add_traceback: bool = False,
+    ) -> None:
+        super().__init__(message)
+        self.detail = detail
+        self._cause_type: str | None = None
+        self._traceback: str | None = None
+        self._add_traceback = add_traceback
+
+    def __reduce__(self) -> str | tuple:
+        # Ensure the cause information is serialized before pickling.
+        self._cause_type = self._serialize_cause_type()
+        self._traceback = self._serialize_traceback()
+        return super().__reduce__()
+
+    @property
+    def cause_type(self) -> str | None:
+        """Type of the exception that triggered this error, if known."""
+        if not self._cause_type:
+            self._cause_type = self._serialize_cause_type()
+        return self._cause_type
+
+    @property
+    def traceback(self) -> str | None:
+        """Traceback of the underlying exception, if desired."""
+        if not self._traceback:
+            self._traceback = self._serialize_traceback()
+        return self._traceback
+
+    def _serialize_cause_type(self) -> str | None:
+        """Serialize the type of exception from ``__cause__``."""
+        if not self.__cause__:
+            return None
+        return type(self.__cause__).__qualname__
+
+    def _serialize_traceback(self) -> str | None:
+        """Serialize the traceback from ``__cause__``."""
+        if not self._add_traceback or not self.__cause__:
+            return None
+        return "".join(format_exception(self.__cause__))
+
+
+class WorkerFatalError(WorkerError):
+    """Fatal error occurred during worker processing.
+
+    The parameters or other job information was invalid and this job will
+    never succeed.
+    """
+
+
+class WorkerTransientError(WorkerError):
+    """Transient error occurred during worker processing.
+
+    The job may be retried with the same parameters and may succeed.
+    """
+
+    error_type = WorkerErrorType.TRANSIENT
+
+
+class WorkerUsageError(WorkerError):
+    """Parameters sent by the user were invalid.
+
+    The parameters or other job information was invalid and this job will
+    never succeed. This is the same as `WorkerFatalError` except that it
+    represents a user error and will not be reported to Slack as a service
+    problem.
+    """
+
+    error_type = WorkerErrorType.USAGE
 
 
 def build_worker(
