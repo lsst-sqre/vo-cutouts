@@ -6,6 +6,23 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+##  (2024-06-28)
+
+### Backwards-incompatible changes
+
+- Cancelling or aborting jobs is not supported by the combination of arq and sync worker functions. Properly reflect this in job metadata by forcing execution duration to 0 to indicate that no limit is applied. Substantially increase the default arq job timeout since the timeout will be ineffective anyway.
+- Drop the `CUTOUT_TIMEOUT` configuration option since we have no way of enforcing a timeout on jobs.
+
+- Upgrade the science pipelines stack to the latest weekly, to include a new version of daf_butler that includes support for a new version of Butler server with a backwards-incompatible REST API.
+
+### New features
+
+- Support human-readable `4h30m20s`-style strings for `CUTOUT_LIFETIME` and `CUTOUT_SYNC_TIMEOUT` in addition to numbers of seconds.
+
+### Other changes
+
+- Unknown failures in the worker backend are now recorded as fatal UWS errors rather than transient errors. This is the more conservative choice for unknown exceptions.
+
 <a id='changelog-2.0.0'></a>
 ## 2.0.0 (2024-06-10)
 
