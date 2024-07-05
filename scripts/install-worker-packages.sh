@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Upgrade the CentOS packages in worker images.  This is done in a separate
+# Upgrade the CentOS packages in worker images. This is done in a separate
 # script to create a separate cached Docker image, which will help with
 # iteration speed on the more interesting setup actions taken later in the
 # build.
@@ -14,5 +14,9 @@ set -euo pipefail
 set -x
 
 # Upgrade the Red Hat packages.
-yum -y upgrade
-yum clean all
+#
+# TODO(rra): Disabled for now because the version of CentOS used by the image
+# is so old that the package repositories no longer exist. This will in theory
+# soon be fixed by basing the image on AlmaLinux.
+#yum -y upgrade
+#yum clean all
