@@ -20,8 +20,11 @@ from safir.arq import ArqMode
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
-from ..models.parameters import CutoutParameters
-from ..models.stencils import CircleStencil, PolygonStencil
+from ..models.domain.cutout import (
+    WorkerCircleStencil,
+    WorkerCutout,
+    WorkerPolygonStencil,
+)
 from ..uws.uwsworker import (
     WorkerConfig,
     WorkerFatalError,
@@ -89,7 +92,7 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
 
 
 def cutout(
-    params: CutoutParameters, info: WorkerJobInfo, logger: BoundLogger
+    params: WorkerCutout, info: WorkerJobInfo, logger: BoundLogger
 ) -> list[WorkerResult]:
     """Perform a cutout.
 
@@ -143,9 +146,9 @@ def cutout(
     sky_stencils = []
     for stencil in params.stencils:
         match stencil:
-            case CircleStencil(center=center, radius=radius):
+            case WorkerCircleStencil(center=center, radius=radius):
                 sky_stencil = SkyCircle.from_astropy(center, radius, clip=True)
-            case PolygonStencil(vertices=vertices):
+            case WorkerPolygonStencil(vertices=vertices):
                 sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
             case _:
                 type_str = type(stencil).__name__
