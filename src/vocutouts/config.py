@@ -23,7 +23,7 @@ from safir.datetime import parse_timedelta
 from safir.logging import LogLevel, Profile
 
 from .dependencies import get_params_dependency, post_params_dependency
-from .models.parameters import CutoutParameters
+from .models.cutout import CutoutParameters
 from .uws.app import UWSApplication
 from .uws.config import UWSConfig
 
