@@ -427,12 +427,12 @@ async def test_redirects(
 
 def validate_destruction(destruction: datetime, job: UWSJob) -> datetime:
     max_destruction = current_datetime() + timedelta(days=1)
-    return max_destruction if destruction > max_destruction else destruction
+    return min(destruction, max_destruction)
 
 
 def validate_execution_duration(duration: timedelta, job: UWSJob) -> timedelta:
     max_duration = timedelta(seconds=200)
-    return max_duration if duration > max_duration else duration
+    return min(duration, max_duration)
 
 
 @pytest.mark.asyncio
