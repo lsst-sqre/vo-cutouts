@@ -8,7 +8,7 @@ help:
 
 .PHONY: init
 init:
-	pip install --upgrade uv
+	pip install --upgrade pip uv
 	uv pip install -r requirements/main.txt -r requirements/dev.txt \
 	    -r requirements/tox.txt
 	uv pip install --editable .
@@ -21,7 +21,7 @@ update: update-deps init
 
 .PHONY: update-deps
 update-deps:
-	pip install --upgrade uv
+	pip install --upgrade pip uv
 	uv pip install --upgrade pre-commit
 	pre-commit autoupdate
 	uv pip compile --upgrade --generate-hashes			\
@@ -35,8 +35,6 @@ update-deps:
 .PHONY: update-deps-no-hashes
 update-deps-no-hashes:
 	pip install --upgrade uv
-	uv pip install pre-commit
-	pre-commit autoupdate
 	uv pip compile --upgrade					\
 	    --output-file requirements/main.txt requirements/main.in
 	uv pip compile --upgrade					\
