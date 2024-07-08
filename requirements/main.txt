@@ -324,7 +324,6 @@ google-auth==2.31.0 \
     --hash=sha256:042c4702efa9f7d3c48d3a69341c209381b125faa6dbf3ebe56bc7e40ae05c23 \
     --hash=sha256:87805c36970047247c8afe614d4e3af8eceafc1ebba0c679fe75ddd1d575e871
     # via
-    #   -r requirements/main.in
     #   google-api-core
     #   google-cloud-core
     #   google-cloud-storage
@@ -336,9 +335,7 @@ google-cloud-core==2.4.1 \
 google-cloud-storage==2.17.0 \
     --hash=sha256:49378abff54ef656b52dca5ef0f2eba9aa83dc2b2c72c78714b03a1a95fe9388 \
     --hash=sha256:5b393bc766b7a3bc6f5407b9e665b2450d36282614b7945e570b3480a456d1e1
-    # via
-    #   -r requirements/main.in
-    #   safir
+    # via safir
 google-crc32c==1.5.0 \
     --hash=sha256:024894d9d3cfbc5943f8f230e23950cd4906b2fe004c72e29b209420a1e6b05a \
     --hash=sha256:02c65b9817512edc6a4ae7c7e987fea799d2e0ee40c53ec573a692bee24de876 \
@@ -854,21 +851,6 @@ protobuf==5.27.2 \
     #   google-api-core
     #   googleapis-common-protos
     #   proto-plus
-psycopg2==2.9.9 \
-    --hash=sha256:121081ea2e76729acfb0673ff33755e8703d45e926e416cb59bae3a86c6a4981 \
-    --hash=sha256:38a8dcc6856f569068b47de286b472b7c473ac7977243593a288ebce0dc89516 \
-    --hash=sha256:426f9f29bde126913a20a96ff8ce7d73fd8a216cfb323b1f04da402d452853c3 \
-    --hash=sha256:5e0d98cade4f0e0304d7d6f25bbfbc5bd186e07b38eac65379309c4ca3193efa \
-    --hash=sha256:7e2dacf8b009a1c1e843b5213a87f7c544b2b042476ed7755be813eaf4e8347a \
-    --hash=sha256:a7653d00b732afb6fc597e29c50ad28087dcb4fbfb28e86092277a559ae4e693 \
-    --hash=sha256:ade01303ccf7ae12c356a5e10911c9e1c51136003a9a1d92f7aa9d010fb98372 \
-    --hash=sha256:bac58c024c9922c23550af2a581998624d6e02350f4ae9c5f0bc642c633a2d5e \
-    --hash=sha256:c92811b2d4c9b6ea0285942b2e7cac98a59e166d59c588fe5cfe1eda58e72d59 \
-    --hash=sha256:d1454bde93fb1e224166811694d600e746430c006fbb031ea06ecc2ea41bf156 \
-    --hash=sha256:d735786acc7dd25815e89cc4ad529a43af779db2e25aa7c626de864127e5a024 \
-    --hash=sha256:de80739447af31525feddeb8effd640782cf5998e1a4e9192ebdf829717e3913 \
-    --hash=sha256:ff432630e510709564c01dafdbe996cb552e0b9f3f065eb89bdce5bd31fabf4c
-    # via -r requirements/main.in
 pyasn1==0.6.0 \
     --hash=sha256:3a35ab2c4b5ef98e17dfdec8ab074046fbda76e281c5a706ccd82328cfc8f64c \
     --hash=sha256:cca4bb0f2df5504f02f6f8a775b6e416ff9b0b3b16f7ee80b5a3153d9b804473

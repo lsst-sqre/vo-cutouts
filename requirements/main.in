@@ -16,10 +16,7 @@ arq
 astropy
 asyncpg
 click
-google-auth
-google-cloud-storage
 jinja2
-psycopg2
 pydantic
 pydantic-settings
 safir[arq,db,gcs]>=6.0.0
