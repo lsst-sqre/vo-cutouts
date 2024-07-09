@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 from arq import func
 from arq.connections import RedisSettings
 from arq.constants import default_queue_name
+from arq.cron import CronJob
 from arq.typing import SecondsTimedelta, StartupShutdown, WorkerCoroutine
 from arq.worker import Function
 from pydantic import BaseModel
@@ -106,6 +107,9 @@ class WorkerSettings:
 
     on_shutdown: StartupShutdown | None = None
     """Coroutine to run on shutdown."""
+
+    cron_jobs: Sequence[CronJob] | None = None
+    """Cron jobs to run."""
 
 
 @dataclass

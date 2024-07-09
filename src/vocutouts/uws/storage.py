@@ -207,8 +207,8 @@ class JobStore:
 
     async def delete(self, job_id: str) -> None:
         """Delete a job by ID."""
+        stmt = delete(SQLJob).where(SQLJob.id == int(job_id))
         async with self._session.begin():
-            stmt = delete(SQLJob).where(SQLJob.id == int(job_id))
             await self._session.execute(stmt)
 
     async def get(self, job_id: str) -> UWSJob:
@@ -216,6 +216,13 @@ class JobStore:
         async with self._session.begin():
             job = await self._get_job(job_id)
             return _convert_job(job)
+
+    async def delete_expired(self) -> None:
+        """Delete all jobs that have passed their destruction time."""
+        now = datetime_to_db(current_datetime())
+        stmt = delete(SQLJob).where(SQLJob.destruction_time <= now)
+        async with self._session.begin():
+            await self._session.execute(stmt)
 
     async def list_jobs(
         self,

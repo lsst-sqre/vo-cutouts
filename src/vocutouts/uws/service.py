@@ -121,17 +121,13 @@ class JobService:
         logger.info("Created job")
         return job
 
-    async def delete(
-        self,
-        user: str,
-        job_id: str,
-    ) -> None:
+    async def delete(self, user: str, job_id: str) -> None:
         """Delete a job.
 
         The UWS standard says that deleting a job should stop the in-progress
-        work, but Dramatiq doesn't provide a way to do that.  Settle for
-        deleting the database entry, which will cause the task to throw away
-        the results when it finishes.
+        work, but arq, although it supports job cancellation, cannot cancel
+        sync jobs. Settle for deleting the database entry, which will cause
+        the task to throw away the results when it finishes.
         """
         job = await self._storage.get(job_id)
         if job.owner != user:
