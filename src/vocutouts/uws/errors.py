@@ -19,7 +19,7 @@ __all__ = ["install_error_handlers"]
 async def _uws_error_handler(
     request: Request, exc: UWSError
 ) -> PlainTextResponse:
-    response = f"{exc.error_code.value} {exc!s}\n"
+    response = f"{exc.error_code.value}: {exc!s}\n"
     if exc.detail:
         response += "\n{exc.detail}"
     return PlainTextResponse(response, status_code=exc.status_code)
