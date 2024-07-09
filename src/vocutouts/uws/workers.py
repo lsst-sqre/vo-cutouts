@@ -5,12 +5,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import uuid
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any, ParamSpec
-from urllib.parse import urlsplit
 
-from arq.connections import RedisSettings
 from safir.arq import (
     ArqMode,
     ArqQueue,
@@ -40,44 +37,10 @@ P = ParamSpec("P")
 __all__ = [
     "close_uws_worker_context",
     "create_uws_worker_context",
+    "uws_expire_jobs",
     "uws_job_completed",
     "uws_job_started",
 ]
-
-
-@dataclass
-class UWSWorkerConfig:
-    """Minimal configuration needed for building a UWS backend worker."""
-
-    arq_mode: ArqMode
-    """What mode to use for the arq queue."""
-
-    arq_queue_url: str
-    """URL of the Redis arq queue."""
-
-    arq_queue_password: str | None
-    """Password of the Redis arq queue."""
-
-    timeout: timedelta
-    """Maximum execution time.
-
-    Jobs that run longer than this length of time will be automatically
-    aborted.
-    """
-
-    @property
-    def arq_redis_settings(self) -> RedisSettings:
-        """Redis settings for arq."""
-        database = 0
-        url = urlsplit(self.arq_queue_url)
-        if url.path:
-            database = int(url.path.lstrip("/"))
-        return RedisSettings(
-            host=url.hostname or "localhost",
-            port=url.port or 6379,
-            database=database,
-            password=self.arq_queue_password,
-        )
 
 
 async def create_uws_worker_context(
@@ -157,6 +120,27 @@ async def close_uws_worker_context(ctx: dict[Any, Any]) -> None:
     logger.info("Worker shutdown complete")
 
 
+async def uws_expire_jobs(ctx: dict[Any, Any]) -> None:
+    """Delete jobs that have passed their destruction time.
+
+    Parameters
+    ----------
+    ctx
+        arq context.
+    """
+    logger: BoundLogger = ctx["logger"].bind(task="expire_jobs")
+    slack: SlackWebhookClient | None = ctx["slack"]
+    storage: JobStore = ctx["storage"]
+
+    try:
+        await storage.delete_expired()
+    except Exception as e:
+        if slack:
+            await slack.post_uncaught_exception(e)
+        raise
+    logger.info("Deleted expired jobs")
+
+
 async def uws_job_started(
     ctx: dict[Any, Any], job_id: str, start_time: datetime
 ) -> None:
@@ -164,6 +148,8 @@ async def uws_job_started(
 
     Parameters
     ----------
+    ctx
+        arq context.
     job_id
         UWS job identifier.
     start_time
@@ -255,6 +241,8 @@ async def uws_job_completed(ctx: dict[Any, Any], job_id: str) -> None:
 
     Parameters
     ----------
+    ctx
+        arq context.
     job_id
         UWS job identifier.
     """

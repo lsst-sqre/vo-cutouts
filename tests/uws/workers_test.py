@@ -64,6 +64,7 @@ async def test_build_worker(
         timeout=uws_config.execution_duration,
     )
     settings = build_worker(hello, worker_config, logger)
+    assert not settings.cron_jobs
     assert len(settings.functions) == 1
     assert isinstance(settings.functions[0], Function)
     assert settings.functions[0].name == hello.__qualname__
@@ -147,6 +148,12 @@ async def test_build_uws_worker(
     assert callable(job_started)
     job_completed = settings.functions[1]
     assert callable(job_completed)
+    assert settings.cron_jobs
+    assert len(settings.cron_jobs) == 1
+    expire_cron = settings.cron_jobs[0]
+    assert expire_cron.unique
+    expire_jobs = expire_cron.coroutine
+    assert callable(expire_jobs)
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert settings.queue_name == UWS_QUEUE_NAME
     assert settings.on_startup
@@ -184,6 +191,19 @@ async def test_build_uws_worker(
     assert now <= job.end_time <= current_datetime()
     assert job.results == results
     assert mock_slack.messages == []
+
+    # Expiring jobs should do nothing since the destruction time of our one
+    # job has not passed.
+    jobs = await job_service.list_jobs("user")
+    await expire_jobs(ctx)
+    assert await job_service.list_jobs("user") == jobs
+
+    # Change the destruction date of the job and then it should be expired.
+    past = current_datetime() - timedelta(minutes=5)
+    expires = await job_service.update_destruction("user", job.job_id, past)
+    assert expires == past
+    await expire_jobs(ctx)
+    assert await job_service.list_jobs("user") == []
 
     def nonnegative(value: int) -> None:
         if value < 0:
