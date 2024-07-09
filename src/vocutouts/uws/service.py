@@ -335,8 +335,8 @@ class JobService:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
         if job.phase not in (ExecutionPhase.PENDING, ExecutionPhase.HELD):
             raise InvalidPhaseError("Cannot start job in phase {job.phase}")
-        params = self._validate_parameters(job.parameters)
-        logger = self._build_logger_for_job(job, params)
+        params_model = self._validate_parameters(job.parameters)
+        logger = self._build_logger_for_job(job, params_model)
         info = WorkerJobInfo(
             job_id=job.job_id,
             user=user,
@@ -344,6 +344,7 @@ class JobService:
             timeout=job.execution_duration,
             run_id=job.run_id,
         )
+        params = params_model.to_worker_parameters()
         metadata = await self._arq.enqueue(self._config.worker, params, info)
         await self._storage.mark_queued(job_id, metadata)
         logger.info("Started job", arq_job_id=metadata.id)

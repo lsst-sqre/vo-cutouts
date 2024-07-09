@@ -181,7 +181,7 @@ class RangeStencil(Stencil):
         )
 
 
-class CutoutParameters(ParametersModel):
+class CutoutParameters(ParametersModel[WorkerCutout]):
     """Parameters to a cutout request."""
 
     ids: list[str] = Field(
@@ -255,7 +255,7 @@ class CutoutParameters(ParametersModel):
         except ValidationError as e:
             raise InvalidCutoutParameterError(str(e), params) from e
 
-    def to_worker_cutout(self) -> WorkerCutout:
+    def to_worker_parameters(self) -> WorkerCutout:
         """Convert to the domain model used by the backend worker."""
         stencils = [s.to_worker_stencil() for s in self.stencils]
         return WorkerCutout(dataset_ids=self.ids, stencils=stencils)

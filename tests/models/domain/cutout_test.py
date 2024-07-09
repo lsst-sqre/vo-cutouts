@@ -16,11 +16,11 @@ def test_pickle() -> None:
         CutoutParameters(
             ids=["foo"],
             stencils=[CircleStencil.from_string("1 1.42 1")],
-        ).to_worker_cutout(),
+        ).to_worker_parameters(),
         CutoutParameters(
             ids=["foo"],
             stencils=[PolygonStencil.from_string("1 0 1 1 0 1 0 0")],
-        ).to_worker_cutout(),
+        ).to_worker_parameters(),
     ):
         cutout_pickle = pickle.loads(pickle.dumps(cutout))
         assert cutout.dataset_ids == cutout_pickle.dataset_ids

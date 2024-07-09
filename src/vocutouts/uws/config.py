@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Self, TypeAlias
+from typing import Generic, Self, TypeAlias, TypeVar
 
 from arq.connections import RedisSettings
 from pydantic import BaseModel, SecretStr
@@ -27,6 +27,9 @@ ParametersDependency: TypeAlias = Callable[
 ]
 """Type for a dependency that gathers parameters for a job."""
 
+T = TypeVar("T", bound=BaseModel)
+"""Generic type for the worker parameters."""
+
 __all__ = [
     "DestructionValidator",
     "ExecutionDurationValidator",
@@ -36,7 +39,7 @@ __all__ = [
 ]
 
 
-class ParametersModel(BaseModel, ABC):
+class ParametersModel(BaseModel, ABC, Generic[T]):
     """Defines the interface for a model suitable for job parameters."""
 
     @classmethod
@@ -63,6 +66,10 @@ class ParametersModel(BaseModel, ABC):
         pydantic.ValidationError
             Raised if the parameters do not validate.
         """
+
+    @abstractmethod
+    def to_worker_parameters(self) -> T:
+        """Convert to the domain model used by the backend worker."""
 
 
 @dataclass
