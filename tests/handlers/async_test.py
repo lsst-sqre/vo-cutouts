@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.testing.slack import MockSlackWebhook
 
+from vocutouts.models.domain.cutout import WorkerCutout
 from vocutouts.uws.models import UWSJobResult
 
 from ..support.uws import MockJobRunner
@@ -96,6 +97,8 @@ async def test_create_job(client: AsyncClient, runner: MockJobRunner) -> None:
     assert r.headers["Location"] == "https://example.com/api/cutout/jobs/2"
 
     async def run_job() -> None:
+        arq_job = await runner.get_job_metadata("someone", "2")
+        assert isinstance(arq_job.args[0], WorkerCutout)
         await runner.mark_in_progress("someone", "2", delay=0.2)
         results = [
             UWSJobResult(

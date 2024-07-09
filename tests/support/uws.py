@@ -9,8 +9,8 @@ from typing import Annotated, Self
 
 from arq.connections import RedisSettings
 from fastapi import Form, Query
-from pydantic import SecretStr
-from safir.arq import ArqMode, MockArqQueue
+from pydantic import BaseModel, SecretStr
+from safir.arq import ArqMode, JobMetadata, MockArqQueue
 
 from vocutouts.uws.config import ParametersModel, UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
@@ -23,7 +23,11 @@ __all__ = [
 ]
 
 
-class SimpleParameters(ParametersModel):
+class SimpleWorkerParameters(BaseModel):
+    name: str
+
+
+class SimpleParameters(ParametersModel[SimpleWorkerParameters]):
     name: str
 
     @classmethod
@@ -31,6 +35,9 @@ class SimpleParameters(ParametersModel):
         assert len(params) == 1
         assert params[0].parameter_id == "name"
         return cls(name=params[0].value)
+
+    def to_worker_parameters(self) -> SimpleWorkerParameters:
+        return SimpleWorkerParameters(name=self.name)
 
 
 async def _get_dependency(
@@ -101,6 +108,25 @@ class MockJobRunner:
         self._service = factory.create_job_service()
         self._store = factory.create_job_store()
         self._arq = arq_queue
+
+    async def get_job_metadata(
+        self, username: str, job_id: str
+    ) -> JobMetadata:
+        """Get the arq job metadata for a job.
+
+        Parameters
+        ----------
+        job_id
+            UWS job ID.
+
+        Returns
+        -------
+        JobMetadata
+            arq job metadata.
+        """
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        return await self._arq.get_job_metadata(job.message_id)
 
     async def mark_in_progress(
         self, username: str, job_id: str, *, delay: float | None = None

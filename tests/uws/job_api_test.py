@@ -6,9 +6,12 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
+from unittest.mock import ANY
 
 import pytest
+from arq.constants import default_queue_name
+from arq.jobs import JobStatus
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
@@ -17,8 +20,9 @@ from safir.datetime import current_datetime, isodatetime
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
+from vocutouts.uws.uwsworker import WorkerJobInfo
 
-from ..support.uws import MockJobRunner
+from ..support.uws import MockJobRunner, SimpleWorkerParameters
 
 PENDING_JOB = """
 <uws:job
@@ -95,7 +99,10 @@ JOB_RESULTS = """
 
 @pytest.mark.asyncio
 async def test_job_run(
-    client: AsyncClient, runner: MockJobRunner, uws_factory: UWSFactory
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    uws_config: UWSConfig,
 ) -> None:
     job_service = uws_factory.create_job_service()
 
@@ -157,6 +164,23 @@ async def test_job_run(
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
     await runner.mark_in_progress("user", "1")
+
+    # Check that the correct data was passed to the backend worker.
+    metadata = await runner.get_job_metadata("user", "1")
+    assert metadata.name == uws_config.worker
+    assert metadata.args[0] == SimpleWorkerParameters(name="Jane")
+    assert metadata.args[1] == WorkerJobInfo(
+        job_id="1",
+        user="user",
+        token="sometoken",
+        timeout=ANY,
+        run_id="some-run-id",
+    )
+    assert not metadata.kwargs
+    now = datetime.now(tz=UTC)
+    assert now - timedelta(seconds=2) <= metadata.enqueue_time <= now
+    assert metadata.status == JobStatus.in_progress
+    assert metadata.queue_name == default_queue_name
 
     # Tell the queue the job is finished.
     results = [
