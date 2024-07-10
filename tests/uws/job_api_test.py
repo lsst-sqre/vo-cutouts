@@ -22,7 +22,7 @@ from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
 from vocutouts.uws.uwsworker import WorkerJobInfo
 
-from ..support.uws import MockJobRunner, SimpleWorkerParameters
+from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -168,7 +168,7 @@ async def test_job_run(
     # Check that the correct data was passed to the backend worker.
     metadata = await runner.get_job_metadata("user", "1")
     assert metadata.name == uws_config.worker
-    assert metadata.args[0] == SimpleWorkerParameters(name="Jane")
+    assert metadata.args[0] == {"name": "Jane"}
     assert metadata.args[1] == WorkerJobInfo(
         job_id="1",
         user="user",

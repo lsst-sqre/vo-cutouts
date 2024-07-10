@@ -10,7 +10,7 @@ should try to use only dependencies present in the stack container.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -48,12 +48,10 @@ def _serialize_sky_coord(
         return (float(c.ra.degree), float(c.dec.degree))
 
 
-def _deserialize_sky_coord(
-    c: SkyCoord | tuple[float, float] | list[tuple[float, float]],
-) -> SkyCoord:
+def _deserialize_sky_coord(c: Any) -> SkyCoord:
     if isinstance(c, SkyCoord):
         return c
-    elif isinstance(c, list):
+    if isiterable(c[0]):
         ras = [v[0] for v in c]
         decs = [v[1] for v in c]
         return SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")

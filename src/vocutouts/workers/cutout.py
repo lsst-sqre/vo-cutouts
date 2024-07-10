@@ -201,6 +201,7 @@ WorkerSettings = build_worker(
         arq_mode=ArqMode.production,
         arq_queue_url=os.environ["CUTOUT_ARQ_QUEUE_URL"],
         arq_queue_password=os.getenv("CUTOUT_ARQ_QUEUE_PASSWORD"),
+        parameters_class=WorkerCutout,
         timeout=timedelta(seconds=int(os.environ["CUTOUT_TIMEOUT"])),
     ),
     structlog.get_logger("vocutouts"),

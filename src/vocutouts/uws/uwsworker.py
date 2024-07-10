@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from traceback import format_exception
-from typing import Any, ClassVar, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 from urllib.parse import urlsplit
 
 from arq import func
@@ -42,7 +42,7 @@ __all__ = [
 
 
 @dataclass
-class WorkerConfig:
+class WorkerConfig(Generic[T]):
     """Minimal configuration needed for building a UWS backend worker."""
 
     arq_mode: ArqMode
@@ -53,6 +53,9 @@ class WorkerConfig:
 
     arq_queue_password: str | None
     """Password of the Redis arq queue."""
+
+    parameters_class: type[T]
+    """Class of the parameters to pass to the backend worker."""
 
     timeout: timedelta
     """Maximum execution time.
@@ -270,7 +273,7 @@ class WorkerUsageError(WorkerError):
 
 def build_worker(
     worker: Callable[[T, WorkerJobInfo, BoundLogger], list[WorkerResult]],
-    config: WorkerConfig,
+    config: WorkerConfig[T],
     logger: BoundLogger,
 ) -> WorkerSettings:
     """Construct an arq worker for the provided backend function.
@@ -346,12 +349,13 @@ def build_worker(
         logger.info("Worker shutdown complete")
 
     async def run(
-        ctx: dict[Any, Any], params: T, info: WorkerJobInfo
+        ctx: dict[Any, Any], params_raw: dict[str, Any], info: WorkerJobInfo
     ) -> list[WorkerResult]:
         arq: ArqQueue = ctx["arq"]
         logger: BoundLogger = ctx["logger"]
         pool: ThreadPoolExecutor = ctx["pool"]
 
+        params = config.parameters_class.model_validate(params_raw)
         logger = logger.bind(
             task=worker.__qualname__,
             job_id=info.job_id,

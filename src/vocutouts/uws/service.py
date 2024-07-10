@@ -344,7 +344,7 @@ class JobService:
             timeout=job.execution_duration,
             run_id=job.run_id,
         )
-        params = params_model.to_worker_parameters()
+        params = params_model.to_worker_parameters().model_dump(mode="json")
         metadata = await self._arq.enqueue(self._config.worker, params, info)
         await self._storage.mark_queued(job_id, metadata)
         logger.info("Started job", arq_job_id=metadata.id)

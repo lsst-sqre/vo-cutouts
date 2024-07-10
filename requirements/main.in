@@ -25,10 +25,6 @@ safir[arq,db,gcs]>=6.0.0
 sqlalchemy[asyncio]
 structlog
 
-# Temporarily pin numpy to version 1 so that numpy data types picked in the
-# frontend can be unpickled in the backend with a current pipelines container.
-numpy<2
-
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
 #safir[arq,db,gcs] @ git+https://github.com/lsst-sqre/safir@main
