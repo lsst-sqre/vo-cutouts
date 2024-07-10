@@ -109,7 +109,11 @@ class Config(BaseSettings):
     )
 
     timeout: timedelta = Field(
-        timedelta(minutes=10), title="Timeout for cutout jobs"
+        timedelta(minutes=10),
+        title="Cutout job timeout in seconds",
+        description=(
+            "Must be given as a number of seconds as a string or integer"
+        ),
     )
 
     tmpdir: Path = Field(Path("/tmp"), title="Temporary directory for workers")
@@ -179,13 +183,16 @@ class Config(BaseSettings):
             )
         return v
 
-    @field_validator("lifetime", "sync_timeout", "timeout", mode="before")
+    @field_validator("lifetime", "sync_timeout", mode="before")
     @classmethod
     def _parse_timedelta(cls, v: str | float | timedelta) -> float | timedelta:
         """Support human-readable timedeltas."""
         if not isinstance(v, str):
             return v
-        return parse_timedelta(v)
+        try:
+            return int(v)
+        except ValueError:
+            return parse_timedelta(v)
 
     @property
     def arq_redis_settings(self) -> RedisSettings:
