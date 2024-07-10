@@ -98,7 +98,8 @@ async def test_create_job(client: AsyncClient, runner: MockJobRunner) -> None:
 
     async def run_job() -> None:
         arq_job = await runner.get_job_metadata("someone", "2")
-        assert isinstance(arq_job.args[0], WorkerCutout)
+        assert isinstance(arq_job.args[0], dict)
+        assert WorkerCutout.model_validate(arq_job.args[0])
         await runner.mark_in_progress("someone", "2", delay=0.2)
         results = [
             UWSJobResult(

@@ -61,6 +61,7 @@ async def test_build_worker(
             f"/{redis_settings.database}"
         ),
         arq_queue_password=redis_settings.password,
+        parameters_class=SimpleParameters,
         timeout=uws_config.execution_duration,
     )
     settings = build_worker(hello, worker_config, logger)
