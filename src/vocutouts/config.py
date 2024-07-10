@@ -194,6 +194,16 @@ class Config(BaseSettings):
         except ValueError:
             return parse_timedelta(v)
 
+    @field_validator("timeout", mode="before")
+    @classmethod
+    def _parse_timedelta_seconds(
+        cls, v: str | float | timedelta
+    ) -> float | timedelta:
+        """Support human-readable timedeltas."""
+        if not isinstance(v, str):
+            return v
+        return int(v)
+
     @property
     def arq_redis_settings(self) -> RedisSettings:
         """Redis settings for arq."""
