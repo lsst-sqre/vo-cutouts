@@ -37,7 +37,7 @@ PENDING_JOB = """
   <uws:ownerId>user</uws:ownerId>
   <uws:phase>{}</uws:phase>
   <uws:creationTime>{}</uws:creationTime>
-  <uws:executionDuration>0</uws:executionDuration>
+  <uws:executionDuration>{}</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name" isPost="true">Jane</uws:parameter>
@@ -60,7 +60,7 @@ FINISHED_JOB = """
   <uws:creationTime>{}</uws:creationTime>
   <uws:startTime>{}</uws:startTime>
   <uws:endTime>{}</uws:endTime>
-  <uws:executionDuration>0</uws:executionDuration>
+  <uws:executionDuration>{}</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name" isPost="true">Jane</uws:parameter>
@@ -127,6 +127,7 @@ async def test_job_run(
         "1",
         "PENDING",
         isodatetime(job.creation_time),
+        "600",
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
@@ -161,6 +162,7 @@ async def test_job_run(
         "1",
         "QUEUED",
         isodatetime(job.creation_time),
+        "600",
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
     await runner.mark_in_progress("user", "1")
@@ -207,6 +209,7 @@ async def test_job_run(
         isodatetime(job.creation_time),
         isodatetime(job.start_time),
         isodatetime(job.end_time),
+        "600",
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
 
@@ -261,6 +264,7 @@ async def test_job_api(
         "1",
         "PENDING",
         isodatetime(job.creation_time),
+        "600",
         isodatetime(destruction_time),
     )
 
@@ -278,7 +282,7 @@ async def test_job_api(
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "text/plain; charset=utf-8"
-    assert r.text == "0"
+    assert r.text == "600"
 
     r = await client.get(
         "/test/jobs/1/owner", headers={"X-Auth-Request-User": "user"}
@@ -318,7 +322,6 @@ async def test_job_api(
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/test/jobs/1"
 
-    # Changing the execution duration is not supported.
     r = await client.post(
         "/test/jobs/1/executionduration",
         headers={"X-Auth-Request-User": "user"},
@@ -337,6 +340,7 @@ async def test_job_api(
         "1",
         "PENDING",
         isodatetime(job.creation_time),
+        "300",
         isodatetime(now),
     )
 
@@ -367,6 +371,7 @@ async def test_job_api(
         "2",
         "PENDING",
         isodatetime(job.creation_time),
+        "600",
         isodatetime(job.destruction_time),
     )
     r = await client.post(

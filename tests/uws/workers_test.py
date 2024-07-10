@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import timedelta
 from typing import Any
 from unittest.mock import ANY
@@ -33,26 +34,29 @@ from vocutouts.uws.uwsworker import (
     WorkerFatalError,
     WorkerJobInfo,
     WorkerResult,
+    WorkerTimeoutError,
     build_worker,
 )
 
 from ..support.uws import SimpleParameters
 
 
+def hello(
+    params: SimpleParameters, info: WorkerJobInfo, logger: BoundLogger
+) -> list[WorkerResult]:
+    if params.name == "Timeout":
+        time.sleep(120)
+    return [
+        WorkerResult(
+            result_id="greeting", url=f"https://example.com/{params.name}"
+        )
+    ]
+
+
 @pytest.mark.asyncio
 async def test_build_worker(
     uws_config: UWSConfig, logger: BoundLogger
 ) -> None:
-    def hello(
-        params: SimpleParameters, info: WorkerJobInfo, logger: BoundLogger
-    ) -> list[WorkerResult]:
-        return [
-            WorkerResult(
-                result_id="greeting", url=f"https://example.com/{params.name}"
-            )
-        ]
-
-    # Construct the arq configuration and check it.
     redis_settings = uws_config.arq_redis_settings
     worker_config = WorkerConfig(
         arq_mode=uws_config.arq_mode,
@@ -70,6 +74,7 @@ async def test_build_worker(
     assert isinstance(settings.functions[0], Function)
     assert settings.functions[0].name == hello.__qualname__
     assert settings.redis_settings == uws_config.arq_redis_settings
+    assert settings.allow_abort_jobs
     assert settings.queue_name == default_queue_name
     assert settings.on_startup
     assert settings.on_shutdown
@@ -124,6 +129,77 @@ async def test_build_worker(
 
 
 @pytest.mark.asyncio
+async def test_timeout(uws_config: UWSConfig, logger: BoundLogger) -> None:
+    redis_settings = uws_config.arq_redis_settings
+    worker_config = WorkerConfig(
+        arq_mode=uws_config.arq_mode,
+        arq_queue_url=(
+            f"redis://{redis_settings.host}:{redis_settings.port}"
+            f"/{redis_settings.database}"
+        ),
+        arq_queue_password=redis_settings.password,
+        parameters_class=SimpleParameters,
+        timeout=uws_config.execution_duration,
+    )
+    settings = build_worker(hello, worker_config, logger)
+    assert isinstance(settings.functions[0], Function)
+
+    # Run the startup hook.
+    ctx: dict[Any, Any] = {}
+    startup = settings.on_startup
+    assert startup
+    await startup(ctx)
+    arq = ctx["arq"]
+
+    # Run the worker.
+    function = settings.functions[0].coroutine
+    params = SimpleParameters(name="Timeout")
+    info = WorkerJobInfo(
+        job_id="42",
+        user="someuser",
+        token="some-token",
+        timeout=timedelta(seconds=1),
+        run_id="some-run-id",
+    )
+    with pytest.raises(WorkerTimeoutError):
+        await function(ctx, params, info)
+    assert list(arq._job_metadata[UWS_QUEUE_NAME].values()) == [
+        JobMetadata(
+            id=ANY,
+            name="uws_job_started",
+            args=("42", ANY),
+            kwargs={},
+            enqueue_time=ANY,
+            status=JobStatus.queued,
+            queue_name=UWS_QUEUE_NAME,
+        ),
+        JobMetadata(
+            id=ANY,
+            name="uws_job_completed",
+            args=("42",),
+            kwargs={},
+            enqueue_time=ANY,
+            status=JobStatus.queued,
+            queue_name=UWS_QUEUE_NAME,
+        ),
+    ]
+
+    # Make sure that handling the timeout didn't break the worker and we can
+    # run another job successfully.
+    params = SimpleParameters(name="Roger")
+    info.job_id = "43"
+    result = await function(ctx, params, info)
+    assert result == [
+        WorkerResult(result_id="greeting", url="https://example.com/Roger")
+    ]
+
+    # Run the shutdown hook.
+    shutdown = settings.on_shutdown
+    assert shutdown
+    await shutdown(ctx)
+
+
+@pytest.mark.asyncio
 async def test_build_uws_worker(
     arq_queue: MockArqQueue,
     uws_config: UWSConfig,
@@ -156,6 +232,7 @@ async def test_build_uws_worker(
     expire_jobs = expire_cron.coroutine
     assert callable(expire_jobs)
     assert settings.redis_settings == uws_config.arq_redis_settings
+    assert not settings.allow_abort_jobs
     assert settings.queue_name == UWS_QUEUE_NAME
     assert settings.on_startup
     assert settings.on_shutdown
