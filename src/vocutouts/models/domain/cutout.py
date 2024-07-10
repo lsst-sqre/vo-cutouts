@@ -10,12 +10,18 @@ should try to use only dependencies present in the stack container.
 
 from __future__ import annotations
 
-from abc import ABC
 from typing import Annotated, Literal, TypeAlias
 
+from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
 from astropy.utils import isiterable
-from pydantic import BaseModel, ConfigDict, PlainSerializer, SerializeAsAny
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+)
 
 __all__ = [
     "AngleSerializable",
@@ -29,22 +35,43 @@ __all__ = [
 ]
 
 
+def _deserialize_angle(c: Angle | float) -> Angle:
+    return c if isinstance(c, Angle) else Angle(c * u.degree)
+
+
 def _serialize_sky_coord(
     c: SkyCoord,
 ) -> list[tuple[float, float]] | tuple[float, float]:
     if isiterable(c):
-        return [(v.ra.degree, v.dec.degree) for v in c]
+        return [(float(v.ra.degree), float(v.dec.degree)) for v in c]
     else:
-        return (c.ra.degree, c.dec.degree)
+        return (float(c.ra.degree), float(c.dec.degree))
+
+
+def _deserialize_sky_coord(
+    c: SkyCoord | tuple[float, float] | list[tuple[float, float]],
+) -> SkyCoord:
+    if isinstance(c, SkyCoord):
+        return c
+    elif isinstance(c, list):
+        ras = [v[0] for v in c]
+        decs = [v[1] for v in c]
+        return SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")
+    else:
+        return SkyCoord(c[0] * u.degree, c[1] * u.degree, frame="icrs")
 
 
 AngleSerializable = Annotated[
-    Angle, PlainSerializer(lambda x: x.degree, return_type=float)
+    Angle,
+    BeforeValidator(_deserialize_angle),
+    PlainSerializer(lambda x: float(x.degree), return_type=float),
 ]
 """Angle with serialization support."""
 
 SkyCoordSerializable = Annotated[
-    SkyCoord, PlainSerializer(_serialize_sky_coord)
+    SkyCoord,
+    BeforeValidator(_deserialize_sky_coord),
+    PlainSerializer(_serialize_sky_coord),
 ]
 """Sky coordinate with serialization support."""
 
@@ -52,16 +79,7 @@ WorkerRange: TypeAlias = tuple[float, float]
 """Type representing a range of a coordinate."""
 
 
-class WorkerStencil(BaseModel, ABC):
-    """Base class for a stencil parameter."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    type: str
-    """Type of stencil."""
-
-
-class WorkerCircleStencil(WorkerStencil):
+class WorkerCircleStencil(BaseModel):
     """Represents a ``CIRCLE`` or ``POS=CIRCLE`` stencil."""
 
     type: Literal["circle"] = "circle"
@@ -72,8 +90,10 @@ class WorkerCircleStencil(WorkerStencil):
     radius: AngleSerializable
     """Radius of the circle."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-class WorkerPolygonStencil(WorkerStencil):
+
+class WorkerPolygonStencil(BaseModel):
     """Represents a ``POLYGON`` or ``POS=POLYGON`` stencil."""
 
     type: Literal["polygon"] = "polygon"
@@ -81,8 +101,10 @@ class WorkerPolygonStencil(WorkerStencil):
     vertices: SkyCoordSerializable
     """Vertices of the polygon in counter-clockwise winding."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-class WorkerRangeStencil(WorkerStencil):
+
+class WorkerRangeStencil(BaseModel):
     """Represents a ``POS=RANGE`` stencil."""
 
     type: Literal["range"] = "range"
@@ -94,11 +116,18 @@ class WorkerRangeStencil(WorkerStencil):
     """Range of dec values, using inf or -info for open ranges."""
 
 
+WorkerStencil: TypeAlias = Annotated[
+    WorkerCircleStencil | WorkerPolygonStencil | WorkerRangeStencil,
+    Field(discriminator="type"),
+]
+"""An instance of any supported stencil."""
+
+
 class WorkerCutout(BaseModel):
     """Data for a single cutout request."""
 
     dataset_ids: list[str]
     """Dataset IDs from which to generate a cutout."""
 
-    stencils: SerializeAsAny[list[WorkerStencil]]
+    stencils: list[WorkerStencil]
     """Stencils for the cutouts."""
