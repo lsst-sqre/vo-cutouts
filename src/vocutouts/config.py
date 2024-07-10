@@ -105,12 +105,11 @@ class Config(BaseSettings):
     )
 
     sync_timeout: timedelta = Field(
-        timedelta(minutes=1),
-        title="Timeout for sync requests",
-        description=(
-            "The job will continue running as an async job beyond this"
-            " timeout since cancellation of jobs is not currently supported."
-        ),
+        timedelta(minutes=1), title="Timeout for sync requests"
+    )
+
+    timeout: timedelta = Field(
+        timedelta(minutes=10), title="Timeout for cutout jobs"
     )
 
     tmpdir: Path = Field(Path("/tmp"), title="Temporary directory for workers")
@@ -180,7 +179,7 @@ class Config(BaseSettings):
             )
         return v
 
-    @field_validator("lifetime", "sync_timeout", mode="before")
+    @field_validator("lifetime", "sync_timeout", "timeout", mode="before")
     @classmethod
     def _parse_timedelta(cls, v: str | float | timedelta) -> float | timedelta:
         """Support human-readable timedeltas."""
@@ -211,6 +210,7 @@ class Config(BaseSettings):
         return UWSConfig(
             arq_mode=self.arq_mode,
             arq_redis_settings=self.arq_redis_settings,
+            execution_duration=self.timeout,
             lifetime=self.lifetime,
             parameters_type=CutoutParameters,
             signing_service_account=self.service_account,

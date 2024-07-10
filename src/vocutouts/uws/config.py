@@ -98,6 +98,13 @@ class UWSConfig:
     database_url: str
     """URL for the metadata database."""
 
+    execution_duration: timedelta
+    """Maximum execution time in seconds.
+
+    Jobs that run longer than this length of time will be automatically
+    aborted.
+    """
+
     lifetime: timedelta
     """The lifetime of jobs.
 
@@ -126,15 +133,6 @@ class UWSConfig:
 
     database_password: SecretStr | None = None
     """Password for the database."""
-
-    execution_duration: timedelta = timedelta(seconds=0)
-    """Maximum execution time in seconds.
-
-    Jobs that run longer than this length of time should be automatically
-    aborted. However, currently the backend does not support cancelling jobs,
-    and therefore the only correct value is 0, which indicates that the
-    execution duration of the job is unlimited.
-    """
 
     slack_webhook: SecretStr | None = None
     """Slack incoming webhook for reporting errors."""
@@ -176,9 +174,7 @@ class UWSConfig:
 
     If provided, called with the requested execution duration and the current
     job record and should return the new execution duration time. Otherwise,
-    the execution duration may not be changed. Note that the current backend
-    does not support cancelling jobs and therefore does not support execution
-    duration values other than 0.
+    the execution duration may not be changed.
     """
 
     wait_timeout: timedelta = timedelta(minutes=1)

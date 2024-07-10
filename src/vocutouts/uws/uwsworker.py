@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import signal
 import uuid
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -35,6 +37,7 @@ __all__ = [
     "WorkerJobInfo",
     "WorkerResult",
     "WorkerSettings",
+    "WorkerTimeoutError",
     "WorkerTransientError",
     "WorkerUsageError",
     "build_worker",
@@ -102,6 +105,9 @@ class WorkerSettings:
     max_jobs: int
     """Maximum number of jobs that can be run at one time."""
 
+    allow_abort_jobs: bool = False
+    """Whether to allow jobs to be aborted."""
+
     queue_name: str = default_queue_name
     """Name of arq queue to listen to for jobs."""
 
@@ -129,11 +135,7 @@ class WorkerJobInfo:
     """Delegated Gafaelfawr token to act on behalf of the user."""
 
     timeout: timedelta
-    """Maximum execution time for the job.
-
-    Currently, this is ignored, since the backend workers do not support
-    cancellation.
-    """
+    """Maximum execution time for the job."""
 
     run_id: str | None = None
     """User-supplied run ID, if any."""
@@ -259,6 +261,20 @@ class WorkerTransientError(WorkerError):
     error_type = WorkerErrorType.TRANSIENT
 
 
+class WorkerTimeoutError(WorkerTransientError):
+    """Transient error occurred during worker processing.
+
+    The job may be retried with the same parameters and may succeed.
+    """
+
+    def __init__(self, elapsed: timedelta, timeout: timedelta) -> None:
+        msg = (
+            f"Job timed out after {elapsed.total_seconds()}s"
+            f" (timeout: {timeout.total_seconds()}s)"
+        )
+        super().__init__(msg)
+
+
 class WorkerUsageError(WorkerError):
     """Parameters sent by the user were invalid.
 
@@ -269,6 +285,20 @@ class WorkerUsageError(WorkerError):
     """
 
     error_type = WorkerErrorType.USAGE
+
+
+def _restart_pool(pool: ProcessPoolExecutor) -> ProcessPoolExecutor:
+    """Restart the pool after timeout or job cancellation.
+
+    This is a horrible, fragile hack, but it appears to be the only way to
+    enforce a timeout currently in Python since there is no way to abort a
+    job already in progress. Find the processes underlying the pool, kill
+    them, and then shut down and recreate the pool.
+    """
+    for pid in pool._processes:  # noqa: SLF001
+        os.kill(pid, signal.SIGINT)
+    pool.shutdown(wait=True)
+    return ProcessPoolExecutor(1)
 
 
 def build_worker(
@@ -298,27 +328,6 @@ def build_worker(
         UWS worker configuration.
     logger
         Logger to use for messages.
-
-    Notes
-    -----
-    Timeouts and aborting jobs unfortunately are not supported due to
-    limitations in `concurrent.futures.ThreadPoolExecutor`. Once a thread has
-    been started, there is no way to stop it until it completes on its own.
-    Therefore, no job timeout is set or supported, and the timeout set on the
-    job (which comes from executionduration) is ignored.
-
-    Fixing this appears to be difficult since Python's `threading.Thread`
-    simply does not support cancellation. It would probably require rebuilding
-    the worker model on top of processes and killing those processes on
-    timeout. That would pose problems for cleanup of any temporary resources
-    created by the process such as temporary files, since Python cleanup code
-    would not be run.
-
-    The best fix would be for backend code to be rewritten to be async, so
-    await would become a cancellation point (although this still may not be
-    enough for compute-heavy code that doesn't use await frequently). However,
-    the Rubin pipelines code is all sync, so async worker support has not yet
-    been added due to lack of demand.
     """
 
     async def startup(ctx: dict[Any, Any]) -> None:
@@ -336,13 +345,13 @@ def build_worker(
 
         ctx["arq"] = arq
         ctx["logger"] = logger
-        ctx["pool"] = ThreadPoolExecutor(1)
+        ctx["pool"] = ProcessPoolExecutor(1)
 
         logger.info("Worker startup complete")
 
     async def shutdown(ctx: dict[Any, Any]) -> None:
         logger: BoundLogger = ctx["logger"]
-        pool: ThreadPoolExecutor = ctx["pool"]
+        pool: ProcessPoolExecutor = ctx["pool"]
 
         pool.shutdown(wait=True, cancel_futures=True)
 
@@ -353,7 +362,7 @@ def build_worker(
     ) -> list[WorkerResult]:
         arq: ArqQueue = ctx["arq"]
         logger: BoundLogger = ctx["logger"]
-        pool: ThreadPoolExecutor = ctx["pool"]
+        pool: ProcessPoolExecutor = ctx["pool"]
 
         params = config.parameters_class.model_validate(params_raw)
         logger = logger.bind(
@@ -365,28 +374,34 @@ def build_worker(
         if info.run_id:
             logger = logger.bind(run_id=info.run_id)
 
-        await arq.enqueue("uws_job_started", info.job_id, datetime.now(tz=UTC))
+        start = datetime.now(tz=UTC)
+        await arq.enqueue("uws_job_started", info.job_id, start)
         loop = asyncio.get_running_loop()
         try:
-            return await loop.run_in_executor(
-                pool, worker, params, info, logger
-            )
+            async with asyncio.timeout(info.timeout.total_seconds()):
+                return await loop.run_in_executor(
+                    pool, worker, params, info, logger
+                )
+        except asyncio.CancelledError:
+            ctx["pool"] = _restart_pool(pool)
+            raise
+        except TimeoutError:
+            elapsed = datetime.now(tz=UTC) - start
+            ctx["pool"] = _restart_pool(pool)
+            raise WorkerTimeoutError(elapsed, info.timeout) from None
         finally:
             await arq.enqueue("uws_job_completed", info.job_id)
 
-    # Job timeouts are not actually supported since we have no way of stopping
-    # the sync worker. A timeout will just leave the previous worker running
-    # and will block all future jobs. Set it to an extremely long value, since
-    # it can't be disabled entirely.
-    #
     # Since the worker is running sync jobs, run one job per pod since they
-    # will be serialized anyway and no parallelism is possible. If async
-    # worker support is added, consider making this configurable.
+    # will be serialized anyway and no parallelism is possible. This also
+    # allows us to easily restart the job pool on timeout or job abort. If
+    # async worker support is added, consider making this configurable.
     return WorkerSettings(
         functions=[func(run, name=worker.__qualname__)],
         redis_settings=config.arq_redis_settings,
-        job_timeout=3600,
+        job_timeout=config.timeout,
         max_jobs=1,
+        allow_abort_jobs=True,
         on_startup=startup,
         on_shutdown=shutdown,
     )

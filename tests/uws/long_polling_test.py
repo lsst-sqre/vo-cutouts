@@ -26,7 +26,7 @@ PENDING_JOB = """
   <uws:ownerId>user</uws:ownerId>
   <uws:phase>{}</uws:phase>
   <uws:creationTime>{}</uws:creationTime>
-  <uws:executionDuration>0</uws:executionDuration>
+  <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name">Naomi</uws:parameter>
@@ -47,7 +47,7 @@ EXECUTING_JOB = """
   <uws:phase>EXECUTING</uws:phase>
   <uws:creationTime>{}</uws:creationTime>
   <uws:startTime>{}</uws:startTime>
-  <uws:executionDuration>0</uws:executionDuration>
+  <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name">Naomi</uws:parameter>
@@ -69,7 +69,7 @@ FINISHED_JOB = """
   <uws:creationTime>{}</uws:creationTime>
   <uws:startTime>{}</uws:startTime>
   <uws:endTime>{}</uws:endTime>
-  <uws:executionDuration>0</uws:executionDuration>
+  <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
     <uws:parameter id="name">Naomi</uws:parameter>
