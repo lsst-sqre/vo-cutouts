@@ -99,7 +99,7 @@ async def test_build_worker(
     assert list(arq._job_metadata[UWS_QUEUE_NAME].values()) == [
         JobMetadata(
             id=ANY,
-            name="job_started",
+            name="uws_job_started",
             args=("42", ANY),
             kwargs={},
             enqueue_time=ANY,
@@ -108,7 +108,7 @@ async def test_build_worker(
         ),
         JobMetadata(
             id=ANY,
-            name="job_completed",
+            name="uws_job_completed",
             args=("42",),
             kwargs={},
             enqueue_time=ANY,
