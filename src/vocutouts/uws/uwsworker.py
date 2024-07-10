@@ -361,14 +361,14 @@ def build_worker(
         if info.run_id:
             logger = logger.bind(run_id=info.run_id)
 
-        await arq.enqueue("job_started", info.job_id, datetime.now(tz=UTC))
+        await arq.enqueue("uws_job_started", info.job_id, datetime.now(tz=UTC))
         loop = asyncio.get_running_loop()
         try:
             return await loop.run_in_executor(
                 pool, worker, params, info, logger
             )
         finally:
-            await arq.enqueue("job_completed", info.job_id)
+            await arq.enqueue("uws_job_completed", info.job_id)
 
     # Job timeouts are not actually supported since we have no way of stopping
     # the sync worker. A timeout will just leave the previous worker running
