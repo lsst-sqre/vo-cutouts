@@ -27,7 +27,7 @@ __all__ = ["app"]
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
     await uws_dependency.initialize(config.uws_config)
     yield
@@ -47,7 +47,7 @@ app = FastAPI(
     openapi_url=f"{config.path_prefix}/openapi.json",
     docs_url=f"{config.path_prefix}/docs",
     redoc_url=f"{config.path_prefix}/redoc",
-    lifespan=lifespan,
+    lifespan=_lifespan,
 )
 """The main FastAPI application for vo-cutouts."""
 

@@ -9,6 +9,12 @@ from safir.click import display_help
 
 from .config import uws
 
+__all__ = [
+    "help",
+    "init",
+    "main",
+]
+
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(message="%(version)s")

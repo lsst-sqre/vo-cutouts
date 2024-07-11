@@ -25,6 +25,7 @@ from .uwsworker import WorkerError, WorkerErrorType
 __all__ = [
     "DataMissingError",
     "InvalidPhaseError",
+    "MultiValuedParameterError",
     "ParameterError",
     "PermissionDeniedError",
     "SyncJobFailedError",
