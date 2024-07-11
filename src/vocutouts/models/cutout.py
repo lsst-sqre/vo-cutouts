@@ -39,6 +39,7 @@ __all__ = [
     "PolygonStencil",
     "Range",
     "RangeStencil",
+    "Stencil",
 ]
 
 
