@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
+import jinja2
 from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 from safir.datetime import isodatetime
@@ -13,11 +12,13 @@ from .results import ResultStore
 
 __all__ = ["UWSTemplates"]
 
-
-_templates = Jinja2Templates(
-    directory=str(Path(__file__).parent / "templates")
+_environment = jinja2.Environment(
+    loader=jinja2.PackageLoader("vocutouts", "uws/templates"),
+    undefined=jinja2.StrictUndefined,
+    autoescape=True,
 )
-_templates.env.filters["isodatetime"] = isodatetime
+_environment.filters["isodatetime"] = isodatetime
+_templates = Jinja2Templates(env=_environment)
 
 
 class UWSTemplates:
