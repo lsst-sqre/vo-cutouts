@@ -27,7 +27,7 @@ from .dependencies import (
     uws_dependency,
     uws_post_params_dependency,
 )
-from .exceptions import DataMissingError, ParameterError, PermissionDeniedError
+from .exceptions import DataMissingError, ParameterError
 from .models import ExecutionPhase, UWSJobParameter
 
 uws_router = APIRouter(route_class=SlackRouteErrorHandler)
@@ -422,14 +422,12 @@ async def post_job_phase(
     if not phase:
         raise ParameterError("No new phase given")
 
-    # We cannot abort arq jobs because we're using sync workers, and Python
-    # doesn't have any way to cancel them.
-    if phase == "ABORT":
-        raise PermissionDeniedError("Aborting jobs is not supported")
-
-    # The only remaining case is starting the job.
+    # If told to abort the job, tell arq to do so.
     job_service = uws_factory.create_job_service()
-    await job_service.start(user, job_id, access_token)
+    if phase == "ABORT":
+        await job_service.abort(user, job_id)
+    elif phase == "RUN":
+        await job_service.start(user, job_id, access_token)
     return str(request.url_for("get_job", job_id=job_id))
 
 

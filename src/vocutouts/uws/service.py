@@ -10,6 +10,7 @@ from safir.datetime import current_datetime, isodatetime
 from structlog.stdlib import BoundLogger
 
 from .config import ParametersModel, UWSConfig
+from .constants import JOB_STOP_TIMEOUT
 from .exceptions import (
     InvalidPhaseError,
     PermissionDeniedError,
@@ -64,6 +65,40 @@ class JobService:
         self._arq = arq_queue
         self._storage = storage
         self._logger = logger
+
+    async def abort(self, user: str, job_id: str) -> None:
+        """Abort a queued or running job.
+
+        If the job is already in a completed state, this operation does
+        nothing.
+
+        Parameters
+        ----------
+        user
+            User on behalf of whom this operation is performed.
+        job_id
+            Identifier of the job.
+
+        Raises
+        ------
+        PermissionDeniedError
+            If the job ID doesn't exist or is for a user other than the
+            provided user.
+        """
+        job = await self._storage.get(job_id)
+        if job.owner != user:
+            raise PermissionDeniedError(f"Access to job {job_id} denied")
+        params_model = self._validate_parameters(job.parameters)
+        logger = self._build_logger_for_job(job, params_model)
+        if job.phase not in ACTIVE_PHASES:
+            logger.info(f"Cannot stop job in phase {job.phase.value}")
+            return
+        if job.message_id:
+            timeout = JOB_STOP_TIMEOUT.total_seconds()
+            logger.info("Aborting queued job", arq_job_id=job.message_id)
+            await self._arq.abort_job(job.message_id, timeout=timeout)
+        await self._storage.mark_aborted(job_id)
+        logger.info("Aborted job")
 
     async def availability(self) -> Availability:
         """Check whether the service is up.
