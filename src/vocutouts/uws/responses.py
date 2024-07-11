@@ -51,9 +51,7 @@ class UWSTemplates:
 
     async def job(self, request: Request, job: UWSJob) -> Response:
         """Return a job as an XML response."""
-        results = [
-            await self._result_store.url_for_result(r) for r in job.results
-        ]
+        results = [self._result_store.sign_url(r) for r in job.results]
         return _templates.TemplateResponse(
             request,
             "job.xml",
@@ -83,9 +81,7 @@ class UWSTemplates:
 
     async def results(self, request: Request, job: UWSJob) -> Response:
         """Return the results for a job as an XML response."""
-        results = [
-            await self._result_store.url_for_result(r) for r in job.results
-        ]
+        results = [self._result_store.sign_url(r) for r in job.results]
         return _templates.TemplateResponse(
             request,
             "results.xml",

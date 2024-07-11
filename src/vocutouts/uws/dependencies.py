@@ -80,7 +80,6 @@ class UWSFactory:
             config=self._config,
             arq_queue=self._arq,
             storage=self.create_job_store(),
-            result_store=self._result_store,
             logger=self._logger,
         )
 

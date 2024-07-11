@@ -24,8 +24,8 @@ from .models import (
     UWSJob,
     UWSJobDescription,
     UWSJobParameter,
+    UWSJobResult,
 )
-from .results import ResultStore
 from .storage import JobStore
 from .uwsworker import WorkerJobInfo
 
@@ -48,8 +48,6 @@ class JobService:
         arq queue to which to dispatch jobs.
     storage
         Underlying storage for job metadata and result tracking.
-    result_store
-        Result formatter.
     logger
         Logger to use.
     """
@@ -60,13 +58,11 @@ class JobService:
         config: UWSConfig,
         arq_queue: ArqQueue,
         storage: JobStore,
-        result_store: ResultStore,
         logger: BoundLogger,
     ) -> None:
         self._config = config
         self._arq = arq_queue
         self._storage = storage
-        self._result_store = result_store
         self._logger = logger
 
     async def availability(self) -> Availability:
@@ -249,8 +245,8 @@ class JobService:
         *,
         token: str,
         runid: str | None,
-    ) -> str:
-        """Create a job for a sync request and return the result URL.
+    ) -> UWSJobResult:
+        """Create a job for a sync request and return the first result.
 
         Parameters
         ----------
@@ -265,8 +261,8 @@ class JobService:
 
         Returns
         -------
-        str
-            URL of the job result, suitable for a redirect.
+        result
+            First result of the successfully-executed job.
 
         Raises
         ------
@@ -302,9 +298,8 @@ class JobService:
             logger.warning("Job returned no results")
             raise SyncJobNoResultsError
 
-        # Return the URL of the first result.
-        result = await self._result_store.url_for_result(job.results[0])
-        return result.url
+        # Return the the first result.
+        return job.results[0]
 
     async def start(self, user: str, job_id: str, token: str) -> JobMetadata:
         """Start execution of a job.
