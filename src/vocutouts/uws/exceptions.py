@@ -1,8 +1,4 @@
-"""Exceptions for the Universal Worker Service.
-
-The types of exceptions here control the error handling behavior configured in
-:py:mod:`vocutouts.uws.errors`.
-"""
+"""Exceptions for the Universal Worker Service."""
 
 from __future__ import annotations
 
@@ -19,7 +15,7 @@ from safir.slack.blockkit import (
 )
 from safir.slack.webhook import SlackIgnoredException
 
-from .models import ErrorCode, ErrorType, UWSJobError
+from .models import ErrorCode, ErrorType, UWSJobError, UWSJobParameter
 from .uwsworker import WorkerError, WorkerErrorType
 
 __all__ = [
@@ -27,6 +23,7 @@ __all__ = [
     "InvalidPhaseError",
     "MultiValuedParameterError",
     "ParameterError",
+    "ParameterParseError",
     "PermissionDeniedError",
     "SyncJobFailedError",
     "SyncJobNoResultsError",
@@ -260,6 +257,15 @@ class InvalidPhaseError(UsageError):
 
 class ParameterError(UsageError):
     """Unsupported value passed to a parameter."""
+
+
+class ParameterParseError(ParameterError):
+    """UWS job parameters could not be parsed."""
+
+    def __init__(self, message: str, params: list[UWSJobParameter]) -> None:
+        detail = "\n".join(f"{p.parameter_id}={p.value}" for p in params)
+        super().__init__(message, detail)
+        self.params = params
 
 
 class UnknownJobError(DataMissingError):
