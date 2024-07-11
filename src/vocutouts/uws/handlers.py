@@ -20,7 +20,7 @@ from safir.dependencies.gafaelfawr import (
 from safir.slack.webhook import SlackRouteErrorHandler
 from structlog.stdlib import BoundLogger
 
-from .config import ParametersDependency
+from .config import UWSRoute
 from .dependencies import (
     UWSFactory,
     runid_post_dependency,
@@ -470,24 +470,23 @@ async def get_job_results(
     return await templates.results(request, job)
 
 
-def install_async_post_handler(
-    router: APIRouter, dependency: ParametersDependency
-) -> None:
+def install_async_post_handler(router: APIRouter, route: UWSRoute) -> None:
     """Construct the POST handler for creating an async job.
 
     Parameters
     ----------
     router
         Router into which to install the handler.
-    dependency
-        Dependency that returns the job parameters.
+    route
+        Configuration for this route.
     """
 
     @router.post(
         "/jobs",
         response_class=RedirectResponse,
         status_code=303,
-        summary="Create async job",
+        summary=route.summary,
+        description=route.description,
     )
     async def create_job(
         *,
@@ -495,7 +494,9 @@ def install_async_post_handler(
         phase: Annotated[
             Literal["RUN"] | None, Query(title="Immediately start job")
         ] = None,
-        parameters: Annotated[list[UWSJobParameter], Depends(dependency)],
+        parameters: Annotated[
+            list[UWSJobParameter], Depends(route.dependency)
+        ],
         runid: Annotated[str | None, Depends(runid_post_dependency)],
         user: Annotated[str, Depends(auth_dependency)],
         token: Annotated[str, Depends(auth_delegated_token_dependency)],
@@ -508,29 +509,28 @@ def install_async_post_handler(
         return str(request.url_for("get_job", job_id=job.job_id))
 
 
-def install_sync_post_handler(
-    router: APIRouter, dependency: ParametersDependency
-) -> None:
+def install_sync_post_handler(router: APIRouter, route: UWSRoute) -> None:
     """Construct the POST handler for creating a sync job.
 
     Parameters
     ----------
     router
         Router into which to install the handler.
-    dependency
-        Dependency that returns the job parameters.
+    route
+        Configuration for this route.
     """
 
     @router.post(
         "/sync",
         response_class=RedirectResponse,
         status_code=303,
-        summary="Create sync job",
+        summary=route.summary,
+        description=route.description,
     )
     async def post_sync(
         *,
         runid: Annotated[str | None, Depends(runid_post_dependency)],
-        params: Annotated[list[UWSJobParameter], Depends(dependency)],
+        params: Annotated[list[UWSJobParameter], Depends(route.dependency)],
         user: Annotated[str, Depends(auth_dependency)],
         token: Annotated[str, Depends(auth_delegated_token_dependency)],
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
@@ -543,24 +543,23 @@ def install_sync_post_handler(
         return result_store.sign_url(result).url
 
 
-def install_sync_get_handler(
-    router: APIRouter, dependency: ParametersDependency
-) -> None:
+def install_sync_get_handler(router: APIRouter, route: UWSRoute) -> None:
     """Construct the GET handler for creating a sync job.
 
     Parameters
     ----------
     router
         Router into which to install the handler.
-    dependency
-        Dependency that returns the job parameters.
+    route
+        Configuration for this route.
     """
 
     @router.get(
         "/sync",
         response_class=RedirectResponse,
         status_code=303,
-        summary="Create sync job",
+        summary=route.summary,
+        description=route.description,
     )
     async def get_sync(
         *,
@@ -575,7 +574,7 @@ def install_sync_get_handler(
                 ),
             ),
         ] = None,
-        params: Annotated[list[UWSJobParameter], Depends(dependency)],
+        params: Annotated[list[UWSJobParameter], Depends(route.dependency)],
         user: Annotated[str, Depends(auth_dependency)],
         token: Annotated[str, Depends(auth_delegated_token_dependency)],
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
