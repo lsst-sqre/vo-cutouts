@@ -538,9 +538,11 @@ def install_sync_post_handler(
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     ) -> str:
         job_service = uws_factory.create_job_service()
-        return await job_service.run_sync(
+        result_store = uws_factory.create_result_store()
+        result = await job_service.run_sync(
             user, params, token=token, runid=runid
         )
+        return result_store.sign_url(result).url
 
 
 def install_sync_get_handler(
@@ -581,6 +583,8 @@ def install_sync_get_handler(
         uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
     ) -> str:
         job_service = uws_factory.create_job_service()
-        return await job_service.run_sync(
+        result_store = uws_factory.create_result_store()
+        result = await job_service.run_sync(
             user, params, token=token, runid=runid
         )
+        return result_store.sign_url(result).url

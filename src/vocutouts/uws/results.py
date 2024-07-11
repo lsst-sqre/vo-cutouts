@@ -10,7 +10,7 @@ from __future__ import annotations
 from safir.gcs import SignedURLService
 
 from .config import UWSConfig
-from .models import UWSJobResult, UWSJobResultURL
+from .models import UWSJobResult, UWSJobResultSigned
 
 __all__ = ["ResultStore"]
 
@@ -31,7 +31,7 @@ class ResultStore:
             lifetime=config.url_lifetime,
         )
 
-    async def url_for_result(self, result: UWSJobResult) -> UWSJobResultURL:
+    def sign_url(self, result: UWSJobResult) -> UWSJobResultSigned:
         """Convert a job result into a signed URL.
 
         Notes
@@ -48,7 +48,7 @@ class ResultStore:
         longer-lived object to hold the credentials.
         """
         signed_url = self._url_service.signed_url(result.url, result.mime_type)
-        return UWSJobResultURL(
+        return UWSJobResultSigned(
             result_id=result.result_id,
             url=signed_url,
             size=result.size,

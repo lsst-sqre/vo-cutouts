@@ -22,7 +22,7 @@ __all__ = [
     "UWSJobError",
     "UWSJobParameter",
     "UWSJobResult",
-    "UWSJobResultURL",
+    "UWSJobResultSigned",
 ]
 
 
@@ -144,11 +144,11 @@ class UWSJobResult:
 
 
 @dataclass
-class UWSJobResultURL:
+class UWSJobResultSigned:
     """A single result from the job with a signed URL.
 
-    A `UWSJobResult` is converted to a `UWSJobResultURL` before generating the
-    response via templating.
+    A `UWSJobResult` is converted to a `UWSJobResultSigned` before generating
+    the response via templating or returning the URL as a redirect.
     """
 
     result_id: str
