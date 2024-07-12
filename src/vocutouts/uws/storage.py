@@ -279,6 +279,21 @@ class JobStore:
             ]
 
     @retry_async_transaction
+    async def mark_aborted(self, job_id: str) -> None:
+        """Mark a job as aborted.
+
+        Parameters
+        ----------
+        job_id
+            Identifier of the job.
+        """
+        async with self._session.begin():
+            job = await self._get_job(job_id)
+            job.phase = ExecutionPhase.ABORTED
+            if job.start_time:
+                job.end_time = datetime_to_db(current_datetime())
+
+    @retry_async_transaction
     async def mark_completed(self, job_id: str, job_result: JobResult) -> None:
         """Mark a job as completed.
 
@@ -297,18 +312,19 @@ class JobStore:
 
         async with self._session.begin():
             job = await self._get_job(job_id)
-            job.phase = ExecutionPhase.COMPLETED
             job.end_time = datetime_to_db(end_time)
-            for sequence, result in enumerate(results, start=1):
-                sql_result = SQLJobResult(
-                    job_id=job.id,
-                    result_id=result.result_id,
-                    sequence=sequence,
-                    url=result.url,
-                    size=result.size,
-                    mime_type=result.mime_type,
-                )
-                self._session.add(sql_result)
+            if job.phase != ExecutionPhase.ABORTED:
+                job.phase = ExecutionPhase.COMPLETED
+                for sequence, result in enumerate(results, start=1):
+                    sql_result = SQLJobResult(
+                        job_id=job.id,
+                        result_id=result.result_id,
+                        sequence=sequence,
+                        url=result.url,
+                        size=result.size,
+                        mime_type=result.mime_type,
+                    )
+                    self._session.add(sql_result)
 
     @retry_async_transaction
     async def mark_failed(
@@ -336,12 +352,13 @@ class JobStore:
             )
         async with self._session.begin():
             job = await self._get_job(job_id)
-            job.phase = ExecutionPhase.ERROR
             job.end_time = datetime_to_db(end_time or current_datetime())
-            job.error_type = error.error_type
-            job.error_code = error.error_code
-            job.error_message = error.message
-            job.error_detail = error.detail
+            if job.phase != ExecutionPhase.ABORTED:
+                job.phase = ExecutionPhase.ERROR
+                job.error_type = error.error_type
+                job.error_code = error.error_code
+                job.error_message = error.message
+                job.error_detail = error.detail
 
     @retry_async_transaction
     async def mark_executing(self, job_id: str, start_time: datetime) -> None:
@@ -359,7 +376,7 @@ class JobStore:
             job = await self._get_job(job_id)
             if job.phase in (ExecutionPhase.PENDING, ExecutionPhase.QUEUED):
                 job.phase = ExecutionPhase.EXECUTING
-                job.start_time = datetime_to_db(start_time)
+            job.start_time = datetime_to_db(start_time)
 
     @retry_async_transaction
     async def mark_queued(self, job_id: str, metadata: JobMetadata) -> None:

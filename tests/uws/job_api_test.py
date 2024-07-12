@@ -72,6 +72,50 @@ FINISHED_JOB = """
 </uws:job>
 """
 
+ABORTED_PENDING_JOB = """
+<uws:job
+    version="1.1"
+    xsi:schemaLocation="http://www.ivoa.net/xml/UWS/v1.0 UWS.xsd"
+    xmlns:xml="http://www.w3.org/XML/1998/namespace"
+    xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <uws:jobId>{}</uws:jobId>
+  <uws:runId>some-run-id</uws:runId>
+  <uws:ownerId>user</uws:ownerId>
+  <uws:phase>ABORTED</uws:phase>
+  <uws:creationTime>{}</uws:creationTime>
+  <uws:executionDuration>600</uws:executionDuration>
+  <uws:destruction>{}</uws:destruction>
+  <uws:parameters>
+    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+  </uws:parameters>
+</uws:job>
+"""
+
+ABORTED_JOB = """
+<uws:job
+    version="1.1"
+    xsi:schemaLocation="http://www.ivoa.net/xml/UWS/v1.0 UWS.xsd"
+    xmlns:xml="http://www.w3.org/XML/1998/namespace"
+    xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
+    xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <uws:jobId>{}</uws:jobId>
+  <uws:runId>some-run-id</uws:runId>
+  <uws:ownerId>user</uws:ownerId>
+  <uws:phase>ABORTED</uws:phase>
+  <uws:creationTime>{}</uws:creationTime>
+  <uws:startTime>{}</uws:startTime>
+  <uws:endTime>{}</uws:endTime>
+  <uws:executionDuration>600</uws:executionDuration>
+  <uws:destruction>{}</uws:destruction>
+  <uws:parameters>
+    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+  </uws:parameters>
+</uws:job>
+"""
+
 JOB_PARAMETERS = """
 <uws:parameters
     version="1.1"
@@ -139,15 +183,6 @@ async def test_job_run(
     )
     assert r.status_code == 422
     assert r.text.startswith("UsageError")
-
-    # Aborting jobs is not supported.
-    r = await client.post(
-        "/test/jobs/1/phase",
-        headers={"X-Auth-Request-User": "user"},
-        data={"PHASE": "ABORT"},
-    )
-    assert r.status_code == 403
-    assert r.text.startswith("AuthorizationError")
 
     # Start the job.
     r = await client.post(
@@ -234,6 +269,76 @@ async def test_job_run(
         "/test/jobs/1/error", headers={"X-Auth-Request-User": "user"}
     )
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_job_abort(
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    uws_config: UWSConfig,
+) -> None:
+    job_service = uws_factory.create_job_service()
+
+    # Create the job.
+    r = await client.post(
+        "/test/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane"},
+    )
+    assert r.status_code == 303
+    job = await job_service.get("user", "1")
+
+    # Immediately abort the job.
+    r = await client.post(
+        "/test/jobs/1/phase",
+        headers={"X-Auth-Request-User": "user"},
+        data={"PHASE": "ABORT"},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    assert r.url == "https://example.com/test/jobs/1"
+    assert r.text == ABORTED_PENDING_JOB.strip().format(
+        "1",
+        isodatetime(job.creation_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+
+    # Create a second job and start it running.
+    r = await client.post(
+        "/test/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane"},
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/test/jobs/2"
+    r = await client.post(
+        "/test/jobs/2/phase",
+        headers={"X-Auth-Request-User": "user"},
+        data={"PHASE": "RUN"},
+    )
+    assert r.status_code == 303
+    await runner.mark_in_progress("user", "2")
+
+    # Abort that job.
+    r = await client.post(
+        "/test/jobs/2/phase",
+        headers={"X-Auth-Request-User": "user"},
+        data={"PHASE": "ABORT"},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    assert r.url == "https://example.com/test/jobs/2"
+    job = await job_service.get("user", "2")
+    assert job.start_time
+    assert job.end_time
+    assert r.text == ABORTED_JOB.strip().format(
+        "2",
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.end_time),
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,7 @@ from datetime import timedelta
 from arq.cron import Options
 
 __all__ = [
+    "JOB_STOP_TIMEOUT",
     "JOB_RESULT_TIMEOUT",
     "UWS_DATABASE_TIMEOUT",
     "UWS_EXPIRE_JOBS_SCHEDULE",
@@ -15,6 +16,9 @@ __all__ = [
 
 JOB_RESULT_TIMEOUT = timedelta(seconds=5)
 """How long to poll arq for job results before giving up."""
+
+JOB_STOP_TIMEOUT = timedelta(seconds=30)
+"""How long to wait for a job to stop before giving up."""
 
 UWS_DATABASE_TIMEOUT = timedelta(seconds=30)
 """Timeout on workers that update the UWS database."""
