@@ -20,9 +20,8 @@ from pydantic import (
     field_validator,
 )
 
-from ..exceptions import InvalidCutoutParameterError
 from ..uws.config import ParametersModel
-from ..uws.exceptions import MultiValuedParameterError
+from ..uws.exceptions import MultiValuedParameterError, ParameterParseError
 from ..uws.models import UWSJobParameter
 from .domain.cutout import (
     WorkerCircleStencil,
@@ -223,11 +222,11 @@ class CutoutParameters(ParametersModel[WorkerCutout]):
 
         Raises
         ------
-        InvalidCutoutParameterError
-            Raised if one of the parameters could not be parsed.
         MultiValuedParameterError
             Raised if more than one dataset ID or more than one stencil is
             provided.
+        ParameterParseError
+            Raised if one of the parameters could not be parsed.
         """
         ids = []
         stencils = []
@@ -241,7 +240,7 @@ class CutoutParameters(ParametersModel[WorkerCutout]):
                     stencils.append(stencil)
         except Exception as e:
             msg = f"Invalid cutout parameter: {type(e).__name__}: {e!s}"
-            raise InvalidCutoutParameterError(msg, params) from e
+            raise ParameterParseError(msg, params) from e
 
         # For now, only support a single ID and stencil. These have to be
         # checked outside of the validator because the SODA standard requires
@@ -254,7 +253,7 @@ class CutoutParameters(ParametersModel[WorkerCutout]):
         try:
             return cls(ids=ids, stencils=stencils)
         except ValidationError as e:
-            raise InvalidCutoutParameterError(str(e), params) from e
+            raise ParameterParseError(str(e), params) from e
 
     def to_worker_parameters(self) -> WorkerCutout:
         """Convert to the domain model used by the backend worker."""
