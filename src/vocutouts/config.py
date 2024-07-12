@@ -25,7 +25,7 @@ from safir.logging import LogLevel, Profile
 from .dependencies import get_params_dependency, post_params_dependency
 from .models.cutout import CutoutParameters
 from .uws.app import UWSApplication
-from .uws.config import UWSConfig
+from .uws.config import UWSConfig, UWSRoute
 
 _postgres_dsn_adapter = TypeAdapter(PostgresDsn)
 
@@ -236,9 +236,31 @@ class Config(BaseSettings):
             database_password=self.database_password,
             slack_webhook=self.slack_webhook,
             sync_timeout=self.sync_timeout,
-            async_post_dependency=post_params_dependency,
-            sync_get_dependency=get_params_dependency,
-            sync_post_dependency=post_params_dependency,
+            async_post_route=UWSRoute(
+                dependency=post_params_dependency,
+                summary="Create async cutout job",
+                description="Create a new UWS job to perform an image cutout",
+            ),
+            sync_get_route=UWSRoute(
+                dependency=get_params_dependency,
+                summary="Synchronous cutout",
+                description=(
+                    "Synchronously request a cutout. This will wait for the"
+                    " cutout to be completed and return the resulting image"
+                    " as a FITS file. The image will be returned via a"
+                    " redirect to a URL at the underlying object store."
+                ),
+            ),
+            sync_post_route=UWSRoute(
+                dependency=post_params_dependency,
+                summary="Synchronous cutout",
+                description=(
+                    "Synchronously request a cutout. This will wait for the"
+                    " cutout to be completed and return the resulting image"
+                    " as a FITS file. The image will be returned via a"
+                    " redirect to a URL at the underlying object store."
+                ),
+            ),
         )
 
 

@@ -22,22 +22,31 @@ ExecutionDurationValidator: TypeAlias = Callable[
 ]
 """Type for a validator for a new execution duration."""
 
-ParametersDependency: TypeAlias = Callable[
-    ..., Coroutine[None, None, list[UWSJobParameter]]
-]
-"""Type for a dependency that gathers parameters for a job."""
-
 T = TypeVar("T", bound=BaseModel)
 """Generic type for the worker parameters."""
 
 __all__ = [
     "DestructionValidator",
     "ExecutionDurationValidator",
-    "ParametersDependency",
     "ParametersModel",
     "T",
     "UWSConfig",
+    "UWSRoute",
 ]
+
+
+@dataclass
+class UWSRoute:
+    """Defines a FastAPI dependency to get the UWS job parameters."""
+
+    dependency: Callable[..., Coroutine[None, None, list[UWSJobParameter]]]
+    """Type for a dependency that gathers parameters for a job."""
+
+    summary: str
+    """Summary string for API documentation."""
+
+    description: str | None = None
+    """Description string for API documentation."""
 
 
 class ParametersModel(BaseModel, ABC, Generic[T]):
@@ -88,7 +97,7 @@ class UWSConfig:
     arq_redis_settings: RedisSettings
     """Settings for Redis for the arq queue."""
 
-    async_post_dependency: ParametersDependency
+    async_post_route: UWSRoute
     """Dependency for job parameters for an async job via POST.
 
     This FastAPI should expect POST parameters and return a list of
@@ -138,7 +147,7 @@ class UWSConfig:
     slack_webhook: SecretStr | None = None
     """Slack incoming webhook for reporting errors."""
 
-    sync_get_dependency: ParametersDependency | None = None
+    sync_get_route: UWSRoute | None = None
     """Dependency for job parameters for a sync job via GET.
 
     This FastAPI should expect GET parameters and return a list of
@@ -147,7 +156,7 @@ class UWSConfig:
     created.
     """
 
-    sync_post_dependency: ParametersDependency | None = None
+    sync_post_route: UWSRoute | None = None
     """Dependency for job parameters for a sync job via POST.
 
     This FastAPI should expect POST parameters and return a list of

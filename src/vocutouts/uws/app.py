@@ -162,17 +162,17 @@ class UWSApplication:
         This method will always install a POST handler at the root of the
         router that creates an async job, and handlers under ``/jobs`` that
         implement the UWS protocol for managing those jobs. If
-        ``sync_post_dependency`` is set in the
+        ``sync_post_route`` is set in the
         `~vocutouts.uws.interface.UWSInterface` that this application was
         configured with, a POST handler for ``/sync`` to create a sync job
-        will be added. If ``sync_get_dependency`` is set, a GET handler for
+        will be added. If ``sync_get_route`` is set, a GET handler for
         ``/sync`` to create a sync job will be added.
         """
         router.include_router(uws_router, prefix="/jobs")
-        if dependency := self._config.sync_get_dependency:
-            install_sync_get_handler(router, dependency)
-        if dependency := self._config.sync_post_dependency:
-            install_sync_post_handler(router, dependency)
+        if route := self._config.sync_get_route:
+            install_sync_get_handler(router, route)
+        if route := self._config.sync_post_route:
+            install_sync_post_handler(router, route)
 
         # This handler must be installed directly on the provided router. Do
         # not install it on the UWS router before include_router. The process
@@ -183,5 +183,4 @@ class UWSApplication:
         # This is probably because the dependency is a dynamic function not
         # known statically, which may confuse the handler copying code in
         # FastAPI. This problem was last verified in FastAPI 0.111.0.
-        dependency = self._config.async_post_dependency
-        install_async_post_handler(router, dependency)
+        install_async_post_handler(router, self._config.async_post_route)

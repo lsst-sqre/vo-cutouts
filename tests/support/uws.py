@@ -12,7 +12,7 @@ from fastapi import Form, Query
 from pydantic import BaseModel, SecretStr
 from safir.arq import ArqMode, JobMetadata, MockArqQueue
 
-from vocutouts.uws.config import ParametersModel, UWSConfig
+from vocutouts.uws.config import ParametersModel, UWSConfig, UWSRoute
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJob, UWSJobParameter, UWSJobResult
 
@@ -71,7 +71,9 @@ def build_uws_config() -> UWSConfig:
             host=os.environ["REDIS_HOST"],
             port=int(os.environ["REDIS_6379_TCP_PORT"]),
         ),
-        async_post_dependency=_post_dependency,
+        async_post_route=UWSRoute(
+            dependency=_post_dependency, summary="Create async job"
+        ),
         database_url=database_url,
         database_password=SecretStr(os.environ["POSTGRES_PASSWORD"]),
         execution_duration=timedelta(minutes=10),
@@ -79,8 +81,12 @@ def build_uws_config() -> UWSConfig:
         parameters_type=SimpleParameters,
         signing_service_account="signer@example.com",
         slack_webhook=SecretStr("https://example.com/fake-webhook"),
-        sync_get_dependency=_get_dependency,
-        sync_post_dependency=_post_dependency,
+        sync_get_route=UWSRoute(
+            dependency=_get_dependency, summary="Sync request"
+        ),
+        sync_post_route=UWSRoute(
+            dependency=_post_dependency, summary="Sync request"
+        ),
         worker="hello",
     )
 
