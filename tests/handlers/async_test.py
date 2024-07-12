@@ -30,8 +30,8 @@ PENDING_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id" isPost="true">1:2:band:value</uws:parameter>
-    <uws:parameter id="pos" isPost="true">CIRCLE 0 1 2</uws:parameter>
+    <uws:parameter id="id">1:2:band:value</uws:parameter>
+    <uws:parameter id="pos">CIRCLE 0 1 2</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -54,8 +54,8 @@ COMPLETED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>[DATE]</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="id" isPost="true">1:2:band:value</uws:parameter>
-    <uws:parameter id="pos" isPost="true">CIRCLE 0.5 0.8 2</uws:parameter>
+    <uws:parameter id="id">1:2:band:value</uws:parameter>
+    <uws:parameter id="pos">CIRCLE 0.5 0.8 2</uws:parameter>
   </uws:parameters>
   <uws:results>
     <uws:result id="cutout" xlink:href="https://example.com/some/path"\

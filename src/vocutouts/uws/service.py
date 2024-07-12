@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from safir.arq import ArqQueue, JobMetadata
 from safir.datetime import current_datetime, isodatetime
 from structlog.stdlib import BoundLogger
+from vo_models.uws.types import ExecutionPhase
 
 from .config import ParametersModel, UWSConfig
 from .constants import JOB_STOP_TIMEOUT
@@ -21,7 +22,6 @@ from .exceptions import (
 from .models import (
     ACTIVE_PHASES,
     Availability,
-    ExecutionPhase,
     UWSJob,
     UWSJobDescription,
     UWSJobParameter,

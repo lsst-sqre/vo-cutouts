@@ -70,6 +70,7 @@ ignore_missing_imports = true
 local_partial_types = true
 plugins = [
     "pydantic.mypy",
+    "pydantic_xml.mypy",
     "sqlalchemy.ext.mypy.plugin",
 ]
 no_implicit_reexport = true
@@ -90,6 +91,8 @@ asyncio_mode = "strict"
 filterwarnings = [
     # Google modules use PyType_Spec in a deprecated way.
     "ignore:Type google\\..*metaclass.* custom tp_new:DeprecationWarning",
+    # Deprecated use of Pydantic v1 features in vo-models.
+    "ignore:Support for class-based `config`:DeprecationWarning",
 ]
 # The python_files setting is not for test detection (pytest will pick up any
 # test files named *_test.py without this setting) but to enable special

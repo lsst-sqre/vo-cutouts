@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from safir.database import datetime_to_db
 from safir.datetime import current_datetime, isodatetime
 from sqlalchemy import update
+from vo_models.uws import Jobs
 
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import UWSJobParameter
@@ -124,7 +125,7 @@ async def test_job_list(client: AsyncClient, uws_factory: UWSFactory) -> None:
     creation_times = [isodatetime(j.creation_time) for j in jobs]
     creation_times.reverse()
     expected = FULL_JOB_LIST.strip().format(*creation_times)
-    assert r.text == expected
+    assert Jobs.from_xml(r.text) == Jobs.from_xml(expected)
 
     # Filter by recency.
     threshold = current_datetime() - timedelta(hours=1)
@@ -135,7 +136,8 @@ async def test_job_list(client: AsyncClient, uws_factory: UWSFactory) -> None:
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
-    assert r.text == RECENT_JOB_LIST.strip().format(creation_times[0])
+    expected = RECENT_JOB_LIST.strip().format(creation_times[0])
+    assert Jobs.from_xml(r.text) == Jobs.from_xml(expected)
 
     # Check case-insensitivity.
     result = r.text
@@ -160,7 +162,8 @@ async def test_job_list(client: AsyncClient, uws_factory: UWSFactory) -> None:
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
-    assert r.text == RECENT_JOB_LIST.strip().format(creation_times[0])
+    expected = RECENT_JOB_LIST.strip().format(creation_times[0])
+    assert Jobs.from_xml(r.text) == Jobs.from_xml(expected)
 
     # Start the job.
     r = await client.post(
@@ -179,4 +182,5 @@ async def test_job_list(client: AsyncClient, uws_factory: UWSFactory) -> None:
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
-    assert r.text == QUEUED_JOB_LIST.strip().format(creation_times[1])
+    expected = QUEUED_JOB_LIST.strip().format(creation_times[1])
+    assert Jobs.from_xml(r.text) == Jobs.from_xml(expected)

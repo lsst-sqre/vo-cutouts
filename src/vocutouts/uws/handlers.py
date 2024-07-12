@@ -19,6 +19,8 @@ from safir.dependencies.gafaelfawr import (
 )
 from safir.slack.webhook import SlackRouteErrorHandler
 from structlog.stdlib import BoundLogger
+from vo_models.uws import Jobs, Results
+from vo_models.uws.types import ExecutionPhase
 
 from .config import UWSRoute
 from .dependencies import (
@@ -28,7 +30,7 @@ from .dependencies import (
     uws_post_params_dependency,
 )
 from .exceptions import DataMissingError, ParameterError
-from .models import ExecutionPhase, UWSJobParameter
+from .models import UWSJobParameter
 
 uws_router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
@@ -82,8 +84,9 @@ async def get_job_list(
         user, phases=phase, after=after, count=last
     )
     base_url = request.url_for("get_job_list")
-    templates = uws_factory.create_templates()
-    return templates.job_list(request, jobs, str(base_url))
+    xml_jobs = Jobs(jobref=[j.to_xml_model(str(base_url)) for j in jobs])
+    xml = xml_jobs.to_xml(skip_empty=True)
+    return Response(content=xml, media_type="application/xml")
 
 
 @uws_router.get(
@@ -466,8 +469,11 @@ async def get_job_results(
 ) -> Response:
     job_service = uws_factory.create_job_service()
     job = await job_service.get(user, job_id)
-    templates = uws_factory.create_templates()
-    return await templates.results(request, job)
+    result_store = uws_factory.create_result_store()
+    results = [result_store.sign_url(r) for r in job.results]
+    xml_model = Results(results=[r.to_xml_model() for r in results])
+    xml = xml_model.to_xml(skip_empty=True)
+    return Response(content=xml, media_type="application/xml")
 
 
 def install_async_post_handler(router: APIRouter, route: UWSRoute) -> None:

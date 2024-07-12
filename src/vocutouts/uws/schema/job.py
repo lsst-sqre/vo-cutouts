@@ -13,8 +13,9 @@ from typing import ClassVar
 
 from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, relationship
+from vo_models.uws.types import ErrorType, ExecutionPhase
 
-from ..models import ErrorCode, ErrorType, ExecutionPhase
+from ..models import ErrorCode
 from .base import Base
 from .job_parameter import JobParameter
 from .job_result import JobResult

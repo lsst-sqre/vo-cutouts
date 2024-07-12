@@ -9,14 +9,22 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from enum import Enum, StrEnum
+from enum import StrEnum
+
+from vo_models.uws import (
+    ErrorSummary,
+    JobSummary,
+    Parameter,
+    Parameters,
+    ResultReference,
+    ShortJobDescription,
+)
+from vo_models.uws.types import ErrorType, ExecutionPhase, UWSVersion
 
 __all__ = [
     "ACTIVE_PHASES",
     "Availability",
     "ErrorCode",
-    "ExecutionPhase",
-    "ErrorType",
     "UWSJob",
     "UWSJobDescription",
     "UWSJobError",
@@ -35,40 +43,6 @@ class Availability:
 
     note: str | None = None
     """Supplemental information, usually when the service is not available."""
-
-
-class ExecutionPhase(Enum):
-    """Possible execution phases for a UWS job."""
-
-    PENDING = "PENDING"
-    """Accepted by the service but not yet sent for execution."""
-
-    QUEUED = "QUEUED"
-    """Sent for execution but not yet started."""
-
-    EXECUTING = "EXECUTING"
-    """Currently in progress."""
-
-    COMPLETED = "COMPLETED"
-    """Completed and the results are available for retrieval."""
-
-    ERROR = "ERROR"
-    """Failed and reported an error."""
-
-    ABORTED = "ABORTED"
-    """Aborted before it completed."""
-
-    UNKNOWN = "UNKNOWN"
-    """In an unknown state."""
-
-    HELD = "HELD"
-    """Similar to PENDING, held and not sent for execution."""
-
-    SUSPENDED = "SUSPENDED"
-    """Execution has started, is currently suspended, and will be resumed."""
-
-    ARCHIVED = "ARCHIVED"
-    """Execution completed some time ago and the results have been deleted."""
 
 
 ACTIVE_PHASES = {
@@ -92,13 +66,6 @@ class ErrorCode(StrEnum):
     ERROR = "Error"
     SERVICE_UNAVAILABLE = "ServiceUnavailable"
     USAGE_ERROR = "UsageError"
-
-
-class ErrorType(StrEnum):
-    """Types of job errors."""
-
-    TRANSIENT = "transient"
-    FATAL = "fatal"
 
 
 @dataclass
@@ -125,6 +92,14 @@ class UWSJobError:
         """Convert to a dictionary, primarily for logging."""
         return asdict(self)
 
+    def to_xml_model(self) -> ErrorSummary:
+        """Convert to a Pydantic XML model."""
+        return ErrorSummary(
+            message=f"{self.error_code.value}: {self.message}",
+            type=self.error_type,
+            has_detail=self.detail is not None,
+        )
+
 
 @dataclass
 class UWSJobResult:
@@ -141,6 +116,12 @@ class UWSJobResult:
 
     mime_type: str | None = None
     """MIME type of the result."""
+
+    def to_xml_model(self) -> ResultReference:
+        """Convert to a Pydantic XML model."""
+        return ResultReference(
+            id=self.result_id, size=self.size, mime_type=self.mime_type
+        )
 
 
 @dataclass
@@ -163,6 +144,16 @@ class UWSJobResultSigned:
     mime_type: str | None = None
     """MIME type of the result."""
 
+    def to_xml_model(self) -> ResultReference:
+        """Convert to a Pydantic XML model."""
+        return ResultReference(
+            id=self.result_id,
+            type=None,
+            href=self.url,
+            size=self.size,
+            mime_type=self.mime_type,
+        )
+
 
 @dataclass
 class UWSJobParameter:
@@ -174,12 +165,13 @@ class UWSJobParameter:
     value: str
     """Value of the parameter."""
 
-    is_post: bool = False
-    """Whether the parameter was provided via POST."""
-
     def to_dict(self) -> dict[str, str | bool]:
         """Convert to a dictionary, primarily for logging."""
         return asdict(self)
+
+    def to_xml_model(self) -> Parameter:
+        """Convert to a Pydantic XML model."""
+        return Parameter(id=self.parameter_id, value=self.value)
 
 
 @dataclass
@@ -210,6 +202,45 @@ class UWSJobDescription:
 
     creation_time: datetime
     """When the job was created."""
+
+    def to_xml_model(self, base_url: str) -> ShortJobDescription:
+        """Convert to a Pydantic XML model.
+
+        Parameters
+        ----------
+        base_url
+            Base URL for the full jobs.
+        """
+        return ShortJobDescription(
+            phase=self.phase,
+            run_id=self.run_id,
+            creation_time=self.creation_time,
+            owner_id=self.owner,
+            job_id=self.job_id,
+            type=None,
+            href=f"{base_url}/{self.job_id}",
+        )
+
+
+class GenericParameters(Parameters):
+    """Generic container for UWS job parameters.
+
+    Notes
+    -----
+    The intended use of `vo_models.uws.Parameters` is to define a subclass
+    with the specific parameters valid for that service. However, we store
+    parameters as sent to the service as a generic key/value pair in the
+    database and define a model that supports arbitrary parsing and
+    transformations, so this XML model is both not useful and not clearly
+    relevant.
+
+    At least for now, define a generic subclass of `~vo_models.uws.Parameters`
+    that holds a generic list of parameters and convert to that for the
+    purposes of serialization.
+    """
+
+    params: list[Parameter]
+    """Job parameters."""
 
 
 @dataclass
@@ -280,3 +311,27 @@ class UWSJob:
 
     results: list[UWSJobResult]
     """The results of the job."""
+
+    def to_xml_model(self) -> JobSummary:
+        """Convert to a Pydantic XML model."""
+        results = None
+        if self.results:
+            results = [r.to_xml_model() for r in self.results]
+        return JobSummary(
+            job_id=self.job_id,
+            run_id=self.run_id,
+            owner_id=self.owner,
+            phase=self.phase,
+            quote=self.quote,
+            creation_time=self.creation_time,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            execution_duration=int(self.execution_duration.total_seconds()),
+            destruction=self.destruction_time,
+            parameters=GenericParameters(
+                params=[p.to_xml_model() for p in self.parameters]
+            ),
+            results=results,
+            error_summary=self.error.to_xml_model() if self.error else None,
+            version=UWSVersion.V1_1,
+        )

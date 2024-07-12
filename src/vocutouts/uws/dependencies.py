@@ -186,9 +186,7 @@ async def uws_post_params_dependency(
         if not isinstance(value, str):
             raise TypeError("File upload not supported")
         parameters.append(
-            UWSJobParameter(
-                parameter_id=key.lower(), value=value, is_post=True
-            )
+            UWSJobParameter(parameter_id=key.lower(), value=value)
         )
     return parameters
 

@@ -14,8 +14,9 @@ from safir.slack.blockkit import (
     SlackTextField,
 )
 from safir.slack.webhook import SlackIgnoredException
+from vo_models.uws.types import ErrorType
 
-from .models import ErrorCode, ErrorType, UWSJobError, UWSJobParameter
+from .models import ErrorCode, UWSJobError, UWSJobParameter
 from .uwsworker import WorkerError, WorkerErrorType
 
 __all__ = [
