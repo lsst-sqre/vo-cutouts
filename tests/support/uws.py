@@ -43,13 +43,13 @@ class SimpleParameters(ParametersModel[SimpleWorkerParameters]):
 async def _get_dependency(
     name: Annotated[str, Query()],
 ) -> list[UWSJobParameter]:
-    return [UWSJobParameter(parameter_id="name", value=name, is_post=True)]
+    return [UWSJobParameter(parameter_id="name", value=name)]
 
 
 async def _post_dependency(
     name: Annotated[str, Form()],
 ) -> list[UWSJobParameter]:
-    return [UWSJobParameter(parameter_id="name", value=name, is_post=True)]
+    return [UWSJobParameter(parameter_id="name", value=name)]
 
 
 def build_uws_config() -> UWSConfig:

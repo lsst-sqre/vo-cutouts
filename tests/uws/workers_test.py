@@ -16,18 +16,13 @@ from safir.arq import JobMetadata, MockArqQueue
 from safir.datetime import current_datetime
 from safir.testing.slack import MockSlackWebhook
 from structlog.stdlib import BoundLogger
+from vo_models.uws.types import ErrorType, ExecutionPhase
 
 from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.constants import UWS_QUEUE_NAME
 from vocutouts.uws.dependencies import UWSFactory
-from vocutouts.uws.models import (
-    ErrorCode,
-    ErrorType,
-    ExecutionPhase,
-    UWSJobParameter,
-    UWSJobResult,
-)
+from vocutouts.uws.models import ErrorCode, UWSJobParameter, UWSJobResult
 from vocutouts.uws.storage import JobStore
 from vocutouts.uws.uwsworker import (
     WorkerConfig,

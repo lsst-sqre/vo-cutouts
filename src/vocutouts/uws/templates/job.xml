@@ -22,7 +22,7 @@
   <uws:destruction>{{ job.destruction_time | isodatetime }}</uws:destruction>
   <uws:parameters>
     {%- for param in job.parameters %}
-    <uws:parameter id="{{ param.parameter_id }}"{% if param.is_post %} isPost="true"{% endif %}>{{ param.value }}</uws:parameter>
+    <uws:parameter id="{{ param.parameter_id }}">{{ param.value }}</uws:parameter>
     {%- endfor %}
   </uws:parameters>
   {%- if job.results %}

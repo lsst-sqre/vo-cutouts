@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
 from safir.datetime import current_datetime, isodatetime
+from vo_models.uws import Results
 
 from vocutouts.uws.config import UWSConfig
 from vocutouts.uws.dependencies import UWSFactory
@@ -40,7 +41,7 @@ PENDING_JOB = """
   <uws:executionDuration>{}</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+    <uws:parameter id="name">Jane</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -63,7 +64,7 @@ FINISHED_JOB = """
   <uws:executionDuration>{}</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+    <uws:parameter id="name">Jane</uws:parameter>
   </uws:parameters>
   <uws:results>
     <uws:result id="cutout" xlink:href="https://example.com/some/path"\
@@ -88,7 +89,7 @@ ABORTED_PENDING_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+    <uws:parameter id="name">Jane</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -111,7 +112,7 @@ ABORTED_JOB = """
   <uws:executionDuration>600</uws:executionDuration>
   <uws:destruction>{}</uws:destruction>
   <uws:parameters>
-    <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+    <uws:parameter id="name">Jane</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -123,7 +124,7 @@ JOB_PARAMETERS = """
     xmlns:xml="http://www.w3.org/XML/1998/namespace"
     xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <uws:parameter id="name" isPost="true">Jane</uws:parameter>
+  <uws:parameter id="name">Jane</uws:parameter>
 </uws:parameters>
 """
 
@@ -262,7 +263,7 @@ async def test_job_run(
     )
     assert r.status_code == 200
     assert r.headers["Content-Type"] == "application/xml"
-    assert r.text == JOB_RESULTS.strip()
+    assert Results.from_xml(r.text) == Results.from_xml(JOB_RESULTS)
 
     # There should be no error message.
     r = await client.get(

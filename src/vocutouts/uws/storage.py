@@ -14,13 +14,12 @@ from sqlalchemy import delete
 from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.future import select
+from vo_models.uws.types import ErrorType, ExecutionPhase
 
 from .exceptions import TaskError, UnknownJobError
 from .models import (
     Availability,
     ErrorCode,
-    ErrorType,
-    ExecutionPhase,
     UWSJob,
     UWSJobDescription,
     UWSJobError,
@@ -67,9 +66,7 @@ def _convert_job(job: SQLJob) -> UWSJob:
         execution_duration=timedelta(seconds=job.execution_duration),
         quote=job.quote,
         parameters=[
-            UWSJobParameter(
-                parameter_id=p.parameter, value=p.value, is_post=p.is_post
-            )
+            UWSJobParameter(parameter_id=p.parameter, value=p.value)
             for p in sorted(job.parameters, key=lambda p: p.id)
         ],
         results=[
@@ -170,11 +167,7 @@ class JobStore:
         now = current_datetime()
         destruction_time = now + lifetime
         sql_params = [
-            SQLJobParameter(
-                parameter=p.parameter_id,
-                value=p.value,
-                is_post=p.is_post,
-            )
+            SQLJobParameter(parameter=p.parameter_id, value=p.value)
             for p in params
         ]
         job = SQLJob(

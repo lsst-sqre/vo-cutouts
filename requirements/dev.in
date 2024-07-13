@@ -12,6 +12,7 @@ asgi-lifespan
 coverage[toml]
 httpx
 mypy
+pydantic-xml
 pytest
 pytest-asyncio
 pytest-cov

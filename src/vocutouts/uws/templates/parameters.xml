@@ -5,6 +5,6 @@
     xmlns:uws="http://www.ivoa.net/xml/UWS/v1.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   {%- for param in job.parameters %}
-  <uws:parameter id="{{ param.parameter_id }}"{% if param.is_post %} isPost="true"{% endif %}>{{ param.value }}</uws:parameter>
+  <uws:parameter id="{{ param.parameter_id }}">{{ param.value }}</uws:parameter>
   {%- endfor %}
 </uws:parameters>

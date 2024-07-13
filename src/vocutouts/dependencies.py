@@ -68,7 +68,7 @@ async def get_params_dependency(
 ) -> list[UWSJobParameter]:
     """Parse GET parameters into job parameters for a cutout."""
     return [
-        UWSJobParameter(parameter_id=k.lower(), value=v, is_post=False)
+        UWSJobParameter(parameter_id=k.lower(), value=v)
         for k, v in request.query_params.items()
         if k in {"id", "pos", "circle", "polygon"}
     ]
