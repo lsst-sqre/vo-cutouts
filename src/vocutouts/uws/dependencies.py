@@ -7,9 +7,9 @@ objects.
 """
 
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import Depends, Form, Request
+from fastapi import Depends, Form, Query, Request
 from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from safir.database import create_async_session, create_database_engine
 from safir.dependencies.logger import logger_dependency
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_scoped_session
 from structlog.stdlib import BoundLogger
 
 from .config import UWSConfig
+from .exceptions import ParameterError
 from .models import UWSJobParameter
 from .responses import UWSTemplates
 from .results import ResultStore
@@ -26,6 +27,7 @@ from .storage import JobStore
 __all__ = [
     "UWSDependency",
     "UWSFactory",
+    "create_phase_dependency",
     "runid_post_dependency",
     "uws_dependency",
     "uws_post_params_dependency",
@@ -189,6 +191,34 @@ async def uws_post_params_dependency(
             UWSJobParameter(parameter_id=key.lower(), value=value)
         )
     return parameters
+
+
+async def create_phase_dependency(
+    *,
+    get_phase: Annotated[
+        Literal["RUN"] | None,
+        Query(title="Immediately start job", alias="phase"),
+    ] = None,
+    post_phase: Annotated[
+        Literal["RUN"] | None,
+        Form(title="Immediately start job", alias="phase"),
+    ] = None,
+    params: Annotated[
+        list[UWSJobParameter], Depends(uws_post_params_dependency)
+    ],
+) -> Literal["RUN"] | None:
+    """Parse the optional phase parameter to an async job creation.
+
+    Allow ``phase=RUN`` to be specified in either the query or the POST
+    parameters, which says that the job should be immediately started.
+    """
+    for param in params:
+        if param.parameter_id != "phase":
+            continue
+        if param.value != "RUN":
+            raise ParameterError(f"Invalid phase {param.value}")
+        return "RUN"
+    return get_phase
 
 
 async def runid_post_dependency(

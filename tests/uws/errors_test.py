@@ -144,5 +144,19 @@ async def test_errors(
         assert r.status_code == 422
         assert r.text.startswith("UsageError")
 
+    # Test bogus phase for async job creation.
+    r = await client.post(
+        "/test/jobs?phase=START",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane"},
+    )
+    assert r.status_code == 422
+    r = await client.post(
+        "/test/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane", "phase": "START"},
+    )
+    assert r.status_code == 422
+
     # None of these errors should have produced Slack errors.
     assert mock_slack.messages == []
