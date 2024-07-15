@@ -34,6 +34,16 @@ class ResultStore:
     def sign_url(self, result: UWSJobResult) -> UWSJobResultSigned:
         """Convert a job result into a signed URL.
 
+        Parameters
+        ----------
+        result
+            Result with the URL from the backend.
+
+        Returns
+        -------
+        UWSJobResultSigned
+            Result with any GCS URL replaced with a signed URL.
+
         Notes
         -----
         This uses custom credentials so that it will work with a GKE service
@@ -47,7 +57,12 @@ class ResultStore:
         the lifetime has expired, which in turn will probably require a
         longer-lived object to hold the credentials.
         """
-        signed_url = self._url_service.signed_url(result.url, result.mime_type)
+        if result.url.startswith(("http", "https")):
+            # Assume URL is already signed or otherwise directly usable.
+            signed_url = result.url
+        else:
+            mime_type = result.mime_type
+            signed_url = self._url_service.signed_url(result.url, mime_type)
         return UWSJobResultSigned(
             result_id=result.result_id,
             url=signed_url,

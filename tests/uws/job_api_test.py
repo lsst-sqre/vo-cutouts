@@ -560,6 +560,60 @@ async def test_redirects(
         assert r.headers["Location"] == "https://example.com/test/jobs"
 
 
+@pytest.mark.asyncio
+async def test_presigned_url(
+    client: AsyncClient,
+    runner: MockJobRunner,
+    uws_factory: UWSFactory,
+    uws_config: UWSConfig,
+) -> None:
+    job_service = uws_factory.create_job_service()
+
+    # Create the job.
+    r = await client.post(
+        "/test/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane"},
+    )
+    assert r.status_code == 303
+    job = await job_service.get("user", "1")
+
+    # Start the job.
+    r = await client.post(
+        "/test/jobs/1/phase",
+        headers={"X-Auth-Request-User": "user"},
+        data={"PHASE": "RUN"},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    await runner.mark_in_progress("user", "1")
+
+    # Tell the queue the job is finished, with an https URL.
+    results = [
+        UWSJobResult(
+            result_id="cutout",
+            url="https://example.com/some/path",
+            mime_type="application/fits",
+        )
+    ]
+    job = await runner.mark_complete("user", "1", results)
+
+    # Check the job results, which should pass that URL through unchanged.
+    r = await client.get(
+        "/test/jobs/1", headers={"X-Auth-Request-User": "user"}
+    )
+    assert r.status_code == 200
+    assert job.start_time
+    assert job.end_time
+    assert r.text == FINISHED_JOB.strip().format(
+        isodatetime(job.creation_time),
+        isodatetime(job.start_time),
+        isodatetime(job.end_time),
+        "600",
+        isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
+    )
+
+
 def validate_destruction(destruction: datetime, job: UWSJob) -> datetime:
     max_destruction = current_datetime() + timedelta(days=1)
     return min(destruction, max_destruction)
