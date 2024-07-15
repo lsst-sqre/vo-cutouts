@@ -309,16 +309,10 @@ async def test_job_abort(
     r = await client.post(
         "/test/jobs",
         headers={"X-Auth-Request-User": "user"},
-        data={"runid": "some-run-id", "name": "Jane"},
+        data={"runid": "some-run-id", "name": "Jane", "phase": "RUN"},
     )
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/test/jobs/2"
-    r = await client.post(
-        "/test/jobs/2/phase",
-        headers={"X-Auth-Request-User": "user"},
-        data={"PHASE": "RUN"},
-    )
-    assert r.status_code == 303
     await runner.mark_in_progress("user", "2")
 
     # Abort that job.
@@ -571,21 +565,12 @@ async def test_presigned_url(
 
     # Create the job.
     r = await client.post(
-        "/test/jobs",
+        "/test/jobs?phase=RUN",
         headers={"X-Auth-Request-User": "user"},
         data={"runid": "some-run-id", "name": "Jane"},
     )
     assert r.status_code == 303
     job = await job_service.get("user", "1")
-
-    # Start the job.
-    r = await client.post(
-        "/test/jobs/1/phase",
-        headers={"X-Auth-Request-User": "user"},
-        data={"PHASE": "RUN"},
-        follow_redirects=True,
-    )
-    assert r.status_code == 200
     await runner.mark_in_progress("user", "1")
 
     # Tell the queue the job is finished, with an https URL.

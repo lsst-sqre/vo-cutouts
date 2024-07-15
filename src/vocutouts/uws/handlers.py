@@ -25,6 +25,7 @@ from vo_models.uws.types import ExecutionPhase
 from .config import UWSRoute
 from .dependencies import (
     UWSFactory,
+    create_phase_dependency,
     runid_post_dependency,
     uws_dependency,
     uws_post_params_dependency,
@@ -524,7 +525,7 @@ def install_async_post_handler(router: APIRouter, route: UWSRoute) -> None:
         *,
         request: Request,
         phase: Annotated[
-            Literal["RUN"] | None, Query(title="Immediately start job")
+            Literal["RUN"] | None, Depends(create_phase_dependency)
         ] = None,
         parameters: Annotated[
             list[UWSJobParameter], Depends(route.dependency)
