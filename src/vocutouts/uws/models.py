@@ -23,7 +23,6 @@ from vo_models.uws.types import ErrorType, ExecutionPhase, UWSVersion
 
 __all__ = [
     "ACTIVE_PHASES",
-    "Availability",
     "ErrorCode",
     "UWSJob",
     "UWSJobDescription",
@@ -32,17 +31,6 @@ __all__ = [
     "UWSJobResult",
     "UWSJobResultSigned",
 ]
-
-
-@dataclass
-class Availability:
-    """Availability information (from VOSI)."""
-
-    available: bool
-    """Whether the service appears to be available."""
-
-    note: str | None = None
-    """Supplemental information, usually when the service is not available."""
 
 
 ACTIVE_PHASES = {

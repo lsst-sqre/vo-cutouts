@@ -7,7 +7,7 @@ from fastapi import Request, Response
 from fastapi.templating import Jinja2Templates
 from safir.datetime import isodatetime
 
-from .models import Availability, UWSJob, UWSJobError
+from .models import UWSJob, UWSJobError
 from .results import ResultStore
 
 __all__ = ["UWSTemplates"]
@@ -29,17 +29,6 @@ class UWSTemplates:
 
     def __init__(self, result_store: ResultStore) -> None:
         self._result_store = result_store
-
-    def availability(
-        self, request: Request, availability: Availability
-    ) -> Response:
-        """Return the availability of a service as an XML response."""
-        return _templates.TemplateResponse(
-            request,
-            "availability.xml",
-            {"availability": availability},
-            media_type="application/xml",
-        )
 
     def error(self, request: Request, error: UWSJobError) -> Response:
         """Return the error of a job as an XML response."""

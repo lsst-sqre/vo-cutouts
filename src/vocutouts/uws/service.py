@@ -9,6 +9,7 @@ from safir.arq import ArqQueue, JobMetadata
 from safir.datetime import current_datetime, isodatetime
 from structlog.stdlib import BoundLogger
 from vo_models.uws.types import ExecutionPhase
+from vo_models.vosi.availability import Availability
 
 from .config import ParametersModel, UWSConfig
 from .constants import JOB_STOP_TIMEOUT
@@ -21,7 +22,6 @@ from .exceptions import (
 )
 from .models import (
     ACTIVE_PHASES,
-    Availability,
     UWSJob,
     UWSJobDescription,
     UWSJobParameter,
@@ -103,13 +103,12 @@ class JobService:
     async def availability(self) -> Availability:
         """Check whether the service is up.
 
-        Used for ``/availability`` endpoints.  Currently this only checks the
-        database.  Eventually it should push an end-to-end test through the
-        job execution system.
+        Used for ``/availability`` endpoints. Currently this only checks the
+        database.
 
         Returns
         -------
-        vocutouts.uws.models.Availability
+        Availability
             Service availability information.
         """
         return await self._storage.availability()

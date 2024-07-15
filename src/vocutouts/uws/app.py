@@ -22,6 +22,7 @@ from .constants import (
 from .exceptions import UWSError
 from .handlers import (
     install_async_post_handler,
+    install_availability_handler,
     install_sync_get_handler,
     install_sync_post_handler,
     uws_router,
@@ -169,6 +170,7 @@ class UWSApplication:
         ``/sync`` to create a sync job will be added.
         """
         router.include_router(uws_router, prefix="/jobs")
+        install_availability_handler(router)
         if route := self._config.sync_get_route:
             install_sync_get_handler(router, route)
         if route := self._config.sync_post_route:

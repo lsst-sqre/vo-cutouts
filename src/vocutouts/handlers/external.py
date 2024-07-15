@@ -5,15 +5,12 @@ to create a new job has to be provided by the application since only the
 application knows the job parameters.
 """
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Request, Response
 from safir.metadata import get_metadata
 from safir.slack.webhook import SlackRouteErrorHandler
 
 from ..config import config
 from ..models.index import Index
-from ..uws.dependencies import UWSFactory, uws_dependency
 
 router = APIRouter(route_class=SlackRouteErrorHandler)
 """FastAPI router for all external handlers."""
@@ -73,22 +70,6 @@ async def get_index() -> Index:
         application_name=config.name,
     )
     return Index(metadata=metadata)
-
-
-@router.get(
-    "/availability",
-    description="VOSI-availability resource for the image cutout service",
-    responses={200: {"content": {"application/xml": {}}}},
-    summary="IVOA service availability",
-)
-async def get_availability(
-    request: Request,
-    uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
-) -> Response:
-    job_service = uws_factory.create_job_service()
-    availability = await job_service.availability()
-    templates = uws_factory.create_templates()
-    return templates.availability(request, availability)
 
 
 @router.get(
