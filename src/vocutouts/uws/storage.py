@@ -15,10 +15,10 @@ from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.future import select
 from vo_models.uws.types import ErrorType, ExecutionPhase
+from vo_models.vosi.availability import Availability
 
 from .exceptions import TaskError, UnknownJobError
 from .models import (
-    Availability,
     ErrorCode,
     UWSJob,
     UWSJobDescription,

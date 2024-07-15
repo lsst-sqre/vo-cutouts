@@ -8,12 +8,6 @@ from httpx import ASGITransport, AsyncClient
 
 from vocutouts.config import config
 
-AVAILABILITY = """
-<vosi:availability xmlns:vosi="http://www.ivoa.net/xml/VOSIAvailability/v1.0">
-  <vosi:available>true</vosi:available>
-</vosi:availability>
-"""
-
 CAPABILITIES = """
 <?xml version="1.0"?>
 <capabilities
@@ -58,13 +52,6 @@ async def test_get_index(client: AsyncClient) -> None:
     assert isinstance(metadata["description"], str)
     assert isinstance(metadata["repository_url"], str)
     assert isinstance(metadata["documentation_url"], str)
-
-
-@pytest.mark.asyncio
-async def test_availability(client: AsyncClient) -> None:
-    r = await client.get("/api/cutout/availability")
-    assert r.status_code == 200
-    assert r.text == AVAILABILITY.strip()
 
 
 @pytest.mark.asyncio

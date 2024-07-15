@@ -37,6 +37,7 @@ uws_router = APIRouter(route_class=SlackRouteErrorHandler)
 
 __all__ = [
     "install_async_post_handler",
+    "install_availability_handler",
     "install_sync_get_handler",
     "install_sync_post_handler",
     "uws_router",
@@ -474,6 +475,31 @@ async def get_job_results(
     xml_model = Results(results=[r.to_xml_model() for r in results])
     xml = xml_model.to_xml(skip_empty=True)
     return Response(content=xml, media_type="application/xml")
+
+
+def install_availability_handler(router: APIRouter) -> None:
+    """Construct a default handler for the VOSI ``/availability`` interface.
+
+    Parameters
+    ----------
+    router
+        Router into which to install the handler.
+    """
+
+    @router.get(
+        "/availability",
+        description="VOSI-availability resource for the service",
+        responses={200: {"content": {"application/xml": {}}}},
+        summary="IVOA service availability",
+    )
+    async def get_availability(
+        request: Request,
+        uws_factory: Annotated[UWSFactory, Depends(uws_dependency)],
+    ) -> Response:
+        job_service = uws_factory.create_job_service()
+        availability = await job_service.availability()
+        xml = availability.to_xml(skip_empty=True)
+        return Response(content=xml, media_type="application/xml")
 
 
 def install_async_post_handler(router: APIRouter, route: UWSRoute) -> None:
