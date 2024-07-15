@@ -210,12 +210,30 @@ class JobStore:
             job = await self._get_job(job_id)
             return _convert_job(job)
 
-    async def delete_expired(self) -> None:
+    async def list_expired(self) -> list[UWSJobDescription]:
         """Delete all jobs that have passed their destruction time."""
         now = datetime_to_db(current_datetime())
-        stmt = delete(SQLJob).where(SQLJob.destruction_time <= now)
+        stmt = select(
+            SQLJob.id,
+            SQLJob.message_id,
+            SQLJob.owner,
+            SQLJob.phase,
+            SQLJob.run_id,
+            SQLJob.creation_time,
+        ).where(SQLJob.destruction_time <= now)
         async with self._session.begin():
-            await self._session.execute(stmt)
+            jobs = await self._session.execute(stmt)
+            return [
+                UWSJobDescription(
+                    job_id=str(j.id),
+                    message_id=j.message_id,
+                    owner=j.owner,
+                    phase=j.phase,
+                    run_id=j.run_id,
+                    creation_time=datetime_from_db(j.creation_time),
+                )
+                for j in jobs.all()
+            ]
 
     async def list_jobs(
         self,
@@ -246,6 +264,7 @@ class JobStore:
         """
         stmt = select(
             SQLJob.id,
+            SQLJob.message_id,
             SQLJob.owner,
             SQLJob.phase,
             SQLJob.run_id,
@@ -263,6 +282,7 @@ class JobStore:
             return [
                 UWSJobDescription(
                     job_id=str(j.id),
+                    message_id=j.message_id,
                     owner=j.owner,
                     phase=j.phase,
                     run_id=j.run_id,

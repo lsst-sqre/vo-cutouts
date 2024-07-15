@@ -10,7 +10,7 @@ from typing import Annotated, Self
 from arq.connections import RedisSettings
 from fastapi import Form, Query
 from pydantic import BaseModel, SecretStr
-from safir.arq import ArqMode, JobMetadata, MockArqQueue
+from safir.arq import ArqMode, JobMetadata, JobResult, MockArqQueue
 
 from vocutouts.uws.config import ParametersModel, UWSConfig, UWSRoute
 from vocutouts.uws.dependencies import UWSFactory
@@ -134,6 +134,23 @@ class MockJobRunner:
         job = await self._service.get(username, job_id)
         assert job.message_id
         return await self._arq.get_job_metadata(job.message_id)
+
+    async def get_job_result(self, username: str, job_id: str) -> JobResult:
+        """Get the arq job result for a job.
+
+        Parameters
+        ----------
+        job_id
+            UWS job ID.
+
+        Returns
+        -------
+        JobMetadata
+            arq job metadata.
+        """
+        job = await self._service.get(username, job_id)
+        assert job.message_id
+        return await self._arq.get_job_result(job.message_id)
 
     async def mark_in_progress(
         self, username: str, job_id: str, *, delay: float | None = None

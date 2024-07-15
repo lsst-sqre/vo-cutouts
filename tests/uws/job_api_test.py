@@ -6,6 +6,7 @@ API to create a job, instead inserting it directly via the UWSService.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY
 
@@ -276,6 +277,7 @@ async def test_job_run(
 async def test_job_abort(
     client: AsyncClient,
     runner: MockJobRunner,
+    arq_queue: MockArqQueue,
     uws_factory: UWSFactory,
     uws_config: UWSConfig,
 ) -> None:
@@ -334,6 +336,32 @@ async def test_job_abort(
         isodatetime(job.end_time),
         isodatetime(job.creation_time + timedelta(seconds=24 * 60 * 60)),
     )
+    job_result = await runner.get_job_result("user", "2")
+    assert not job_result.success
+    assert isinstance(job_result.result, asyncio.CancelledError)
+
+    # Deleting a job should also abort it. Also test a weird capitalization of
+    # the phase parameter and the POST form of the delete support.
+    r = await client.post(
+        "/test/jobs",
+        headers={"X-Auth-Request-User": "user"},
+        data={"runid": "some-run-id", "name": "Jane", "PHAse": "RUN"},
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/test/jobs/3"
+    await runner.mark_in_progress("user", "3")
+    job = await job_service.get("user", "3")
+    r = await client.post(
+        "/test/jobs/3",
+        headers={"X-Auth-Request-User": "user"},
+        data={"action": "DELETE"},
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/test/jobs"
+    assert job.message_id
+    job_result = await arq_queue.get_job_result(job.message_id)
+    assert not job_result.success
+    assert isinstance(job_result.result, asyncio.CancelledError)
 
 
 @pytest.mark.asyncio
@@ -561,16 +589,12 @@ async def test_presigned_url(
     uws_factory: UWSFactory,
     uws_config: UWSConfig,
 ) -> None:
-    job_service = uws_factory.create_job_service()
-
-    # Create the job.
     r = await client.post(
         "/test/jobs?phase=RUN",
         headers={"X-Auth-Request-User": "user"},
         data={"runid": "some-run-id", "name": "Jane"},
     )
     assert r.status_code == 303
-    job = await job_service.get("user", "1")
     await runner.mark_in_progress("user", "1")
 
     # Tell the queue the job is finished, with an https URL.

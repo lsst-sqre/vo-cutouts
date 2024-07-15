@@ -173,6 +173,9 @@ class UWSJobDescription:
     job_id: str
     """Unique identifier of the job."""
 
+    message_id: str | None
+    """Internal message identifier for the work queuing system."""
+
     owner: str
     """Identity of the owner of the job."""
 
