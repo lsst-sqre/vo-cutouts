@@ -115,6 +115,7 @@ class UWSApplication:
             ],
             functions=[uws_job_started, uws_job_completed],
             redis_settings=self._config.arq_redis_settings,
+            job_completion_wait=UWS_DATABASE_TIMEOUT,
             job_timeout=UWS_DATABASE_TIMEOUT,
             max_jobs=10,
             queue_name=UWS_QUEUE_NAME,

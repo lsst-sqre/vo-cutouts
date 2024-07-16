@@ -21,7 +21,10 @@ JOB_STOP_TIMEOUT = timedelta(seconds=30)
 """How long to wait for a job to stop before giving up."""
 
 UWS_DATABASE_TIMEOUT = timedelta(seconds=30)
-"""Timeout on workers that update the UWS database."""
+"""Timeout on workers that update the UWS database.
+
+This should match the default Kubernetes grace period for a pod to shut down.
+"""
 
 UWS_EXPIRE_JOBS_SCHEDULE = Options(
     month=None,
@@ -35,4 +38,7 @@ UWS_EXPIRE_JOBS_SCHEDULE = Options(
 """Schedule for job expiration cron job, as `arq.cron.cron` parameters."""
 
 UWS_QUEUE_NAME = "uws:queue"
-"""Name of the arq queue for internal UWS messages."""
+"""Name of the arq queue for internal UWS messages.
+
+Must match ``_UWS_QUEUE_NAME`` in :mod:`vocutouts.uws.uwsworker`.
+"""
