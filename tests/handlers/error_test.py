@@ -26,7 +26,7 @@ async def test_uncaught_error(
     errors in subapps.
     """
     engine = create_database_engine(
-        config.database_url, config.database_password
+        str(config.database_url), config.database_password
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
