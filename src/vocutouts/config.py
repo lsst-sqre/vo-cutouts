@@ -10,6 +10,7 @@ from urllib.parse import urlparse, urlunparse
 
 from arq.connections import RedisSettings
 from pydantic import (
+    BeforeValidator,
     Field,
     PostgresDsn,
     RedisDsn,
@@ -34,9 +35,55 @@ PostgresDsnString: TypeAlias = Annotated[
 ]
 """Type for a PostgreSQL data source URL converted to a string."""
 
+
+def _parse_timedelta(v: str | float | timedelta) -> float | timedelta:
+    if not isinstance(v, str):
+        return v
+    try:
+        return int(v)
+    except ValueError:
+        return parse_timedelta(v)
+
+
+HumanTimedelta: TypeAlias = Annotated[
+    timedelta, BeforeValidator(_parse_timedelta)
+]
+"""Parse a human-readable string into a `datetime.timedelta`.
+
+Accepts as input an integer (or stringified integer) number of seconds, an
+already-parsed `~datetime.timedelta`, or a string consisting of one or more
+sequences of numbers and duration abbreviations, separated by optional
+whitespace.  Whitespace at the beginning and end of the string is ignored. The
+supported abbreviations are:
+
+- Week: ``weeks``, ``week``, ``w``
+- Day: ``days``, ``day``, ``d``
+- Hour: ``hours``, ``hour``, ``hr``, ``h``
+- Minute: ``minutes``, ``minute``, ``mins``, ``min``, ``m``
+- Second: ``seconds``, ``second``, ``secs``, ``sec``, ``s``
+
+If several are present, they must be given in the above order. Example
+valid strings are ``8d`` (8 days), ``4h 3minutes`` (four hours and three
+minutes), and ``5w4d`` (five weeks and four days).
+"""
+
+SecondsTimedelta: TypeAlias = Annotated[
+    timedelta,
+    BeforeValidator(lambda v: v if not isinstance(v, str) else int(v)),
+]
+"""Parse an integer number of seconds into a `datetime.timedelta`.
+
+Accepts as input an integer (or stringified integer) number of seconds or an
+already-parsed `~datetime.timedelta`. Compared to the built-in Pydantic
+handling of `~datetime.timedelta`, an integer number of seconds as a string is
+accepted, and ISO 8601 durations are not supported.
+"""
+
 __all__ = [
     "Config",
+    "HumanTimedelta",
     "PostgresDsnString",
+    "SecondsTimedelta",
     "config",
     "uws",
 ]
@@ -73,7 +120,7 @@ class Config(BaseSettings):
         None, title="Password for UWS job database"
     )
 
-    grace_period: timedelta = Field(
+    grace_period: SecondsTimedelta = Field(
         timedelta(seconds=30),
         title="Grace period for jobs",
         description=(
@@ -82,7 +129,7 @@ class Config(BaseSettings):
         ),
     )
 
-    lifetime: timedelta = Field(
+    lifetime: HumanTimedelta = Field(
         timedelta(days=7), title="Lifetime of cutout job results"
     )
 
@@ -113,11 +160,11 @@ class Config(BaseSettings):
         ),
     )
 
-    sync_timeout: timedelta = Field(
+    sync_timeout: HumanTimedelta = Field(
         timedelta(minutes=1), title="Timeout for sync requests"
     )
 
-    timeout: timedelta = Field(
+    timeout: SecondsTimedelta = Field(
         timedelta(minutes=10),
         title="Cutout job timeout in seconds",
         description=(
@@ -143,31 +190,6 @@ class Config(BaseSettings):
         env_prefix="CUTOUT_", case_sensitive=False
     )
 
-    @field_validator("database_url")
-    @classmethod
-    def _validate_database_url(cls, v: PostgresDsnString) -> PostgresDsnString:
-        if not v.startswith(("postgresql:", "postgresql+asyncpg:")):
-            msg = "Use asyncpg as the PostgreSQL library or leave unspecified"
-            raise ValueError(msg)
-
-        # When run via tox and tox-docker, the PostgreSQL hostname and port
-        # will be randomly selected and exposed only in environment
-        # variables. We have to patch that into the database URL at runtime
-        # since tox doesn't have a way of substituting it into the environment
-        # (see https://github.com/tox-dev/tox-docker/issues/55).
-        if port := os.getenv("POSTGRES_5432_TCP_PORT"):
-            url = urlparse(v)
-            hostname = os.getenv("POSTGRES_HOST", url.hostname)
-            if url.password:
-                auth = f"{url.username}@{url.password}@"
-            elif url.username:
-                auth = f"{url.username}@"
-            else:
-                auth = ""
-            return urlunparse(url._replace(netloc=f"{auth}{hostname}:{port}"))
-
-        return v
-
     @field_validator("arq_queue_url")
     @classmethod
     def _validate_arq_queue_url(cls, v: RedisDsn) -> RedisDsn:
@@ -192,26 +214,30 @@ class Config(BaseSettings):
             )
         return v
 
-    @field_validator("lifetime", "sync_timeout", mode="before")
+    @field_validator("database_url")
     @classmethod
-    def _parse_timedelta(cls, v: str | float | timedelta) -> float | timedelta:
-        """Support human-readable timedeltas."""
-        if not isinstance(v, str):
-            return v
-        try:
-            return int(v)
-        except ValueError:
-            return parse_timedelta(v)
+    def _validate_database_url(cls, v: PostgresDsnString) -> PostgresDsnString:
+        if not v.startswith(("postgresql:", "postgresql+asyncpg:")):
+            msg = "Use asyncpg as the PostgreSQL library or leave unspecified"
+            raise ValueError(msg)
 
-    @field_validator("grace_period", "timeout", mode="before")
-    @classmethod
-    def _parse_timedelta_seconds(
-        cls, v: str | float | timedelta
-    ) -> float | timedelta:
-        """Support number of seconds as a string."""
-        if not isinstance(v, str):
-            return v
-        return int(v)
+        # When run via tox and tox-docker, the PostgreSQL hostname and port
+        # will be randomly selected and exposed only in environment
+        # variables. We have to patch that into the database URL at runtime
+        # since tox doesn't have a way of substituting it into the environment
+        # (see https://github.com/tox-dev/tox-docker/issues/55).
+        if port := os.getenv("POSTGRES_5432_TCP_PORT"):
+            url = urlparse(v)
+            hostname = os.getenv("POSTGRES_HOST", url.hostname)
+            if url.password:
+                auth = f"{url.username}@{url.password}@"
+            elif url.username:
+                auth = f"{url.username}@"
+            else:
+                auth = ""
+            return urlunparse(url._replace(netloc=f"{auth}{hostname}:{port}"))
+
+        return v
 
     @property
     def arq_redis_settings(self) -> RedisSettings:
