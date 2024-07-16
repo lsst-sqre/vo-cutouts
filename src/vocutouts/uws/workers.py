@@ -29,6 +29,7 @@ from .config import UWSConfig
 from .constants import JOB_RESULT_TIMEOUT
 from .exceptions import TaskError, UnknownJobError
 from .models import UWSJob
+from .service import JobService
 from .storage import JobStore
 from .uwsworker import WorkerError, WorkerTransientError
 
@@ -64,20 +65,6 @@ async def create_uws_worker_context(
         Keys to add to the ``ctx`` dictionary.
     """
     logger = logger.bind(worker_instance=uuid.uuid4().hex)
-    engine = create_database_engine(
-        config.database_url,
-        config.database_password,
-        isolation_level="REPEATABLE READ",
-    )
-    session = await create_async_session(engine, logger)
-    storage = JobStore(session)
-    slack = None
-    if config.slack_webhook:
-        slack = SlackWebhookClient(
-            config.slack_webhook.get_secret_value(),
-            "vo-cutouts-db-worker",
-            logger,
-        )
 
     # The queue from which to retrieve results is the main work queue,
     # which uses the default arq queue name. Note that this is not the
@@ -88,10 +75,29 @@ async def create_uws_worker_context(
     else:
         arq = MockArqQueue()
 
+    engine = create_database_engine(
+        config.database_url,
+        config.database_password,
+        isolation_level="REPEATABLE READ",
+    )
+    session = await create_async_session(engine, logger)
+    storage = JobStore(session)
+    service = JobService(
+        config=config, arq_queue=arq, storage=storage, logger=logger
+    )
+    slack = None
+    if config.slack_webhook:
+        slack = SlackWebhookClient(
+            config.slack_webhook.get_secret_value(),
+            "vo-cutouts-db-worker",
+            logger,
+        )
+
     logger.info("Worker startup complete")
     return {
         "arq": arq,
         "logger": logger,
+        "service": service,
         "session": session,
         "slack": slack,
         "storage": storage,
@@ -128,17 +134,15 @@ async def uws_expire_jobs(ctx: dict[Any, Any]) -> None:
     ctx
         arq context.
     """
-    logger: BoundLogger = ctx["logger"].bind(task="expire_jobs")
     slack: SlackWebhookClient | None = ctx["slack"]
-    storage: JobStore = ctx["storage"]
+    service: JobService = ctx["service"]
 
     try:
-        await storage.delete_expired()
+        await service.delete_expired()
     except Exception as e:
         if slack:
             await slack.post_uncaught_exception(e)
         raise
-    logger.info("Deleted expired jobs")
 
 
 async def uws_job_started(

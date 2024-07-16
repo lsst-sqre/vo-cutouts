@@ -154,16 +154,47 @@ class JobService:
     async def delete(self, user: str, job_id: str) -> None:
         """Delete a job.
 
-        The UWS standard says that deleting a job should stop the in-progress
-        work, but arq, although it supports job cancellation, cannot cancel
-        sync jobs. Settle for deleting the database entry, which will cause
-        the task to throw away the results when it finishes.
+        If the job is in an active phase, cancel it before deleting it.
+
+        Parameters
+        ----------
+        user
+            Owner of job.
+        job_id
+            Identifier of job.
         """
         job = await self._storage.get(job_id)
         if job.owner != user:
             raise PermissionDeniedError(f"Access to job {job_id} denied")
+        logger = self._logger.bind(user=user, job_id=job_id)
+        if job.phase in ACTIVE_PHASES and job.message_id:
+            try:
+                await self._arq.abort_job(job.message_id)
+            except Exception as e:
+                logger.warning("Unable to abort job", error=str(e))
         await self._storage.delete(job_id)
-        self._logger.info("Deleted job", user=user, job_id=job_id)
+        logger.info("Deleted job")
+
+    async def delete_expired(self) -> None:
+        """Delete all expired jobs.
+
+        A job is expired if it has passed its destruction time. If the job is
+        in an active phase, cancel it before deleting it.
+        """
+        jobs = await self._storage.list_expired()
+        if jobs:
+            self._logger.info(f"Deleting {len(jobs)} expired jobs")
+        for job in jobs:
+            if job.phase in ACTIVE_PHASES and job.message_id:
+                try:
+                    await self._arq.abort_job(job.message_id)
+                except Exception as e:
+                    self._logger.warning(
+                        "Unable to abort expired job", error=str(e)
+                    )
+            await self._storage.delete(job.job_id)
+            self._logger.info("Deleted expired job")
+        self._logger.info(f"Finished deleting {len(jobs)} expired jobs")
 
     async def get(
         self,
