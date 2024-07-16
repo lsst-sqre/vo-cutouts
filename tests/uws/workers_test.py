@@ -20,7 +20,7 @@ from vo_models.uws.types import ErrorType, ExecutionPhase
 
 from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.constants import UWS_QUEUE_NAME
+from vocutouts.uws.constants import UWS_DATABASE_TIMEOUT, UWS_QUEUE_NAME
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import ErrorCode, UWSJobParameter, UWSJobResult
 from vocutouts.uws.storage import JobStore
@@ -60,6 +60,7 @@ async def test_build_worker(
             f"/{redis_settings.database}"
         ),
         arq_queue_password=redis_settings.password,
+        grace_period=timedelta(seconds=60),
         parameters_class=SimpleParameters,
         timeout=uws_config.execution_duration,
     )
@@ -70,6 +71,7 @@ async def test_build_worker(
     assert settings.functions[0].name == hello.__qualname__
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert settings.allow_abort_jobs
+    assert settings.job_completion_wait == timedelta(seconds=60)
     assert settings.queue_name == default_queue_name
     assert settings.on_startup
     assert settings.on_shutdown
@@ -133,6 +135,7 @@ async def test_timeout(uws_config: UWSConfig, logger: BoundLogger) -> None:
             f"/{redis_settings.database}"
         ),
         arq_queue_password=redis_settings.password,
+        grace_period=timedelta(seconds=60),
         parameters_class=SimpleParameters,
         timeout=uws_config.execution_duration,
     )
@@ -228,6 +231,7 @@ async def test_build_uws_worker(
     assert callable(expire_jobs)
     assert settings.redis_settings == uws_config.arq_redis_settings
     assert not settings.allow_abort_jobs
+    assert settings.job_completion_wait == UWS_DATABASE_TIMEOUT
     assert settings.queue_name == UWS_QUEUE_NAME
     assert settings.on_startup
     assert settings.on_shutdown

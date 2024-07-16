@@ -73,6 +73,15 @@ class Config(BaseSettings):
         None, title="Password for UWS job database"
     )
 
+    grace_period: timedelta = Field(
+        timedelta(seconds=30),
+        title="Grace period for jobs",
+        description=(
+            "How long to wait for a job to finish on shutdown before"
+            " canceling it"
+        ),
+    )
+
     lifetime: timedelta = Field(
         timedelta(days=7), title="Lifetime of cutout job results"
     )
@@ -194,12 +203,12 @@ class Config(BaseSettings):
         except ValueError:
             return parse_timedelta(v)
 
-    @field_validator("timeout", mode="before")
+    @field_validator("grace_period", "timeout", mode="before")
     @classmethod
     def _parse_timedelta_seconds(
         cls, v: str | float | timedelta
     ) -> float | timedelta:
-        """Support human-readable timedeltas."""
+        """Support number of seconds as a string."""
         if not isinstance(v, str):
             return v
         return int(v)

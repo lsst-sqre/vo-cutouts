@@ -195,12 +195,19 @@ configure_logging(
     log_level=os.getenv("CUTOUT_LOG_LEVEL", "INFO"),
 )
 
+# Provide five seconds of time for arq to shut the worker down cleanly after
+# cancelling any running job.
+_grace_period = timedelta(seconds=int(os.environ["CUTOUT_GRACE_PERIOD"]))
+if _grace_period > timedelta(seconds=5):
+    _grace_period -= timedelta(seconds=5)
+
 WorkerSettings = build_worker(
     cutout,
     WorkerConfig(
         arq_mode=ArqMode.production,
         arq_queue_url=os.environ["CUTOUT_ARQ_QUEUE_URL"],
         arq_queue_password=os.getenv("CUTOUT_ARQ_QUEUE_PASSWORD"),
+        grace_period=_grace_period,
         parameters_class=WorkerCutout,
         timeout=timedelta(seconds=int(os.environ["CUTOUT_TIMEOUT"])),
     ),

@@ -25,9 +25,14 @@ from pydantic import BaseModel
 from safir.arq import ArqMode, ArqQueue, MockArqQueue, RedisArqQueue
 from structlog.stdlib import BoundLogger
 
-from .constants import UWS_QUEUE_NAME
-
 T = TypeVar("T", bound="BaseModel")
+"""Type for job parameters."""
+
+_UWS_QUEUE_NAME = "uws:queue"
+"""Name of the arq queue for internal UWS messages.
+
+Must match `~vocutouts.uws.constants.UWS_QUEUE_NAME`.
+"""
 
 __all__ = [
     "WorkerConfig",
@@ -40,6 +45,7 @@ __all__ = [
     "WorkerTimeoutError",
     "WorkerTransientError",
     "WorkerUsageError",
+    "T",
     "build_worker",
 ]
 
@@ -56,6 +62,13 @@ class WorkerConfig(Generic[T]):
 
     arq_queue_password: str | None
     """Password of the Redis arq queue."""
+
+    grace_period: timedelta
+    """How long to wait for workers to shut down before cancelling them.
+
+    This should be set to somewhat less than the Kubernetes grace period for
+    terminating the pod (about five seconds less, for example).
+    """
 
     parameters_class: type[T]
     """Class of the parameters to pass to the backend worker."""
@@ -98,6 +111,9 @@ class WorkerSettings:
 
     redis_settings: RedisSettings
     """Redis configuration for arq."""
+
+    job_completion_wait: SecondsTimedelta
+    """How long to wait for jobs to complete before cancelling them."""
 
     job_timeout: SecondsTimedelta
     """Maximum timeout for all jobs."""
@@ -338,10 +354,10 @@ def build_worker(
         if config.arq_mode == ArqMode.production:
             settings = config.arq_redis_settings
             arq: ArqQueue = await RedisArqQueue.initialize(
-                settings, default_queue_name=UWS_QUEUE_NAME
+                settings, default_queue_name=_UWS_QUEUE_NAME
             )
         else:
-            arq = MockArqQueue(default_queue_name=UWS_QUEUE_NAME)
+            arq = MockArqQueue(default_queue_name=_UWS_QUEUE_NAME)
 
         ctx["arq"] = arq
         ctx["logger"] = logger
@@ -399,6 +415,7 @@ def build_worker(
     return WorkerSettings(
         functions=[func(run, name=worker.__qualname__)],
         redis_settings=config.arq_redis_settings,
+        job_completion_wait=config.grace_period,
         job_timeout=config.timeout,
         max_jobs=1,
         allow_abort_jobs=True,
