@@ -6,18 +6,18 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated, TypeAlias
-from urllib.parse import urlparse, urlunparse
 
 from arq.connections import RedisSettings
 from pydantic import (
+    AfterValidator,
     BeforeValidator,
     Field,
-    PostgresDsn,
     RedisDsn,
     SecretStr,
-    TypeAdapter,
+    UrlConstraints,
     field_validator,
 )
+from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.arq import ArqMode
 from safir.datetime import parse_timedelta
@@ -28,12 +28,52 @@ from .models.cutout import CutoutParameters
 from .uws.app import UWSApplication
 from .uws.config import UWSConfig, UWSRoute
 
-_postgres_dsn_adapter = TypeAdapter(PostgresDsn)
-
-PostgresDsnString: TypeAlias = Annotated[
-    str, lambda v: str(_postgres_dsn_adapter.validate_python(v))
+__all__ = [
+    "Config",
+    "EnvAsyncPostgresDsn",
+    "HumanTimedelta",
+    "SecondsTimedelta",
+    "config",
+    "uws",
 ]
-"""Type for a PostgreSQL data source URL converted to a string."""
+
+"""PostgreSQL data source URL using either ``asyncpg`` or no driver."""
+
+
+def _validate_env_async_postgres_dsn(v: MultiHostUrl) -> MultiHostUrl:
+    """Possibly adjust a PostgreSQL DSN based on environment variables.
+
+    When run via tox and tox-docker, the PostgreSQL hostname and port will be
+    randomly selected and exposed only in environment variables. We have to
+    patch that into the database URL at runtime since `tox doesn't have a way
+    of substituting it into the environment
+    <https://github.com/tox-dev/tox-docker/issues/55>`__.
+    """
+    if port := os.getenv("POSTGRES_5432_TCP_PORT"):
+        old_host = v.hosts()[0]
+        return MultiHostUrl.build(
+            scheme=v.scheme,
+            username=old_host.get("username"),
+            password=old_host.get("password"),
+            host=os.getenv("POSTGRES_HOST", old_host.get("host")),
+            port=int(port),
+            path=v.path.lstrip("/") if v.path else v.path,
+            query=v.query,
+            fragment=v.fragment,
+        )
+    else:
+        return v
+
+
+EnvAsyncPostgresDsn: TypeAlias = Annotated[
+    MultiHostUrl,
+    UrlConstraints(
+        host_required=True,
+        allowed_schemes=["postgresql", "postgresql+asyncpg"],
+    ),
+    AfterValidator(_validate_env_async_postgres_dsn),
+]
+"""Async PostgreSQL data source URL honoring Docker environment variables."""
 
 
 def _parse_timedelta(v: str | float | timedelta) -> float | timedelta:
@@ -79,15 +119,6 @@ handling of `~datetime.timedelta`, an integer number of seconds as a string is
 accepted, and ISO 8601 durations are not supported.
 """
 
-__all__ = [
-    "Config",
-    "HumanTimedelta",
-    "PostgresDsnString",
-    "SecondsTimedelta",
-    "config",
-    "uws",
-]
-
 
 class Config(BaseSettings):
     """Configuration for vo-cutouts."""
@@ -110,7 +141,7 @@ class Config(BaseSettings):
         description="Password of Redis server to use for the arq queue",
     )
 
-    database_url: PostgresDsnString = Field(
+    database_url: EnvAsyncPostgresDsn = Field(
         ...,
         title="PostgreSQL DSN",
         description="DSN of PostgreSQL database for UWS job tracking",
@@ -214,31 +245,6 @@ class Config(BaseSettings):
             )
         return v
 
-    @field_validator("database_url")
-    @classmethod
-    def _validate_database_url(cls, v: PostgresDsnString) -> PostgresDsnString:
-        if not v.startswith(("postgresql:", "postgresql+asyncpg:")):
-            msg = "Use asyncpg as the PostgreSQL library or leave unspecified"
-            raise ValueError(msg)
-
-        # When run via tox and tox-docker, the PostgreSQL hostname and port
-        # will be randomly selected and exposed only in environment
-        # variables. We have to patch that into the database URL at runtime
-        # since tox doesn't have a way of substituting it into the environment
-        # (see https://github.com/tox-dev/tox-docker/issues/55).
-        if port := os.getenv("POSTGRES_5432_TCP_PORT"):
-            url = urlparse(v)
-            hostname = os.getenv("POSTGRES_HOST", url.hostname)
-            if url.password:
-                auth = f"{url.username}@{url.password}@"
-            elif url.username:
-                auth = f"{url.username}@"
-            else:
-                auth = ""
-            return urlunparse(url._replace(netloc=f"{auth}{hostname}:{port}"))
-
-        return v
-
     @property
     def arq_redis_settings(self) -> RedisSettings:
         """Redis settings for arq."""
@@ -267,7 +273,7 @@ class Config(BaseSettings):
             parameters_type=CutoutParameters,
             signing_service_account=self.service_account,
             worker="cutout",
-            database_url=self.database_url,
+            database_url=str(self.database_url),
             database_password=self.database_password,
             slack_webhook=self.slack_webhook,
             sync_timeout=self.sync_timeout,
