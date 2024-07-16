@@ -28,11 +28,8 @@ from structlog.stdlib import BoundLogger
 T = TypeVar("T", bound="BaseModel")
 """Type for job parameters."""
 
-_UWS_QUEUE_NAME = "uws:queue"
-"""Name of the arq queue for internal UWS messages.
-
-Must match `~vocutouts.uws.constants.UWS_QUEUE_NAME`.
-"""
+UWS_QUEUE_NAME = "uws:queue"
+"""Name of the arq queue for internal UWS messages."""
 
 __all__ = [
     "WorkerConfig",
@@ -46,6 +43,7 @@ __all__ = [
     "WorkerTransientError",
     "WorkerUsageError",
     "T",
+    "UWS_QUEUE_NAME",
     "build_worker",
 ]
 
@@ -354,10 +352,10 @@ def build_worker(
         if config.arq_mode == ArqMode.production:
             settings = config.arq_redis_settings
             arq: ArqQueue = await RedisArqQueue.initialize(
-                settings, default_queue_name=_UWS_QUEUE_NAME
+                settings, default_queue_name=UWS_QUEUE_NAME
             )
         else:
-            arq = MockArqQueue(default_queue_name=_UWS_QUEUE_NAME)
+            arq = MockArqQueue(default_queue_name=UWS_QUEUE_NAME)
 
         ctx["arq"] = arq
         ctx["logger"] = logger

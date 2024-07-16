@@ -11,7 +11,6 @@ __all__ = [
     "JOB_RESULT_TIMEOUT",
     "UWS_DATABASE_TIMEOUT",
     "UWS_EXPIRE_JOBS_SCHEDULE",
-    "UWS_QUEUE_NAME",
 ]
 
 JOB_RESULT_TIMEOUT = timedelta(seconds=5)
@@ -36,9 +35,3 @@ UWS_EXPIRE_JOBS_SCHEDULE = Options(
     microsecond=0,
 )
 """Schedule for job expiration cron job, as `arq.cron.cron` parameters."""
-
-UWS_QUEUE_NAME = "uws:queue"
-"""Name of the arq queue for internal UWS messages.
-
-Must match ``_UWS_QUEUE_NAME`` in :mod:`vocutouts.uws.uwsworker`.
-"""
