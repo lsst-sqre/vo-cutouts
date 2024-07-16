@@ -20,11 +20,12 @@ from vo_models.uws.types import ErrorType, ExecutionPhase
 
 from vocutouts.uws.app import UWSApplication
 from vocutouts.uws.config import UWSConfig
-from vocutouts.uws.constants import UWS_DATABASE_TIMEOUT, UWS_QUEUE_NAME
+from vocutouts.uws.constants import UWS_DATABASE_TIMEOUT
 from vocutouts.uws.dependencies import UWSFactory
 from vocutouts.uws.models import ErrorCode, UWSJobParameter, UWSJobResult
 from vocutouts.uws.storage import JobStore
 from vocutouts.uws.uwsworker import (
+    UWS_QUEUE_NAME,
     WorkerConfig,
     WorkerFatalError,
     WorkerJobInfo,

@@ -14,11 +14,7 @@ from structlog.stdlib import BoundLogger
 
 from . import schema
 from .config import UWSConfig
-from .constants import (
-    UWS_DATABASE_TIMEOUT,
-    UWS_EXPIRE_JOBS_SCHEDULE,
-    UWS_QUEUE_NAME,
-)
+from .constants import UWS_DATABASE_TIMEOUT, UWS_EXPIRE_JOBS_SCHEDULE
 from .exceptions import UWSError
 from .handlers import (
     install_async_post_handler,
@@ -27,7 +23,7 @@ from .handlers import (
     install_sync_post_handler,
     uws_router,
 )
-from .uwsworker import WorkerSettings
+from .uwsworker import UWS_QUEUE_NAME, WorkerSettings
 from .workers import (
     close_uws_worker_context,
     create_uws_worker_context,
