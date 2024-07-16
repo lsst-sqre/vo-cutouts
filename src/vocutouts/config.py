@@ -15,9 +15,8 @@ from pydantic import (
     RedisDsn,
     SecretStr,
     UrlConstraints,
-    field_validator,
 )
-from pydantic_core import MultiHostUrl
+from pydantic_core import MultiHostUrl, Url
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from safir.arq import ArqMode
 from safir.datetime import parse_timedelta
@@ -76,6 +75,38 @@ EnvAsyncPostgresDsn: TypeAlias = Annotated[
 """Async PostgreSQL data source URL honoring Docker environment variables."""
 
 
+def _validate_env_redis_dsn(v: RedisDsn) -> RedisDsn:
+    """Possibly adjust a Redis DSN based on environment variables.
+
+    When run via tox and tox-docker, the Redis hostname and port will be
+    randomly selected and exposed only in environment variables. We have to
+    patch that into the Redis URL at runtime since `tox doesn't have a way of
+    substituting it into the environment
+    <https://github.com/tox-dev/tox-docker/issues/55>`__.
+    """
+    if port := os.getenv("REDIS_6379_TCP_PORT"):
+        return RedisDsn.build(
+            scheme=v.scheme,
+            username=v.username,
+            password=v.password,
+            host=os.getenv("REDIS_HOST", v.unicode_host() or "localhost"),
+            port=int(port),
+            path=v.path.lstrip("/") if v.path else v.path,
+            query=v.query,
+            fragment=v.fragment,
+        )
+    else:
+        return v
+
+
+EnvRedisDsn: TypeAlias = Annotated[
+    Url,
+    UrlConstraints(host_required=True, allowed_schemes=["redis"]),
+    AfterValidator(_validate_env_redis_dsn),
+]
+"""Redis data source URL honoring Docker environment variables."""
+
+
 def _parse_timedelta(v: str | float | timedelta) -> float | timedelta:
     if not isinstance(v, str):
         return v
@@ -129,7 +160,7 @@ class Config(BaseSettings):
         description="This will always be production outside the test suite",
     )
 
-    arq_queue_url: RedisDsn = Field(
+    arq_queue_url: EnvRedisDsn = Field(
         ...,
         title="arq Redis DSN",
         description="DSN of Redis server to use for the arq queue",
@@ -220,30 +251,6 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CUTOUT_", case_sensitive=False
     )
-
-    @field_validator("arq_queue_url")
-    @classmethod
-    def _validate_arq_queue_url(cls, v: RedisDsn) -> RedisDsn:
-        if v.scheme != "redis":
-            raise ValueError("Only redis DSNs are supported")
-
-        # When run via tox and tox-docker, the Redis port will be randomly
-        # selected and exposed only in the REDIS_6379_TCP environment
-        # variable. We have to patch that into the Redis URL at runtime since
-        # tox doesn't have a way of substituting it into the environment (see
-        # https://github.com/tox-dev/tox-docker/issues/55).
-        if port := os.getenv("REDIS_6379_TCP_PORT"):
-            return RedisDsn.build(
-                scheme=v.scheme,
-                username=v.username,
-                password=v.password,
-                host=os.getenv("REDIS_HOST", v.unicode_host() or "localhost"),
-                port=int(port),
-                path=v.path,
-                query=v.query,
-                fragment=v.fragment,
-            )
-        return v
 
     @property
     def arq_redis_settings(self) -> RedisSettings:
