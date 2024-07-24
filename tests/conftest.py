@@ -15,12 +15,10 @@ from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
+from safir.testing.uws import MockUWSJobRunner
 
 from vocutouts import main
 from vocutouts.config import config, uws
-from vocutouts.uws.dependencies import UWSFactory, uws_dependency
-
-from .support.uws import MockJobRunner
 
 
 @pytest_asyncio.fixture
@@ -36,7 +34,7 @@ async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
         # Ensure that all the components use the same mock arq queue.
         # Otherwise, the web application will use the one created in its
         # lifespan context manager.
-        uws_dependency.override_arq_queue(arq_queue)
+        uws.override_arq_queue(arq_queue)
         yield main.app
 
 
@@ -70,18 +68,7 @@ def mock_slack(respx_mock: respx.Router) -> MockSlackWebhook:
     return mock_slack_webhook(webhook, respx_mock)
 
 
-@pytest.fixture
-def runner(uws_factory: UWSFactory, arq_queue: MockArqQueue) -> MockJobRunner:
-    return MockJobRunner(uws_factory, arq_queue)
-
-
 @pytest_asyncio.fixture
-async def uws_factory(app: FastAPI) -> AsyncIterator[UWSFactory]:
-    """Return a UWS component factory.
-
-    Depends on the ``app`` fixture to ensure that the database layer has
-    already been initialized.
-    """
-    logger = structlog.get_logger("vocutouts")
-    async for factory in uws_dependency(logger):
-        yield factory
+async def runner(arq_queue: MockArqQueue) -> AsyncIterator[MockUWSJobRunner]:
+    async with MockUWSJobRunner(config.uws_config, arq_queue) as runner:
+        yield runner

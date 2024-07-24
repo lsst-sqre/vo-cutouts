@@ -17,6 +17,14 @@ from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
+from safir.arq.uws import (
+    WorkerConfig,
+    WorkerFatalError,
+    WorkerJobInfo,
+    WorkerResult,
+    WorkerUsageError,
+    build_worker,
+)
 from safir.logging import configure_logging
 from structlog.stdlib import BoundLogger
 
@@ -24,14 +32,6 @@ from ..models.domain.cutout import (
     WorkerCircleStencil,
     WorkerCutout,
     WorkerPolygonStencil,
-)
-from ..uws.uwsworker import (
-    WorkerConfig,
-    WorkerFatalError,
-    WorkerJobInfo,
-    WorkerResult,
-    WorkerUsageError,
-    build_worker,
 )
 
 _BUTLER_FACTORY = LabeledButlerFactory()

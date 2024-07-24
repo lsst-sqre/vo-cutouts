@@ -19,10 +19,13 @@ from pydantic import (
     ValidationError,
     field_validator,
 )
+from safir.uws import (
+    MultiValuedParameterError,
+    ParameterParseError,
+    ParametersModel,
+    UWSJobParameter,
+)
 
-from ..uws.config import ParametersModel
-from ..uws.exceptions import MultiValuedParameterError, ParameterParseError
-from ..uws.models import UWSJobParameter
 from .domain.cutout import (
     WorkerCircleStencil,
     WorkerCutout,

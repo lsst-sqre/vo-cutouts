@@ -3,9 +3,7 @@
 from typing import Annotated
 
 from fastapi import Depends, Form, Query, Request
-
-from .uws.dependencies import uws_post_params_dependency
-from .uws.models import UWSJobParameter
+from safir.uws import UWSJobParameter, uws_post_params_dependency
 
 __all__ = [
     "get_params_dependency",

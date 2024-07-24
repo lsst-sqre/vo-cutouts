@@ -21,7 +21,6 @@ from safir.slack.webhook import SlackRouteErrorHandler
 
 from .config import config, uws
 from .handlers import external, internal
-from .uws.dependencies import uws_dependency
 
 __all__ = ["app"]
 
@@ -29,9 +28,9 @@ __all__ = ["app"]
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
-    await uws_dependency.initialize(config.uws_config)
+    await uws.initialize_fastapi()
     yield
-    await uws_dependency.aclose()
+    await uws.shutdown_fastapi()
 
 
 configure_logging(
