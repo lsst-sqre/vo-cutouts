@@ -100,7 +100,7 @@ pydantic-xml==2.11.0
     # via
     #   -c requirements/main.txt
     #   -r requirements/dev.in
-pytest==8.3.1
+pytest==8.3.2
     # via
     #   -r requirements/dev.in
     #   pytest-asyncio

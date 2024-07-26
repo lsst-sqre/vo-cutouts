@@ -146,7 +146,9 @@ pydantic-core==2.20.1
     #   safir
     #   safir-arq
 pydantic-settings==2.3.4
-    # via -r requirements/main.in
+    # via
+    #   -r requirements/main.in
+    #   safir
 pydantic-xml==2.11.0
     # via vo-models
 pyerfa==2.0.1.4
@@ -178,9 +180,9 @@ rich==13.7.1
     # via typer
 rsa==4.9
     # via google-auth
-safir @ git+https://github.com/lsst-sqre/safir@afa26ecab7a8a8684aac5fa5e3660fae2b3c058e#subdirectory=safir
+safir @ git+https://github.com/lsst-sqre/safir@7329ca703e1bf67b13d8aeafe1c48ca65866bb2b#subdirectory=safir
     # via -r requirements/main.in
-safir-arq @ git+https://github.com/lsst-sqre/safir@afa26ecab7a8a8684aac5fa5e3660fae2b3c058e#subdirectory=safir-arq
+safir-arq @ git+https://github.com/lsst-sqre/safir@7329ca703e1bf67b13d8aeafe1c48ca65866bb2b#subdirectory=safir-arq
     # via
     #   -r requirements/main.in
     #   safir
