@@ -14,7 +14,6 @@ from importlib.metadata import metadata, version
 import structlog
 from fastapi import FastAPI
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
-from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
@@ -64,7 +63,7 @@ app.include_router(
 
 # Install middleware.
 app.add_middleware(XForwardedMiddleware)
-app.add_middleware(CaseInsensitiveQueryMiddleware)
+uws.install_middleware(app)
 
 # Install error handlers.
 uws.install_error_handlers(app)
