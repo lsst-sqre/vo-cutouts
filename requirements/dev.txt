@@ -74,7 +74,7 @@ mdurl==0.1.2
     # via
     #   -c requirements/main.txt
     #   markdown-it-py
-mypy==1.11.0
+mypy==1.11.1
     # via
     #   -r requirements/dev.in
     #   sqlalchemy

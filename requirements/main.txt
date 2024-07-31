@@ -13,7 +13,7 @@ arq==0.26.0
     #   safir-arq
 astropy==6.1.2
     # via -r requirements/main.in
-astropy-iers-data==0.2024.7.22.0.34.13
+astropy-iers-data==0.2024.7.29.0.32.7
     # via astropy
 asyncpg==0.29.0
     # via
@@ -118,7 +118,7 @@ packaging==24.1
     # via astropy
 proto-plus==1.24.0
     # via google-api-core
-protobuf==5.27.2
+protobuf==5.27.3
     # via
     #   google-api-core
     #   googleapis-common-protos
@@ -145,7 +145,7 @@ pydantic-core==2.20.1
     #   pydantic-xml
     #   safir
     #   safir-arq
-pydantic-settings==2.3.4
+pydantic-settings==2.4.0
     # via
     #   -r requirements/main.in
     #   safir
@@ -180,9 +180,9 @@ rich==13.7.1
     # via typer
 rsa==4.9
     # via google-auth
-safir @ git+https://github.com/lsst-sqre/safir@7329ca703e1bf67b13d8aeafe1c48ca65866bb2b#subdirectory=safir
+safir @ git+https://github.com/lsst-sqre/safir@61a647a3f13f07e328a9e7e5a04a66e5766fd81e#subdirectory=safir
     # via -r requirements/main.in
-safir-arq @ git+https://github.com/lsst-sqre/safir@7329ca703e1bf67b13d8aeafe1c48ca65866bb2b#subdirectory=safir-arq
+safir-arq @ git+https://github.com/lsst-sqre/safir@61a647a3f13f07e328a9e7e5a04a66e5766fd81e#subdirectory=safir-arq
     # via
     #   -r requirements/main.in
     #   safir

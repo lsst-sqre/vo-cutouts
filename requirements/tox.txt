@@ -60,7 +60,7 @@ tox==4.16.0
     #   tox-uv
 tox-docker==5.0.0
     # via -r requirements/tox.in
-tox-uv==1.10.0
+tox-uv==1.11.0
     # via -r requirements/tox.in
 urllib3==2.2.2
     # via
@@ -68,7 +68,7 @@ urllib3==2.2.2
     #   -c requirements/main.txt
     #   docker
     #   requests
-uv==0.2.30
+uv==0.2.32
     # via tox-uv
 virtualenv==20.26.3
     # via tox
