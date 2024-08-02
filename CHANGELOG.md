@@ -6,6 +6,31 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-3.1.0'></a>
+## 3.1.0 (2024-08-02)
+
+### New features
+
+- The database worker pod now deletes the records for all jobs that have passed their destruction times once per hour.
+- Restore support for execution duration and change the default execution duration back to 10 minutes. Use a very ugly hack to enforce a timeout in the backend worker that will hopefully not be too fragile.
+- Add support for aborting jobs.
+- Re-add the `CUTOUT_TIMEOUT` configuration option to change the default and maximum execution duration for cutout jobs.
+- Support pre-signed URLs returned by the backend worker. If the result URL is an `http` or `https` URL, pass it to the client unchanged.
+- Abort jobs on deletion or expiration if they are pending, queued, or executing.
+- Worker pods now wait for 30 seconds (UWS database workers) or 55 seconds (cutout workers) for jobs to finish on shutdown before cancelling them.
+
+### Bug fixes
+
+- Allow time durations in the configuration to be given in number of seconds as a string, which was accidentally broken in 3.0.0.
+- Restore support for automatically starting an async job by setting `phase=RUN` in the POST body. The equivalent query parameter was always supported, but POST body support was accidentally dropped in 3.0.0.
+- Add a colon after the error code and before the error message in error replies.
+- Stop setting `isPost` when returning UWS parameters. This undocumented field is supposed to only be set if the parameter contains a raw POST value rather than a regular parameter, which is never the case here.
+
+### Other changes
+
+- Stop upgrading the operating system packages in the worker image because the base image is so old that the package repositories no longer exist. This will hopefully be fixed in a future release of the Science Pipelines base image based on AlmaLinux.
+- Some XML output from UWS handlers is now handled by [vo-models](https://vo-models.readthedocs.io/latest/) instead of hand-written XML templates. More responses will hopefully be converted in the future.
+
 <a id='changelog-3.0.0'></a>
 ## 3.0.0 (2024-06-28)
 
