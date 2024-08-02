@@ -21,12 +21,12 @@ click
 jinja2
 pydantic
 pydantic-settings
-#safir[uws]>=6.0.0
+safir[uws]>=6.2.0
 sqlalchemy[asyncio]
 structlog
 vo-models
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.
-safir-arq @ git+https://github.com/lsst-sqre/safir@main#subdirectory=safir-arq
-safir[uws] @ git+https://github.com/lsst-sqre/safir@main#subdirectory=safir
+#safir-arq @ git+https://github.com/lsst-sqre/safir@main#subdirectory=safir-arq
+#safir[uws] @ git+https://github.com/lsst-sqre/safir@main#subdirectory=safir
