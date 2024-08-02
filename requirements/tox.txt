@@ -68,7 +68,7 @@ urllib3==2.2.2
     #   -c requirements/main.txt
     #   docker
     #   requests
-uv==0.2.32
+uv==0.2.33
     # via tox-uv
 virtualenv==20.26.3
     # via tox
