@@ -14,17 +14,12 @@ starlette
 uvicorn[standard]
 
 # Other dependencies.
-arq
 astropy
-asyncpg
 click
-jinja2
 pydantic
 pydantic-settings
 safir[uws]>=6.2.0
-sqlalchemy[asyncio]
 structlog
-vo-models
 
 # Uncomment this, change the branch, comment out safir above, and run make
 # update-deps-no-hashes to test against an unreleased version of Safir.

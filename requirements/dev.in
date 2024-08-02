@@ -12,14 +12,12 @@ asgi-lifespan
 coverage[toml]
 httpx
 mypy
-pydantic-xml
 pytest
 pytest-asyncio
 pytest-cov
 pytest-sugar
 pytest-timeout
 respx
-sqlalchemy[mypy]
 
 # Documentation
 scriv[toml]
