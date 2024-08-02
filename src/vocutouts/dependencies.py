@@ -3,9 +3,7 @@
 from typing import Annotated
 
 from fastapi import Depends, Form, Query, Request
-
-from .uws.dependencies import uws_post_params_dependency
-from .uws.models import UWSJobParameter
+from safir.uws import UWSJobParameter, uws_post_params_dependency
 
 __all__ = [
     "get_params_dependency",
@@ -68,7 +66,7 @@ async def get_params_dependency(
 ) -> list[UWSJobParameter]:
     """Parse GET parameters into job parameters for a cutout."""
     return [
-        UWSJobParameter(parameter_id=k.lower(), value=v)
+        UWSJobParameter(parameter_id=k, value=v)
         for k, v in request.query_params.items()
         if k in {"id", "pos", "circle", "polygon"}
     ]

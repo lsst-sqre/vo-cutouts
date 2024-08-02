@@ -17,21 +17,20 @@ from lsst.daf.butler import LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
-from safir.logging import configure_logging
-from structlog.stdlib import BoundLogger
-
-from ..models.domain.cutout import (
-    WorkerCircleStencil,
-    WorkerCutout,
-    WorkerPolygonStencil,
-)
-from ..uws.uwsworker import (
+from safir.arq.uws import (
     WorkerConfig,
     WorkerFatalError,
     WorkerJobInfo,
     WorkerResult,
     WorkerUsageError,
     build_worker,
+)
+from structlog.stdlib import BoundLogger
+
+from ..models.domain.cutout import (
+    WorkerCircleStencil,
+    WorkerCutout,
+    WorkerPolygonStencil,
 )
 
 _BUTLER_FACTORY = LabeledButlerFactory()
@@ -188,12 +187,6 @@ def cutout(
         )
     ]
 
-
-configure_logging(
-    name="vocutouts",
-    profile=os.getenv("CUTOUT_PROFILE", "development"),
-    log_level=os.getenv("CUTOUT_LOG_LEVEL", "INFO"),
-)
 
 # Provide five seconds of time for arq to shut the worker down cleanly after
 # cancelling any running job.

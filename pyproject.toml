@@ -116,9 +116,6 @@ extend = "ruff-shared.toml"
 "src/vocutouts/models/request.py" = [
     "TRY004",  # pydantic requires ValueError, not TypeError
 ]
-"src/vocutouts/uws/handlers.py" = [
-    "D103",    # FastAPI handlers should not have docstrings
-]
 "src/vocutouts/workers/cutout.py" = [
     "S108",    # use of /tmp is safe in this context
 ]

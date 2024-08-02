@@ -7,14 +7,12 @@ import asyncio
 import pytest
 from httpx import AsyncClient
 from safir.testing.slack import MockSlackWebhook
-
-from vocutouts.uws.models import UWSJobResult
-
-from ..support.uws import MockJobRunner
+from safir.testing.uws import MockUWSJobRunner
+from safir.uws import UWSJobResult
 
 
 @pytest.mark.asyncio
-async def test_sync(client: AsyncClient, runner: MockJobRunner) -> None:
+async def test_sync(client: AsyncClient, runner: MockUWSJobRunner) -> None:
     async def run_job(job_id: str) -> None:
         await runner.mark_in_progress("someone", job_id, delay=0.2)
         results = [

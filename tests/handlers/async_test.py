@@ -9,11 +9,10 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.testing.slack import MockSlackWebhook
+from safir.testing.uws import MockUWSJobRunner
+from safir.uws import UWSJobResult
 
 from vocutouts.models.domain.cutout import WorkerCutout
-from vocutouts.uws.models import UWSJobResult
-
-from ..support.uws import MockJobRunner
 
 PENDING_JOB = """
 <uws:job
@@ -66,7 +65,9 @@ COMPLETED_JOB = """
 
 
 @pytest.mark.asyncio
-async def test_create_job(client: AsyncClient, runner: MockJobRunner) -> None:
+async def test_create_job(
+    client: AsyncClient, runner: MockUWSJobRunner
+) -> None:
     r = await client.post(
         "/api/cutout/jobs",
         headers={"X-Auth-Request-User": "someone"},

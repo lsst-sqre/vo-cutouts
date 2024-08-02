@@ -14,14 +14,12 @@ from importlib.metadata import metadata, version
 import structlog
 from fastapi import FastAPI
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
-from safir.middleware.ivoa import CaseInsensitiveQueryMiddleware
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorModel
 from safir.slack.webhook import SlackRouteErrorHandler
 
 from .config import config, uws
 from .handlers import external, internal
-from .uws.dependencies import uws_dependency
 
 __all__ = ["app"]
 
@@ -29,9 +27,9 @@ __all__ = ["app"]
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
-    await uws_dependency.initialize(config.uws_config)
+    await uws.initialize_fastapi()
     yield
-    await uws_dependency.aclose()
+    await uws.shutdown_fastapi()
 
 
 configure_logging(
@@ -65,7 +63,7 @@ app.include_router(
 
 # Install middleware.
 app.add_middleware(XForwardedMiddleware)
-app.add_middleware(CaseInsensitiveQueryMiddleware)
+uws.install_middleware(app)
 
 # Install error handlers.
 uws.install_error_handlers(app)
