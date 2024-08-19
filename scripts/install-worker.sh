@@ -33,5 +33,6 @@ scons install declare -t current
 
 # Install Python dependencies and the vo-cutouts code.
 cd "$1"
-pip install --no-cache-dir google-cloud-storage httpx safir-arq structlog
+pip install --no-cache-dir \
+    google-cloud-storage httpx safir-arq safir-logging structlog
 pip install --no-cache-dir --no-deps .
