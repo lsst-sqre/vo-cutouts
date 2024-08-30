@@ -141,7 +141,7 @@ async def test_redirect(app: FastAPI) -> None:
     test that the correct hostname is used if it is different.
     """
     async with AsyncClient(
-        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        transport=ASGITransport(app=app),
         base_url="http://foo.com/",
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:

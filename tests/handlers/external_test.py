@@ -71,7 +71,7 @@ async def test_capabilities_urls(app: FastAPI) -> None:
     We also want to honor the ``Host`` header.
     """
     async with AsyncClient(
-        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        transport=ASGITransport(app=app),
         base_url="http://foo.com/",
     ) as client:
         r = await client.get(

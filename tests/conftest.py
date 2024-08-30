@@ -47,7 +47,7 @@ def arq_queue() -> MockArqQueue:
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
-        transport=ASGITransport(app=app),  # type: ignore[arg-type]
+        transport=ASGITransport(app=app),
         base_url="https://example.com/",
         headers={"X-Auth-Request-Token": "sometoken"},
     ) as client:
