@@ -25,7 +25,7 @@ update-deps:
 	uv pip install --upgrade pre-commit
 	pre-commit autoupdate
 	uv pip compile --upgrade --universal --generate-hashes		\
-	    --output-file requirements/main.txt requirements/main.in
+	    --output-file requirements/main.txt pyproject.toml
 	uv pip compile --upgrade --universal --generate-hashes		\
 	    --output-file requirements/dev.txt requirements/dev.in
 	uv pip compile --upgrade --universal --generate-hashes		\
@@ -36,7 +36,7 @@ update-deps:
 update-deps-no-hashes:
 	pip install --upgrade uv
 	uv pip compile --upgrade --universal				\
-	    --output-file requirements/main.txt requirements/main.in
+	    --output-file requirements/main.txt pyproject.toml
 	uv pip compile --upgrade --universal				\
 	    --output-file requirements/dev.txt requirements/dev.in
 	uv pip compile --upgrade --universal				\

@@ -20,8 +20,19 @@ classifiers = [
 # Python 3.11 currently (2024-06-05) due to the stack container and we need to
 # be able to install vo-cutouts there so that we can use supporting code.
 requires-python = ">=3.11"
-# Use requirements/main.in for runtime dependencies instead.
-dependencies = []
+dependencies = [
+    # FastAPI including some optional features
+    "fastapi",
+    "python-multipart",
+    "uvicorn[standard]",
+    # Other dependencies.
+    "astropy",
+    "click",
+    "pydantic>2",
+    "pydantic-settings",
+    "safir[uws]>=6.2.0",
+    "structlog",
+]
 dynamic = ["version"]
 
 [project.scripts]
@@ -34,12 +45,9 @@ Source = "https://github.com/lsst-sqre/vo-cutouts"
 [build-system]
 requires = [
     "setuptools>=42",
-    "wheel",
     "setuptools_scm[toml]>=3.4"
 ]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
 
 [tool.coverage.run]
 parallel = true
@@ -137,3 +145,5 @@ format = "md"
 md_header_level = "2"
 new_fragment_template = "file:changelog.d/_template.md.jinja"
 skip_fragments = "_template.md.jinja"
+
+[tool.setuptools_scm]
