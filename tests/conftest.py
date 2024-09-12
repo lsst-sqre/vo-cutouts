@@ -29,7 +29,7 @@ async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
     dropped from a persistent database between test cases.
     """
     logger = structlog.get_logger("vocutouts")
-    await uws.initialize_uws_database(logger, reset=True)
+    await uws.initialize_uws_database(logger, reset=True, use_alembic=True)
     async with LifespanManager(main.app):
         # Ensure that all the components use the same mock arq queue.
         # Otherwise, the web application will use the one created in its

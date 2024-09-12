@@ -14,5 +14,7 @@ configure_logging(
     name="vocutouts", profile=config.profile, log_level=config.log_level
 )
 
-WorkerSettings = uws.build_worker(structlog.get_logger("vocutouts"))
+WorkerSettings = uws.build_worker(
+    structlog.get_logger("vocutouts"), check_schema=True
+)
 """arq configuration for the UWS database worker."""
