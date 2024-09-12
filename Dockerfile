@@ -20,6 +20,9 @@ RUN ./install-base-packages.sh && rm ./install-base-packages.sh
 
 FROM base-image AS install-image
 
+# Install uv.
+COPY --from=ghcr.io/astral-sh/uv:0.4.9 /uv /bin/uv
+
 # Install system packages only needed for building dependencies.
 COPY scripts/install-dependency-packages.sh .
 RUN ./install-dependency-packages.sh
@@ -31,17 +34,15 @@ RUN python -m venv $VIRTUAL_ENV
 # Make sure we use the virtualenv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Put the latest pip and setuptools in the virtualenv
-RUN pip install --upgrade --no-cache-dir pip setuptools wheel
-
 # Install the app's Python runtime dependencies
 COPY requirements/main.txt ./requirements.txt
-RUN pip install --quiet --no-cache-dir -r requirements.txt
+RUN uv pip install  --compile-bytecode --verify-hashes --no-cache \
+    -r requirements.txt
 
 # Install the application.
 COPY . /workdir
 WORKDIR /workdir
-RUN pip install --no-cache-dir .
+RUN uv pip install --compile-bytecode --no-cache .
 
 FROM base-image AS runtime-image
 
