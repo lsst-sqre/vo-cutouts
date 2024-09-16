@@ -27,7 +27,8 @@ __all__ = ["app"]
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
-    await uws.initialize_fastapi()
+    logger = structlog.get_logger("vocutouts")
+    await uws.initialize_fastapi(logger, check_schema=True)
     yield
     await uws.shutdown_fastapi()
 
