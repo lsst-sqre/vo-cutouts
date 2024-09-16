@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-3.2.0'></a>
+## 3.2.0 (2024-09-16)
+
+### New features
+
+- Use Alembic to manage the schema of the UWS database. When upgrading to this version, set `config.updateSchema` to true in the Helm configuration for the first deployment. This release contains no schema changes, but needs to perform a migration to add the Alembic version information. The vo-cutouts components will now refuse to start if the database schema has changed and the database has not yet been migrated.
+
+### Bug fixes
+
+- Restore logging configuration during startup of the backend worker, which re-adds support for the logging profile and log level and optionally configures structlog to use a JSON log format. This does not yet extend to the log messages issued directly by arq.
+
 <a id='changelog-3.1.0'></a>
 ## 3.1.0 (2024-08-02)
 
