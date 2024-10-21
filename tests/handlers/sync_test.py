@@ -83,3 +83,19 @@ async def test_bad_parameters(
 
     # None of these requests should have been reported to Slack.
     assert mock_slack.messages == []
+
+
+@pytest.mark.asyncio
+async def test_get_dependency_multiple_params(client: AsyncClient) -> None:
+    response = await client.get(
+        "/params?id=image1&id=image2&pos=" "RANGE 10 20 30 40&circle=10 20 5"
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "params": [
+            {"id": "id", "value": "image1"},
+            {"id": "id", "value": "image2"},
+            {"id": "pos", "value": "RANGE 10 20 30 40"},
+            {"id": "circle", "value": "10 20 5"},
+        ]
+    }
