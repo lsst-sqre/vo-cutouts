@@ -88,7 +88,8 @@ async def test_bad_parameters(
 @pytest.mark.asyncio
 async def test_get_dependency_multiple_params(client: AsyncClient) -> None:
     response = await client.get(
-        "/params?id=image1&id=image2&pos=" "RANGE 10 20 30 40&circle=10 20 5"
+        "/test/params?id=image1&id=image2&pos="
+        "RANGE 10 20 30 40&circle=10 20 5"
     )
     assert response.status_code == 200
     assert response.json() == {

@@ -60,7 +60,7 @@ async def app(
         # Otherwise, the web application will use the one created in its
         # lifespan context manager.
         uws.override_arq_queue(arq_queue)
-        main.app.include_router(get_params_router)
+        main.app.include_router(get_params_router, prefix="/test")
         yield main.app
 
 
