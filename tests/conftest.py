@@ -4,25 +4,50 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterator
 from datetime import timedelta
+from typing import Annotated
 
 import pytest
 import pytest_asyncio
 import respx
 import structlog
 from asgi_lifespan import LifespanManager
-from fastapi import FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.arq import MockArqQueue
 from safir.testing.gcs import MockStorageClient, patch_google_storage
 from safir.testing.slack import MockSlackWebhook, mock_slack_webhook
 from safir.testing.uws import MockUWSJobRunner
+from safir.uws import UWSJobParameter
 
 from vocutouts import main
 from vocutouts.config import config, uws
+from vocutouts.dependencies import get_params_dependency
+
+
+@pytest.fixture
+def get_params_router() -> APIRouter:
+    """Return a router that echoes the parameters passed to it."""
+    router = APIRouter()
+
+    @router.get("/params")
+    async def get_params(
+        params: Annotated[
+            list[UWSJobParameter], Depends(get_params_dependency)
+        ],
+    ) -> dict[str, list[dict[str, str]]]:
+        return {
+            "params": [
+                {"id": p.parameter_id, "value": p.value} for p in params
+            ]
+        }
+
+    return router
 
 
 @pytest_asyncio.fixture
-async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
+async def app(
+    arq_queue: MockArqQueue, get_params_router: APIRouter
+) -> AsyncIterator[FastAPI]:
     """Return a configured test application.
 
     Initialize the database before creating the app to ensure that data is
@@ -35,6 +60,7 @@ async def app(arq_queue: MockArqQueue) -> AsyncIterator[FastAPI]:
         # Otherwise, the web application will use the one created in its
         # lifespan context manager.
         uws.override_arq_queue(arq_queue)
+        main.app.include_router(get_params_router, prefix="/test")
         yield main.app
 
 
