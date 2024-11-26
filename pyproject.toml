@@ -34,6 +34,8 @@ dependencies = [
     "safir[db,uws]>=6.4.0",
     "structlog",
 ]
+
+
 dynamic = ["version"]
 
 [project.scripts]
@@ -79,7 +81,6 @@ ignore_missing_imports = true
 local_partial_types = true
 plugins = [
     "pydantic.mypy",
-    "pydantic_xml.mypy",
     "sqlalchemy.ext.mypy.plugin",
 ]
 no_implicit_reexport = true

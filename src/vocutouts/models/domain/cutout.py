@@ -26,8 +26,8 @@ from pydantic import (
 __all__ = [
     "AngleSerializable",
     "SkyCoordSerializable",
-    "WorkerCutout",
     "WorkerCircleStencil",
+    "WorkerCutout",
     "WorkerPolygonStencil",
     "WorkerRange",
     "WorkerRangeStencil",
