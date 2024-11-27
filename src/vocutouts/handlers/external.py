@@ -49,7 +49,6 @@ __all__ = ["router"]
 
 @router.get(
     "/",
-    response_model=Index,
     response_model_exclude_none=True,
     summary="Application metadata",
 )
