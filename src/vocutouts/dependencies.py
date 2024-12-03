@@ -2,8 +2,8 @@
 
 from typing import Annotated
 
-from fastapi import Depends, Form, Query, Request
-from safir.uws import UWSJobParameter, uws_post_params_dependency
+from fastapi import Form, Query, Request
+from safir.uws import UWSJobParameter
 
 __all__ = [
     "get_params_dependency",
@@ -75,7 +75,7 @@ async def get_params_dependency(
 async def post_params_dependency(
     *,
     id: Annotated[
-        str | list[str] | None,
+        list[str],
         Form(
             title="Source ID",
             description=(
@@ -83,9 +83,9 @@ async def post_params_dependency(
                 " parameter is mandatory."
             ),
         ),
-    ] = None,
+    ],
     pos: Annotated[
-        str | list[str] | None,
+        list[str] | None,
         Form(
             title="Cutout positions",
             description=(
@@ -99,7 +99,7 @@ async def post_params_dependency(
         ),
     ] = None,
     circle: Annotated[
-        str | list[str] | None,
+        list[str] | None,
         Form(
             title="Cutout circle positions",
             description=(
@@ -111,7 +111,7 @@ async def post_params_dependency(
         ),
     ] = None,
     polygon: Annotated[
-        str | list[str] | None,
+        list[str] | None,
         Form(
             title="Cutout polygon positions",
             description=(
@@ -123,13 +123,16 @@ async def post_params_dependency(
             ),
         ),
     ] = None,
-    params: Annotated[
-        list[UWSJobParameter], Depends(uws_post_params_dependency)
-    ],
 ) -> list[UWSJobParameter]:
     """Parse POST parameters into job parameters for a cutout."""
-    return [
-        p
-        for p in params
-        if p.parameter_id in {"id", "pos", "circle", "polygon"}
-    ]
+    params: list[UWSJobParameter] = []
+    for name, values in (
+        ("id", id),
+        ("pos", pos),
+        ("circle", circle),
+        ("polygon", polygon),
+    ):
+        params.extend(
+            UWSJobParameter(parameter_id=name, value=v) for v in values or []
+        )
+    return params
