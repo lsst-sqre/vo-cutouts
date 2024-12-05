@@ -25,6 +25,7 @@ from safir.uws import (
     ParametersModel,
     UWSJobParameter,
 )
+from vo_models.uws import MultiValuedParameter, Parameter, Parameters
 
 from .domain.cutout import (
     WorkerCircleStencil,
@@ -37,12 +38,22 @@ from .domain.cutout import (
 __all__ = [
     "CircleStencil",
     "CutoutParameters",
+    "CutoutXmlParameters",
     "Point",
     "PolygonStencil",
     "Range",
     "RangeStencil",
     "Stencil",
 ]
+
+
+class CutoutXmlParameters(Parameters):
+    """XML representation of cutout parameters."""
+
+    id: MultiValuedParameter
+    pos: MultiValuedParameter = Field([])
+    circle: MultiValuedParameter = Field([])
+    polygon: MultiValuedParameter = Field([])
 
 
 class Point(BaseModel):
@@ -78,6 +89,10 @@ class Stencil(BaseModel, ABC):
         """
 
     @abstractmethod
+    def to_string(self) -> str:
+        """Convert to the string parameter representation."""
+
+    @abstractmethod
     def to_worker_stencil(self) -> WorkerStencil:
         """Convert to the domain model used by the backend worker."""
 
@@ -99,6 +114,9 @@ class CircleStencil(Stencil):
     def from_string(cls, params: str) -> Self:
         ra, dec, radius = (float(p) for p in params.split())
         return cls(center=Point(ra=ra, dec=dec), radius=radius)
+
+    def to_string(self) -> str:
+        return f"{self.center.ra!s} {self.center.dec!s} {self.radius!s}"
 
     def to_worker_stencil(self) -> WorkerStencil:
         return WorkerCircleStencil(
@@ -144,6 +162,9 @@ class PolygonStencil(Stencil):
             raise ValueError(msg)
         return cls(vertices=[Point(ra=r, dec=d) for r, d in batched(data, 2)])
 
+    def to_string(self) -> str:
+        return " ".join(f"{v.ra!s} {v.dec!s}" for v in self.vertices)
+
     def to_worker_stencil(self) -> WorkerStencil:
         ras = [v.ra for v in self.vertices]
         decs = [v.dec for v in self.vertices]
@@ -177,6 +198,12 @@ class RangeStencil(Stencil):
             dec=Range(min=dec_min, max=dec_max),
         )
 
+    def to_string(self) -> str:
+        return (
+            f"{self.ra.min!s} {self.ra.max!s}"
+            f" {self.dec.min!s} {self.dec.max!s}"
+        )
+
     def to_worker_stencil(self) -> WorkerStencil:
         return WorkerRangeStencil(
             ra=(self.ra.min, self.ra.max),
@@ -184,7 +211,7 @@ class RangeStencil(Stencil):
         )
 
 
-class CutoutParameters(ParametersModel[WorkerCutout]):
+class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
     """Parameters to a cutout request."""
 
     ids: list[str] = Field(
@@ -211,26 +238,6 @@ class CutoutParameters(ParametersModel[WorkerCutout]):
 
     @classmethod
     def from_job_parameters(cls, params: list[UWSJobParameter]) -> Self:
-        """Convert generic UWS parameters to the image cutout parameters.
-
-        Parameters
-        ----------
-        params
-            Generic input job parameters.
-
-        Returns
-        -------
-        CutoutParameters
-            Parsed cutout parameters specific to the image cutout service.
-
-        Raises
-        ------
-        MultiValuedParameterError
-            Raised if more than one dataset ID or more than one stencil is
-            provided.
-        ParameterParseError
-            Raised if one of the parameters could not be parsed.
-        """
         ids = []
         stencils = []
         try:
@@ -259,9 +266,32 @@ class CutoutParameters(ParametersModel[WorkerCutout]):
             raise ParameterParseError(str(e), params) from e
 
     def to_worker_parameters(self) -> WorkerCutout:
-        """Convert to the domain model used by the backend worker."""
         stencils = [s.to_worker_stencil() for s in self.stencils]
         return WorkerCutout(dataset_ids=self.ids, stencils=stencils)
+
+    def to_xml_model(self) -> CutoutXmlParameters:
+        circle = []
+        polygon = []
+        pos = []
+        for stencil in self.stencils:
+            match stencil:
+                case CircleStencil():
+                    value = stencil.to_string()
+                    circle.append(Parameter(id="circle", value=value))
+                case PolygonStencil():
+                    value = stencil.to_string()
+                    polygon.append(Parameter(id="polygon", value=value))
+                case RangeStencil():
+                    value = "RANGE " + stencil.to_string()
+                    pos.append(Parameter(id="pos", value=value))
+                case _:
+                    raise ValueError(f"Unknown stencil type {stencil.type}")
+        return CutoutXmlParameters(
+            id=[Parameter(id="id", value=i) for i in self.ids],
+            circle=circle,
+            polygon=polygon,
+            pos=pos,
+        )
 
     @staticmethod
     def _parse_stencil(stencil_type: str, params: str) -> Stencil:

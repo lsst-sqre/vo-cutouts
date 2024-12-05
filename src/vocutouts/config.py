@@ -8,9 +8,10 @@ from pydantic import Field, SecretStr
 from pydantic_settings import SettingsConfigDict
 from safir.logging import LogLevel, Profile
 from safir.uws import UWSApplication, UWSAppSettings, UWSConfig, UWSRoute
+from vo_models.uws import JobSummary
 
 from .dependencies import get_params_dependency, post_params_dependency
-from .models.cutout import CutoutParameters
+from .models.cutout import CutoutParameters, CutoutXmlParameters
 
 __all__ = [
     "Config",
@@ -50,6 +51,7 @@ class Config(UWSAppSettings):
     def uws_config(self) -> UWSConfig:
         """Corresponding configuration for the UWS subsystem."""
         return self.build_uws_config(
+            job_summary_type=JobSummary[CutoutXmlParameters],
             parameters_type=CutoutParameters,
             slack_webhook=self.slack_webhook,
             worker="cutout",
