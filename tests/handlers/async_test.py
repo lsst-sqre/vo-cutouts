@@ -9,10 +9,14 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from safir.testing.slack import MockSlackWebhook
-from safir.testing.uws import MockUWSJobRunner
+from safir.testing.uws import MockUWSJobRunner, assert_job_summary_equal
 from safir.uws import UWSJobResult
+from vo_models.uws import JobSummary
 
+from vocutouts.models.cutout import CutoutXmlParameters
 from vocutouts.models.domain.cutout import WorkerCutout
+
+DEFAULT_DATE = "2024-12-04T16:11:17Z"
 
 PENDING_JOB = """
 <uws:job
@@ -25,12 +29,12 @@ PENDING_JOB = """
   <uws:jobId>1</uws:jobId>
   <uws:ownerId>someone</uws:ownerId>
   <uws:phase>PENDING</uws:phase>
-  <uws:creationTime>[DATE]</uws:creationTime>
+  <uws:creationTime>2024-12-04T16:11:17.000Z</uws:creationTime>
   <uws:executionDuration>600</uws:executionDuration>
-  <uws:destruction>[DATE]</uws:destruction>
+  <uws:destruction>2024-12-04T16:11:17.000Z</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id">1:2:band:value</uws:parameter>
-    <uws:parameter id="pos">CIRCLE 0 1 2</uws:parameter>
+    <uws:parameter id="circle">0.0 1.0 2.0</uws:parameter>
   </uws:parameters>
 </uws:job>
 """
@@ -47,14 +51,14 @@ COMPLETED_JOB = """
   <uws:runId>some-run-id</uws:runId>
   <uws:ownerId>someone</uws:ownerId>
   <uws:phase>COMPLETED</uws:phase>
-  <uws:creationTime>[DATE]</uws:creationTime>
-  <uws:startTime>[DATE]</uws:startTime>
-  <uws:endTime>[DATE]</uws:endTime>
+  <uws:creationTime>2024-12-04T16:11:17.000Z</uws:creationTime>
+  <uws:startTime>2024-12-04T16:11:17.000Z</uws:startTime>
+  <uws:endTime>2024-12-04T16:11:17.000Z</uws:endTime>
   <uws:executionDuration>600</uws:executionDuration>
-  <uws:destruction>[DATE]</uws:destruction>
+  <uws:destruction>2024-12-04T16:11:17.000Z</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id">1:2:band:value</uws:parameter>
-    <uws:parameter id="pos">CIRCLE 0.5 0.8 2</uws:parameter>
+    <uws:parameter id="circle">0.5 0.8 2.0</uws:parameter>
   </uws:parameters>
   <uws:results>
     <uws:result id="cutout" xlink:href="https://example.com/some/path"\
@@ -79,8 +83,14 @@ async def test_create_job(
         "/api/cutout/jobs/1", headers={"X-Auth-Request-User": "someone"}
     )
     assert r.status_code == 200
-    result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
-    assert result == PENDING_JOB.strip()
+    result = re.sub(
+        r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z",
+        "2024-12-04T16:11:17.000Z",
+        r.text,
+    )
+    assert_job_summary_equal(
+        JobSummary[CutoutXmlParameters], result, PENDING_JOB
+    )
 
     # Try again but immediately queuing the job to run and mark the job as
     # complete in parallel.
@@ -127,8 +137,14 @@ async def test_create_job(
         params={"wait": 10, "phase": "EXECUTING"},
     )
     assert r.status_code == 200
-    result = re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", "[DATE]", r.text)
-    assert result == COMPLETED_JOB.strip()
+    result = re.sub(
+        r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z",
+        "2024-12-04T16:11:17.000Z",
+        r.text,
+    )
+    assert_job_summary_equal(
+        JobSummary[CutoutXmlParameters], result, COMPLETED_JOB
+    )
 
 
 @pytest.mark.asyncio
