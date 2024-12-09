@@ -31,7 +31,7 @@ dependencies = [
     "click",
     "pydantic>2",
     "pydantic-settings",
-    "safir[db,uws]>=6.4.0",
+    "safir[db,uws] @ git+https://github.com/lsst-sqre/safir@tickets/DM-47928#subdirectory=safir",
     "structlog",
 ]
 
