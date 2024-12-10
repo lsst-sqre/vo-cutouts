@@ -6,30 +6,31 @@ import asyncio
 
 import pytest
 from httpx import AsyncClient
+from safir.arq.uws import WorkerResult
 from safir.testing.slack import MockSlackWebhook
 from safir.testing.uws import MockUWSJobRunner
-from safir.uws import UWSJobResult
 
 
 @pytest.mark.asyncio
-async def test_sync(client: AsyncClient, runner: MockUWSJobRunner) -> None:
+async def test_sync(
+    client: AsyncClient, test_token: str, runner: MockUWSJobRunner
+) -> None:
     async def run_job(job_id: str) -> None:
-        await runner.mark_in_progress("someone", job_id, delay=0.2)
+        await runner.mark_in_progress(test_token, job_id, delay=0.2)
         results = [
-            UWSJobResult(
+            WorkerResult(
                 result_id="cutout",
                 url="s3://some-bucket/some/path",
                 mime_type="application/fits",
             )
         ]
-        await runner.mark_complete("someone", job_id, results)
+        await runner.mark_complete(test_token, job_id, results)
 
     # GET request.
     _, r = await asyncio.gather(
         run_job("1"),
         client.get(
             "/api/cutout/sync",
-            headers={"X-Auth-Request-User": "someone"},
             params={"ID": "1:2:band:id", "Pos": "CIRCLE 0 -2 2"},
         ),
     )
@@ -41,7 +42,6 @@ async def test_sync(client: AsyncClient, runner: MockUWSJobRunner) -> None:
         run_job("2"),
         client.post(
             "/api/cutout/sync",
-            headers={"X-Auth-Request-User": "someone"},
             data={"ID": "3:4:band:id", "Pos": "CIRCLE 0 -2 2"},
         ),
     )
@@ -66,37 +66,12 @@ async def test_bad_parameters(
         {"id": "5:6:a:b", "polygon": "1 2 3"},
     ]
     for params in bad_params:
-        r = await client.get(
-            "/api/cutout/sync",
-            headers={"X-Auth-Request-User": "user"},
-            params=params,
-        )
+        r = await client.get("/api/cutout/sync", params=params)
         assert r.status_code == 422, f"Parameters {params}"
         assert r.text.startswith("UsageError")
-        r = await client.post(
-            "/api/cutout/sync",
-            headers={"X-Auth-Request-User": "user"},
-            data=params,
-        )
+        r = await client.post("/api/cutout/sync", data=params)
         assert r.status_code == 422, f"Parameters {params}"
         assert r.text.startswith("UsageError")
 
     # None of these requests should have been reported to Slack.
     assert mock_slack.messages == []
-
-
-@pytest.mark.asyncio
-async def test_get_dependency_multiple_params(client: AsyncClient) -> None:
-    response = await client.get(
-        "/test/params?id=image1&id=image2&pos="
-        "RANGE 10 20 30 40&circle=10 20 5"
-    )
-    assert response.status_code == 200
-    assert response.json() == {
-        "params": [
-            {"id": "id", "value": "image1"},
-            {"id": "id", "value": "image2"},
-            {"id": "pos", "value": "RANGE 10 20 30 40"},
-            {"id": "circle", "value": "10 20 5"},
-        ]
-    }

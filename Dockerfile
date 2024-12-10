@@ -52,16 +52,6 @@ RUN useradd --create-home appuser
 # Copy the virtualenv
 COPY --from=install-image /opt/venv /opt/venv
 
-# Copy the Alembic configuration and migrations, and set that path as the
-# working directory so that Alembic can be run with a simple entry command
-# and no extra configuration.
-COPY --from=install-image /workdir/alembic.ini /app/alembic.ini
-COPY --from=install-image /workdir/alembic /app/alembic
-WORKDIR /app
-
-# Copy the startup script
-COPY scripts/start-frontend.sh /start-frontend.sh
-
 # Make sure we use the virtualenv
 ENV PATH="/opt/venv/bin:$PATH"
 
@@ -72,4 +62,4 @@ USER appuser
 EXPOSE 8080
 
 # Run the application.
-CMD ["/start-frontend.sh"]
+CMD ["uvicorn", "vocutouts.main:app", "--host", "0.0.0.0", "--port", "8080"]
