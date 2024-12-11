@@ -8,23 +8,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import batched
-from typing import Literal, Self
+from typing import Annotated, Literal, Self, TypeAlias
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
-from pydantic import (
-    BaseModel,
-    Field,
-    SerializeAsAny,
-    ValidationError,
-    field_validator,
-)
-from safir.uws import (
-    MultiValuedParameterError,
-    ParameterParseError,
-    ParametersModel,
-    UWSJobParameter,
-)
+from pydantic import BaseModel, Field
+from safir.uws import ParametersModel
 from vo_models.uws import MultiValuedParameter, Parameter, Parameters
 
 from .domain.cutout import (
@@ -44,6 +33,7 @@ __all__ = [
     "Range",
     "RangeStencil",
     "Stencil",
+    "StencilType",
 ]
 
 
@@ -141,15 +131,8 @@ class PolygonStencil(Stencil):
             "Polygon winding must be counter-clockwise when viewed from the"
             " origin towards the sky."
         ),
+        min_length=3,
     )
-
-    @field_validator("vertices")
-    @classmethod
-    def _validate_vertices(cls, v: list[Point]) -> list[Point]:
-        """Ensure there are at least three vertices."""
-        if len(v) < 3:
-            raise ValueError("Polygon must have at least three vertices")
-        return v
 
     @classmethod
     def from_string(cls, params: str) -> Self:
@@ -211,59 +194,40 @@ class RangeStencil(Stencil):
         )
 
 
+StencilType: TypeAlias = Annotated[
+    CircleStencil | PolygonStencil | RangeStencil, Field(discriminator="type")
+]
+"""Type for any stencil, concrete due to Pydantic requirements."""
+
+
 class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
     """Parameters to a cutout request."""
 
-    ids: list[str] = Field(
-        ...,
-        title="Dataset IDs",
-        description=(
-            "Dataset IDs on which to operate. Currently, only one dataset ID"
-            " is permitted."
+    ids: Annotated[
+        list[str],
+        Field(
+            title="Dataset IDs",
+            description=(
+                "Dataset IDs on which to operate. Currently, only one dataset"
+                " ID is permitted."
+            ),
+            min_length=1,
+            max_length=1,
         ),
-        min_length=1,
-        max_length=1,
-    )
+    ]
 
-    stencils: SerializeAsAny[list[Stencil]] = Field(
-        ...,
-        title="Cutout stencils",
-        description=(
-            "Cutout stencils describing the desired cutouts. Currently, only"
-            " one stencil is supported."
+    stencils: Annotated[
+        list[StencilType],
+        Field(
+            title="Cutout stencils",
+            description=(
+                "Cutout stencils describing the desired cutouts. Currently,"
+                " only one stencil is supported."
+            ),
+            min_length=1,
+            max_length=1,
         ),
-        min_length=1,
-        max_length=1,
-    )
-
-    @classmethod
-    def from_job_parameters(cls, params: list[UWSJobParameter]) -> Self:
-        ids = []
-        stencils = []
-        try:
-            for param in params:
-                if param.parameter_id == "id":
-                    ids.append(param.value)
-                else:
-                    stencil_type = param.parameter_id.upper()
-                    stencil = cls._parse_stencil(stencil_type, param.value)
-                    stencils.append(stencil)
-        except Exception as e:
-            msg = f"Invalid cutout parameter: {type(e).__name__}: {e!s}"
-            raise ParameterParseError(msg, params) from e
-
-        # For now, only support a single ID and stencil. These have to be
-        # checked outside of the validator because the SODA standard requires
-        # returning a different error in this case.
-        if len(ids) > 1:
-            raise MultiValuedParameterError("Only one ID supported")
-        if len(stencils) > 1:
-            raise MultiValuedParameterError("Only one stencil is supported")
-
-        try:
-            return cls(ids=ids, stencils=stencils)
-        except ValidationError as e:
-            raise ParameterParseError(str(e), params) from e
+    ]
 
     def to_worker_parameters(self) -> WorkerCutout:
         stencils = [s.to_worker_stencil() for s in self.stencils]
@@ -292,19 +256,3 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
             polygon=polygon,
             pos=pos,
         )
-
-    @staticmethod
-    def _parse_stencil(stencil_type: str, params: str) -> Stencil:
-        """Convert a string stencil parameter to its representation."""
-        if stencil_type == "POS":
-            stencil_type, params = params.split(None, 1)
-
-        # Range stencils are not currently supported by the backend and are
-        # therefore intentionally left out of this match.
-        match stencil_type:
-            case "CIRCLE":
-                return CircleStencil.from_string(params)
-            case "POLYGON":
-                return PolygonStencil.from_string(params)
-            case _:
-                raise ValueError(f"Unknown stencil type {stencil_type}")
