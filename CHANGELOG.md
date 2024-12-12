@@ -6,6 +6,22 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-4.0.0'></a>
+## 4.0.0 (2024-12-12)
+
+### Backwards-incompatible changes
+
+- Switch to Wobbly for job storage. All previous job history will be lost unless the vo-cutouts database is converted into Wobbly's storage format and inserted into Wobbly's database.
+
+### Bug fixes
+
+- Catch errors from parsing the dataset ID or creating a Butler in the backend worker and report them as proper worker exceptions so that they don't produce uncaught exception errors.
+- Append a colon after the error code when reporting UWS errors.
+
+### Other changes
+
+- Render all UWS XML output except for error VOTables using vo-models rather than hand-written XML templates.
+
 <a id='changelog-3.2.0'></a>
 ## 3.2.0 (2024-09-16)
 
