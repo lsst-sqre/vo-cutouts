@@ -80,6 +80,8 @@ WorkerRange: TypeAlias = tuple[float, float]
 class WorkerCircleStencil(BaseModel):
     """Represents a ``CIRCLE`` or ``POS=CIRCLE`` stencil."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     type: Literal["circle"] = "circle"
 
     center: SkyCoordSerializable
@@ -88,18 +90,16 @@ class WorkerCircleStencil(BaseModel):
     radius: AngleSerializable
     """Radius of the circle."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
 
 class WorkerPolygonStencil(BaseModel):
     """Represents a ``POLYGON`` or ``POS=POLYGON`` stencil."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     type: Literal["polygon"] = "polygon"
 
     vertices: SkyCoordSerializable
     """Vertices of the polygon in counter-clockwise winding."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class WorkerRangeStencil(BaseModel):

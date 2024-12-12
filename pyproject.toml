@@ -22,13 +22,13 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "astropy",
-    "click",
-    "fastapi",
+    "fastapi>=0.100",
     "pydantic>2",
     "pydantic-settings",
     "safir[uws]>=9.0.1",
     "structlog",
     "uvicorn[standard]",
+    "vo-models>=0.4.1",
 ]
 dynamic = ["version"]
 

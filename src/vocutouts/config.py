@@ -23,13 +23,13 @@ __all__ = [
 class Config(UWSAppSettings):
     """Configuration for vo-cutouts."""
 
-    slack_webhook: SecretStr | None = Field(
-        None,
-        title="Slack webhook for alerts",
-        description="If set, alerts will be posted to this Slack webhook",
+    model_config = SettingsConfigDict(
+        env_prefix="CUTOUT_", case_sensitive=False
     )
 
-    tmpdir: Path = Field(Path("/tmp"), title="Temporary directory for workers")
+    log_level: LogLevel = Field(
+        LogLevel.INFO, title="Log level of the application's logger"
+    )
 
     name: str = Field("vo-cutouts", title="Name of application")
 
@@ -39,13 +39,13 @@ class Config(UWSAppSettings):
         Profile.development, title="Application logging profile"
     )
 
-    log_level: LogLevel = Field(
-        LogLevel.INFO, title="Log level of the application's logger"
+    slack_webhook: SecretStr | None = Field(
+        None,
+        title="Slack webhook for alerts",
+        description="If set, alerts will be posted to this Slack webhook",
     )
 
-    model_config = SettingsConfigDict(
-        env_prefix="CUTOUT_", case_sensitive=False
-    )
+    tmpdir: Path = Field(Path("/tmp"), title="Temporary directory for workers")
 
     @property
     def uws_config(self) -> UWSConfig:

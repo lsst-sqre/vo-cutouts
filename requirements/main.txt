@@ -96,9 +96,9 @@ cachetools==5.5.0 \
     --hash=sha256:02134e8439cdc2ffb62023ce1debca2944c3f289d66bb17ead3ab3dede74b292 \
     --hash=sha256:2cc24fb4cbe39633fb7badd9db9ca6295d766d9c2995f245725a46715d050f2a
     # via google-auth
-casefy==0.1.7 \
-    --hash=sha256:6accce985a64b9edb2a610a29ac489d78fac80e52ff8f2d137e294f2f92b8027 \
-    --hash=sha256:ab05ff1c67f2a8e62d9f8986fa9a849416d61ac5413ec57d1f827b4f36589cf6
+casefy==1.0.0 \
+    --hash=sha256:bc99428475c2089c5f6a21297b4cfe4e83dff132cf3bb06655ddcb90632af1ed \
+    --hash=sha256:c89f96fb0fbd13691073b7a65c1e668e81453247d647479a3db105e86d7b0df9
     # via dataclasses-avroschema
 certifi==2024.8.30 \
     --hash=sha256:922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8 \
@@ -287,7 +287,6 @@ click==8.1.7 \
     --hash=sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28 \
     --hash=sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de
     # via
-    #   vo-cutouts (pyproject.toml)
     #   arq
     #   safir
     #   uvicorn
@@ -331,9 +330,9 @@ cryptography==44.0.0 \
 dacite==1.8.1 \
     --hash=sha256:cc31ad6fdea1f49962ea42db9421772afe01ac5442380d9a99fcf3d188c61afe
     # via dataclasses-avroschema
-dataclasses-avroschema==0.65.6 \
-    --hash=sha256:96d09278e9d770229c2f6e6eb58656d0b59f460d6098f2761d1c04faf96f6a40 \
-    --hash=sha256:a4527afb3d1fe83fa4b811a77e5ed200cad776c11635868edd68626e46814515
+dataclasses-avroschema==0.65.7 \
+    --hash=sha256:62b874f020b57294f65e7aced4a634757502e1b410bdb1d6f8e0515eb3fc5c3e \
+    --hash=sha256:e59a8a962e1956533a9083468a08dd3958553738e3f87f6bc516fe525901302f
     # via safir
 fast-depends==2.4.12 \
     --hash=sha256:9393e6de827f7afa0141e54fa9553b737396aaf06bd0040e159d1f790487b16d \
@@ -1394,7 +1393,9 @@ uvloop==0.21.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'c
 vo-models==0.4.2 \
     --hash=sha256:cbca9c22d2ddd4a283c07d1d3e56726e7892b5acf110926417915284caf2583b \
     --hash=sha256:fc781f8f4746cf9d610687a2ce8a6ceb64717ba56e72ba487cafc4fe6df24907
-    # via safir
+    # via
+    #   vo-cutouts (pyproject.toml)
+    #   safir
 watchfiles==1.0.3 \
     --hash=sha256:0179252846be03fa97d4d5f8233d1c620ef004855f0717712ae1c558f1974a16 \
     --hash=sha256:06ce08549e49ba69ccc36fc5659a3d0ff4e3a07d542b895b8a9013fcab46c2dc \
