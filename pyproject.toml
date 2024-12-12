@@ -21,25 +21,16 @@ classifiers = [
 # be able to install vo-cutouts there so that we can use supporting code.
 requires-python = ">=3.11"
 dependencies = [
-    # FastAPI including some optional features
-    "fastapi",
-    "python-multipart",
-    "uvicorn[standard]",
-    # Other dependencies.
-    "alembic[tz]",
     "astropy",
     "click",
+    "fastapi",
     "pydantic>2",
     "pydantic-settings",
-    "safir[db,uws] @ git+https://github.com/lsst-sqre/safir@main#subdirectory=safir",
+    "safir[uws]>=9.0.1",
     "structlog",
+    "uvicorn[standard]",
 ]
-
-
 dynamic = ["version"]
-
-[project.scripts]
-vo-cutouts = "vocutouts.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/lsst-sqre/vo-cutouts"
@@ -79,10 +70,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 local_partial_types = true
-plugins = [
-    "pydantic.mypy",
-    "sqlalchemy.ext.mypy.plugin",
-]
+plugins = ["pydantic.mypy"]
 no_implicit_reexport = true
 show_error_codes = true
 strict_equality = true

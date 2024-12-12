@@ -13,6 +13,7 @@ from importlib.metadata import metadata, version
 
 import structlog
 from fastapi import FastAPI
+from safir.dependencies.http_client import http_client_dependency
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorModel
@@ -27,10 +28,10 @@ __all__ = ["app"]
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Set up and tear down the application."""
-    logger = structlog.get_logger("vocutouts")
-    await uws.initialize_fastapi(logger, check_schema=True)
+    await uws.initialize_fastapi()
     yield
     await uws.shutdown_fastapi()
+    await http_client_dependency.aclose()
 
 
 configure_logging(
