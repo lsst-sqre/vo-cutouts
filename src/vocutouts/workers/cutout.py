@@ -58,10 +58,19 @@ def _get_backend(butler_label: str, token: str) -> ImageCutoutBackend:
     -------
     lsst.image_cutout_backend.ImageCutoutBackend
         Backend to use.
+
+    Raises
+    ------
+    WorkerFatalError
+        Raised if a Butler for the given label could not be created.
     """
-    butler = _BUTLER_FACTORY.create_butler(
-        label=butler_label, access_token=token
-    )
+    try:
+        butler = _BUTLER_FACTORY.create_butler(
+            label=butler_label, access_token=token
+        )
+    except Exception as e:
+        msg = f"Cannot create Butler for label {butler_label}"
+        raise WorkerFatalError(msg, str(e)) from e
 
     # At present, projection finders and image cutout backend have no internal
     # caching and are cheap to construct, so we just make a new one for each
@@ -86,9 +95,17 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
         Butler label.
     UUID
         Object UUID.
+
+    Raises
+    ------
+    WorkerUsageError
+        Raised if the dataset reference could not be parsed.
     """
-    parsed_uri = urlparse(uri)
-    return parsed_uri.netloc, UUID(parsed_uri.path[1:])
+    try:
+        parsed_uri = urlparse(uri)
+        return parsed_uri.netloc, UUID(parsed_uri.path[1:])
+    except Exception as e:
+        raise WorkerUsageError(f"Invalid data ID {uri}", str(e)) from e
 
 
 def cutout(
