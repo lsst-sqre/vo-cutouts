@@ -14,8 +14,8 @@ from uuid import UUID
 import structlog
 from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import Butler, LabeledButlerFactory
-from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
-from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
+from lsst.dax.images.cutout import ImageCutoutBackend, projection_finders
+from lsst.dax.images.cutout.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
 from safir.arq.uws import (
     WorkerConfig,
@@ -56,7 +56,7 @@ def _get_backend(butler_label: str, token: str) -> ImageCutoutBackend:
 
     Returns
     -------
-    lsst.image_cutout_backend.ImageCutoutBackend
+    lsst.dax.images.cutout.ImageCutoutBackend
         Backend to use.
 
     Raises

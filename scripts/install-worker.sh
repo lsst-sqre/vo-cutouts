@@ -18,19 +18,6 @@ setup lsst_distrib
 # Display each command as it's run.
 set -x
 
-# Download the image cutout backend. This can be removed if RFC-828 is
-# implemented, since that will include the image cutout backend in
-# lsst-distrib.
-#
-# Currently, this uses the main branch because tags are not used regularly in
-# this repository.
-mkdir /backend
-cd /backend
-git clone --depth 1 -b main https://github.com/lsst-dm/image_cutout_backend.git
-cd image_cutout_backend
-setup -r .
-scons install declare -t current
-
 # Install Python dependencies and the vo-cutouts code.
 cd "$1"
 pip install --no-cache-dir \
