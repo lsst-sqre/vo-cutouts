@@ -13,7 +13,7 @@ from uuid import UUID
 
 import structlog
 from lsst.afw.geom import SinglePolygonException
-from lsst.daf.butler import LabeledButlerFactory
+from lsst.daf.butler import Butler, LabeledButlerFactory
 from lsst.image_cutout_backend import ImageCutoutBackend, projection_finders
 from lsst.image_cutout_backend.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
@@ -102,10 +102,10 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
         Raised if the dataset reference could not be parsed.
     """
     try:
-        parsed_uri = urlparse(uri)
-        return parsed_uri.netloc, UUID(parsed_uri.path[1:])
+        parsed_uri = Butler.parse_dataset_uri(uri)
     except Exception as e:
         raise WorkerUsageError(f"Invalid data ID {uri}", str(e)) from e
+    return parsed_uri.label, parsed_uri.dataset_id
 
 
 def cutout(
