@@ -14,7 +14,7 @@ from uuid import UUID
 import structlog
 from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import Butler, LabeledButlerFactory
-from lsst.dax.images.cutout import ImageCutoutBackend, projection_finders
+from lsst.dax.images.cutout import ImageCutoutFactory, projection_finders
 from lsst.dax.images.cutout.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
 from safir.arq.uws import (
@@ -40,7 +40,7 @@ _BUTLER_FACTORY = LabeledButlerFactory()
 __all__ = ["WorkerSettings"]
 
 
-def _get_backend(butler_label: str, token: str) -> ImageCutoutBackend:
+def _get_backend(butler_label: str, token: str) -> ImageCutoutFactory:
     """Given the Butler label, retrieve or build a backend.
 
     The dataset ID will be a URI of the form ``butler://<label>/<uuid>``.
@@ -78,7 +78,7 @@ def _get_backend(butler_label: str, token: str) -> ImageCutoutBackend:
     projection_finder = projection_finders.ProjectionFinder.make_default()
     output = os.environ["CUTOUT_STORAGE_URL"]
     tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
-    return ImageCutoutBackend(butler, projection_finder, output, tmpdir)
+    return ImageCutoutFactory(butler, projection_finder, output, tmpdir)
 
 
 def _parse_uri(uri: str) -> tuple[str, UUID]:
