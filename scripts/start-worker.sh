@@ -13,7 +13,6 @@ set -eo pipefail
 # Initialize the environment.
 source /opt/lsst/software/stack/loadLSST.bash
 setup lsst_distrib
-setup image_cutout_backend
 
 # Start Dramatiq with the worker.
 arq vocutouts.workers.cutout.WorkerSettings
