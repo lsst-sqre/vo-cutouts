@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import batched
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, override
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -100,14 +100,17 @@ class CircleStencil(Stencil):
         ..., title="Radius", description="Radius of the circle"
     )
 
+    @override
     @classmethod
     def from_string(cls, params: str) -> Self:
         ra, dec, radius = (float(p) for p in params.split())
         return cls(center=Point(ra=ra, dec=dec), radius=radius)
 
+    @override
     def to_string(self) -> str:
         return f"{self.center.ra!s} {self.center.dec!s} {self.radius!s}"
 
+    @override
     def to_worker_stencil(self) -> WorkerStencil:
         return WorkerCircleStencil(
             center=SkyCoord(
@@ -134,6 +137,7 @@ class PolygonStencil(Stencil):
         min_length=3,
     )
 
+    @override
     @classmethod
     def from_string(cls, params: str) -> Self:
         data = [float(p) for p in params.split()]
@@ -145,9 +149,11 @@ class PolygonStencil(Stencil):
             raise ValueError(msg)
         return cls(vertices=[Point(ra=r, dec=d) for r, d in batched(data, 2)])
 
+    @override
     def to_string(self) -> str:
         return " ".join(f"{v.ra!s} {v.dec!s}" for v in self.vertices)
 
+    @override
     def to_worker_stencil(self) -> WorkerStencil:
         ras = [v.ra for v in self.vertices]
         decs = [v.dec for v in self.vertices]
@@ -173,6 +179,7 @@ class RangeStencil(Stencil):
         description="Range of dec values, using inf or -info for open ranges",
     )
 
+    @override
     @classmethod
     def from_string(cls, params: str) -> Self:
         ra_min, ra_max, dec_min, dec_max = (float(p) for p in params.split())
@@ -181,12 +188,14 @@ class RangeStencil(Stencil):
             dec=Range(min=dec_min, max=dec_max),
         )
 
+    @override
     def to_string(self) -> str:
         return (
             f"{self.ra.min!s} {self.ra.max!s}"
             f" {self.dec.min!s} {self.dec.max!s}"
         )
 
+    @override
     def to_worker_stencil(self) -> WorkerStencil:
         return WorkerRangeStencil(
             ra=(self.ra.min, self.ra.max),
@@ -229,10 +238,12 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
         ),
     ]
 
+    @override
     def to_worker_parameters(self) -> WorkerCutout:
         stencils = [s.to_worker_stencil() for s in self.stencils]
         return WorkerCutout(dataset_ids=self.ids, stencils=stencils)
 
+    @override
     def to_xml_model(self) -> CutoutXmlParameters:
         circle = []
         polygon = []
