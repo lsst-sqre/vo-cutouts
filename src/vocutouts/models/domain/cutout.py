@@ -59,21 +59,21 @@ def _deserialize_sky_coord(c: Any) -> SkyCoord:
         return SkyCoord(c[0] * u.degree, c[1] * u.degree, frame="icrs")
 
 
-AngleSerializable = Annotated[
+type AngleSerializable = Annotated[
     Angle,
     BeforeValidator(_deserialize_angle),
     PlainSerializer(lambda x: float(x.degree), return_type=float),
 ]
 """Angle with serialization support."""
 
-SkyCoordSerializable = Annotated[
+type SkyCoordSerializable = Annotated[
     SkyCoord,
     BeforeValidator(_deserialize_sky_coord),
     PlainSerializer(_serialize_sky_coord),
 ]
 """Sky coordinate with serialization support."""
 
-WorkerRange: TypeAlias = tuple[float, float]
+type WorkerRange = tuple[float, float]
 """Type representing a range of a coordinate."""
 
 
