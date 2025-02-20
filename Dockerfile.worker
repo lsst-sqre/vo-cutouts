@@ -2,7 +2,7 @@
 # are based on stack containers and install any required supporting code
 # for the image cutout backend, arq, and the backend worker definition.
 
-FROM lsstsqre/centos:7-stack-lsst_distrib-w_2024_42
+FROM lsstsqre/centos:7-stack-lsst_distrib-w_2025_08
 
 # Reset the user to root since we need to do system install tasks.
 USER root
