@@ -10,7 +10,7 @@ should try to use only dependencies present in the stack container.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -114,7 +114,7 @@ class WorkerRangeStencil(BaseModel):
     """Range of dec values, using inf or -info for open ranges."""
 
 
-WorkerStencil: TypeAlias = Annotated[
+type WorkerStencil = Annotated[
     WorkerCircleStencil | WorkerPolygonStencil | WorkerRangeStencil,
     Field(discriminator="type"),
 ]
