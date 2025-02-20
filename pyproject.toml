@@ -7,19 +7,19 @@ readme = "README.md"
 keywords = ["rubin", "lsst"]
 # https://pypi.org/classifiers/
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Natural Language :: English",
     "Operating System :: POSIX",
     "Typing :: Typed",
 ]
-# vo-cutouts really requires Python 3.12, but the backend worker runs on
-# Python 3.11 currently (2024-06-05) due to the stack container and we need to
+# vo-cutouts really requires Python 3.13, but the backend worker runs on
+# Python 3.12 currently (2025-02-20) due to the stack container and we need to
 # be able to install vo-cutouts there so that we can use supporting code.
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "fastapi>=0.100",
