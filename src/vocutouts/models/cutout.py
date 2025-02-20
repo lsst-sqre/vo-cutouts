@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from itertools import batched
-from typing import Annotated, Literal, Self, TypeAlias
+from typing import Annotated, Literal, Self
 
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
@@ -194,7 +194,7 @@ class RangeStencil(Stencil):
         )
 
 
-StencilType: TypeAlias = Annotated[
+type StencilType = Annotated[
     CircleStencil | PolygonStencil | RangeStencil, Field(discriminator="type")
 ]
 """Type for any stencil, concrete due to Pydantic requirements."""
