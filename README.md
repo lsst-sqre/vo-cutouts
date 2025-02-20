@@ -1,7 +1,7 @@
 # vo-cutouts
 
 vo-cutouts is a [FastAPI](https://fastapi.tiangolo.com/) web service and associated backend worker implementation that implements an image cutout service for the Rubin Science Platform.
-The underlying work of generating the cutout is delegated to [lsst.image_cutout_backend](https://github.com/lsst-dm/image_cutout_backend/).
+The underlying work of generating the cutout is delegated to [dax_images_cutout](https://github.com/lsst/dax_images_cutout/).
 
 See [CHANGELOG.md](https://github.com/lsst-sqre/vo-cutouts/blob/main/CHANGELOG.md) for the change history of vo-cutouts.
 
