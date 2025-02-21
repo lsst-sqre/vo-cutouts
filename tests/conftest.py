@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncGenerator, Iterator
 from datetime import timedelta
 
 import pytest
@@ -23,7 +23,7 @@ from vocutouts.config import config, uws
 @pytest_asyncio.fixture
 async def app(
     arq_queue: MockArqQueue, mock_wobbly: MockWobbly
-) -> AsyncIterator[FastAPI]:
+) -> AsyncGenerator[FastAPI]:
     """Return a configured test application."""
     async with LifespanManager(main.app):
         # Ensure that all the components use the same mock arq queue.
@@ -41,7 +41,7 @@ def arq_queue() -> MockArqQueue:
 @pytest_asyncio.fixture
 async def client(
     app: FastAPI, test_token: str, test_username: str
-) -> AsyncIterator[AsyncClient]:
+) -> AsyncGenerator[AsyncClient]:
     """Return an ``httpx.AsyncClient`` configured to talk to the test app."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
