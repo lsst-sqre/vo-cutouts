@@ -7,7 +7,7 @@ constructed when this module is loaded and is not deferred until a function is
 called.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from importlib.metadata import metadata, version
 
@@ -26,7 +26,7 @@ __all__ = ["app"]
 
 
 @asynccontextmanager
-async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Set up and tear down the application."""
     await uws.initialize_fastapi()
     yield
