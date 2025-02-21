@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-4.1.0'></a>
+## 4.1.0 (2025-02-20)
+
+### New features
+
+- Replace internal Butler URI parsing with calls into the Butler library. This adds support for the new Butler URI format that will be used for future data releases.
+
+### Other changes
+
+- Use the cutout backend code that is integrated into the stack container rather than installing code from Git during container build time.
+
 <a id='changelog-4.0.0'></a>
 ## 4.0.0 (2024-12-12)
 
