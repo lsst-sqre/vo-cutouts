@@ -26,7 +26,3 @@ apt-get -y upgrade
 
 # Install dependencies required at runtime (none currently).
 #apt-get -y install --no-install-recommends
-
-# Delete cached files we don't need anymore.
-apt-get clean
-rm -rf /var/lib/apt/lists/*
