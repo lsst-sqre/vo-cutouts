@@ -6,6 +6,17 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-4.1.1'></a>
+## 4.1.1 (2025-06-17)
+
+### Bug fixes
+
+- Update the worker image to the latest Pipelines stack release (`v29_1_0`).
+
+### Other changes
+
+- Use [uv](https://github.com/astral-sh/uv) to maintain frozen dependencies and set up a development environment.
+
 <a id='changelog-4.1.0'></a>
 ## 4.1.0 (2025-02-20)
 
