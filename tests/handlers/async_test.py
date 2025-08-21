@@ -110,7 +110,7 @@ async def test_create_job(
         await runner.mark_in_progress(test_token, "2", delay=0.2)
         results = [
             WorkerResult(
-                result_id="cutout",
+                id="cutout",
                 url="s3://some-bucket/some/path",
                 mime_type="application/fits",
             )

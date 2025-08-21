@@ -16,7 +16,6 @@ from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import Butler, LabeledButlerFactory
 from lsst.dax.images.cutout import ImageCutoutFactory, projection_finders
 from lsst.dax.images.cutout.stencils import SkyCircle, SkyPolygon
-from safir.arq import ArqMode
 from safir.arq.uws import (
     WorkerConfig,
     WorkerFatalError,
@@ -200,9 +199,7 @@ def cutout(
         raise WorkerFatalError(msg, f"URL: {result_url}")
     logger.info("Cutout successful")
     return [
-        WorkerResult(
-            result_id="cutout", url=result_url, mime_type="application/fits"
-        )
+        WorkerResult(id="cutout", url=result_url, mime_type="application/fits")
     ]
 
 
@@ -221,7 +218,6 @@ if _grace_period > timedelta(seconds=5):
 WorkerSettings = build_worker(
     cutout,
     WorkerConfig(
-        arq_mode=ArqMode.production,
         arq_queue_url=os.environ["CUTOUT_ARQ_QUEUE_URL"],
         arq_queue_password=os.getenv("CUTOUT_ARQ_QUEUE_PASSWORD"),
         grace_period=_grace_period,
