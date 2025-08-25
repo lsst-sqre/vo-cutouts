@@ -2,7 +2,7 @@
 # are based on stack containers and install any required supporting code
 # for the image cutout backend, arq, and the backend worker definition.
 
-FROM ghcr.io/lsst/scipipe:al9-v29_1_1
+FROM ghcr.io/lsst/scipipe:al9-v29_2_0
 
 # Reset the user to root since we need to do system install tasks.
 USER root
