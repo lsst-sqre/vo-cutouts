@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-4.1.3'></a>
+## 4.1.3 (2025-08-26)
+
+### Bug fixes
+
+- Update the worker image to the latest Pipelines stack release (`v29_2_0`), which will hopefully fix a memory leak.
+
 <a id='changelog-4.1.2'></a>
 ## 4.1.2 (2025-06-23)
 
