@@ -129,3 +129,8 @@ class WorkerCutout(BaseModel):
 
     stencils: list[WorkerStencil]
     """Stencils for the cutouts."""
+
+    cutout_mode: Literal["image", "masked_image", "exposure"] = "image"
+    """Cutout mode. Only the image pixels, the image, variance, and mask, or
+    the full original exposure.
+    """

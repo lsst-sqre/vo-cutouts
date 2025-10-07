@@ -28,6 +28,7 @@ def test_serialize() -> None:
                 "radius": 1.0,
             }
         ],
+        "cutout_mode": "image",
     }
     assert cutout == WorkerCutout.model_validate(serialized)
 
@@ -45,6 +46,7 @@ def test_serialize() -> None:
                 "vertices": vertices,
             }
         ],
+        "cutout_mode": "image",
     }
 
     # A SkyCoord with multiple coordinates cannot be compared with Python
@@ -72,5 +74,6 @@ def test_serialize() -> None:
                 "dec": [-math.inf, 0.0],
             }
         ],
+        "cutout_mode": "image",
     }
     assert cutout == WorkerCutout.model_validate(serialized)
