@@ -14,7 +14,11 @@ from uuid import UUID
 import structlog
 from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import Butler, LabeledButlerFactory
-from lsst.dax.images.cutout import ImageCutoutFactory, projection_finders
+from lsst.dax.images.cutout import (
+    CutoutMode,
+    ImageCutoutFactory,
+    projection_finders,
+)
 from lsst.dax.images.cutout.stencils import SkyCircle, SkyPolygon
 from safir.arq import ArqMode
 from safir.arq.uws import (
@@ -40,7 +44,9 @@ _BUTLER_FACTORY = LabeledButlerFactory()
 __all__ = ["WorkerSettings"]
 
 
-def _get_backend(butler_label: str, token: str) -> ImageCutoutFactory:
+def _get_backend(
+    butler_label: str, token: str, logger: BoundLogger
+) -> ImageCutoutFactory:
     """Given the Butler label, retrieve or build a backend.
 
     The dataset ID will be a URI of the form ``butler://<label>/<uuid>``.
@@ -53,6 +59,8 @@ def _get_backend(butler_label: str, token: str) -> ImageCutoutFactory:
         Label portion of the Butler URI.
     token
         Gafaelfawr token, used to access the Butler service.
+    logger
+        Logger to use for logging.
 
     Returns
     -------
@@ -78,7 +86,9 @@ def _get_backend(butler_label: str, token: str) -> ImageCutoutFactory:
     projection_finder = projection_finders.ProjectionFinder.make_default()
     output = os.environ["CUTOUT_STORAGE_URL"]
     tmpdir = os.environ.get("CUTOUT_TMPDIR", "/tmp")
-    return ImageCutoutFactory(butler, projection_finder, output, tmpdir)
+    return ImageCutoutFactory(
+        butler, projection_finder, output, tmpdir, logger=logger
+    )
 
 
 def _parse_uri(uri: str) -> tuple[str, UUID]:
@@ -106,6 +116,39 @@ def _parse_uri(uri: str) -> tuple[str, UUID]:
     except Exception as e:
         raise WorkerUsageError(f"Invalid data ID {uri}", str(e)) from e
     return parsed_uri.label, parsed_uri.dataset_id
+
+
+def _select_cutout_mode(mode: str, logger: BoundLogger) -> CutoutMode:
+    """Map a user-specified cutout mode to a CutoutMode enum.
+
+    Parameters
+    ----------
+    mode
+        User-specified cutout mode.
+    logger
+        Logger to use for logging.
+
+    Returns
+    -------
+    CutoutMode
+        Corresponding CutoutMode enum value.
+
+    Raises
+    ------
+    WorkerFatalError
+        Raised if the specified mode is not recognized.
+    """
+    match mode:
+        case "image":
+            return CutoutMode.ASTROPY_IMAGE
+        case "masked_image":
+            return CutoutMode.ASTROPY_MASKED_IMAGE
+        case "exposure":
+            return CutoutMode.FULL_EXPOSURE
+        case _:
+            msg = f"Internal error: unknown cutout mode {mode}"
+            logger.warning(msg)
+            raise WorkerFatalError(msg)
 
 
 def cutout(
@@ -157,7 +200,7 @@ def cutout(
 
     # Parse the dataset ID and retrieve an appropriate backend.
     butler_label, uuid = _parse_uri(params.dataset_ids[0])
-    backend = _get_backend(butler_label, info.token)
+    backend = _get_backend(butler_label, info.token, logger)
 
     # Convert the stencils to SkyStencils.
     sky_stencils = []
@@ -174,15 +217,20 @@ def cutout(
                 raise WorkerFatalError(msg)
         sky_stencils.append(sky_stencil)
 
+    # Map user request to specific cutout mode.
+    cutout_mode = _select_cutout_mode(params.cutout_mode, logger)
+
     # Perform the cutout. We have no idea if unknown exceptions here are
     # transient or fatal, so conservatively assume they are fatal. Provide a
     # traceback in the error details to give the user more of a chance at
     # understanding the problem, and hope it doesn't contain any
     # security-sensitive data. (When running with workload identity, it really
-    # shoudln't.)
+    # shouldn't.)
     logger.info("Starting cutout request")
     try:
-        result = backend.process_uuid(sky_stencils[0], uuid, mask_plane=None)
+        result = backend.process_uuid(
+            sky_stencils[0], uuid, mask_plane=None, cutout_mode=cutout_mode
+        )
     except SinglePolygonException as e:
         raise WorkerUsageError(
             "No intersection between cutout and image", add_traceback=True
