@@ -1,7 +1,7 @@
 """Job parameter dependencies."""
 
 from itertools import chain
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Form, Query
 from pydantic import ValidationError
@@ -22,7 +22,12 @@ __all__ = [
 
 
 def _build_parameters(
-    *, ids: list[str], pos: list[str], circle: list[str], polygon: list[str]
+    *,
+    ids: list[str],
+    mode: Literal["image", "masked-image", "exposure"],
+    pos: list[str],
+    circle: list[str],
+    polygon: list[str],
 ) -> CutoutParameters:
     """Construct the Pydantic model from query or form parameters.
 
@@ -30,6 +35,8 @@ def _build_parameters(
     ----------
     ids
         Identifiers of images from which to make a cuotut.
+    mode
+        Cutout mode.
     pos
         POS-type stencils.
     circle
@@ -81,7 +88,7 @@ def _build_parameters(
 
     # Return the parsed parameters.
     try:
-        return CutoutParameters(ids=ids, stencils=stencils)
+        return CutoutParameters(ids=ids, cutout_mode=mode, stencils=stencils)
     except ValidationError as e:
         raise ParameterError("Invalid parameters", str(e)) from e
 
@@ -98,6 +105,17 @@ async def get_params_dependency(
             ),
         ),
     ],
+    cutoutmode: Annotated[
+        Literal["image", "masked-image", "exposure"],
+        Query(
+            title="Cutout mode",
+            description=(
+                "Specifies the amount of information to include in the cutout:"
+                " only the image pixels; the image, variance, and mask; or"
+                " the full original exposure"
+            ),
+        ),
+    ] = "image",
     pos: Annotated[
         list[str] | None,
         Query(
@@ -140,7 +158,11 @@ async def get_params_dependency(
 ) -> CutoutParameters:
     """Parse GET parameters into job parameters for a cutout."""
     return _build_parameters(
-        ids=id, pos=pos or [], circle=circle or [], polygon=polygon or []
+        ids=id,
+        mode=cutoutmode,
+        pos=pos or [],
+        circle=circle or [],
+        polygon=polygon or [],
     )
 
 
@@ -156,6 +178,17 @@ async def post_params_dependency(
             ),
         ),
     ],
+    cutoutmode: Annotated[
+        Literal["image", "masked-image", "exposure"],
+        Form(
+            title="Cutout mode",
+            description=(
+                "Specifies the amount of information to include in the cutout:"
+                " only the image pixels; the image, variance, and mask; or"
+                " the full original exposure"
+            ),
+        ),
+    ] = "image",
     pos: Annotated[
         list[str] | None,
         Form(
@@ -198,5 +231,9 @@ async def post_params_dependency(
 ) -> CutoutParameters:
     """Parse POST parameters into job parameters for a cutout."""
     return _build_parameters(
-        ids=id, pos=pos or [], circle=circle or [], polygon=polygon or []
+        ids=id,
+        mode=cutoutmode,
+        pos=pos or [],
+        circle=circle or [],
+        polygon=polygon or [],
     )
