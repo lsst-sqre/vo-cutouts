@@ -21,6 +21,7 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
+        "cutout_mode": "image",
         "stencils": [
             {
                 "type": "circle",
@@ -28,7 +29,6 @@ def test_serialize() -> None:
                 "radius": 1.0,
             }
         ],
-        "cutout_mode": "image",
     }
     assert cutout == WorkerCutout.model_validate(serialized)
 
@@ -40,13 +40,13 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
+        "cutout_mode": "image",
         "stencils": [
             {
                 "type": "polygon",
                 "vertices": vertices,
             }
         ],
-        "cutout_mode": "image",
     }
 
     # A SkyCoord with multiple coordinates cannot be compared with Python
@@ -67,6 +67,7 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
+        "cutout_mode": "image",
         "stencils": [
             {
                 "type": "range",
@@ -74,6 +75,5 @@ def test_serialize() -> None:
                 "dec": [-math.inf, 0.0],
             }
         ],
-        "cutout_mode": "image",
     }
     assert cutout == WorkerCutout.model_validate(serialized)

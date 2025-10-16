@@ -37,9 +37,24 @@ async def test_sync(
     assert r.status_code == 303
     assert r.headers["Location"] == "https://example.com/some/path"
 
-    # POST request.
+    # GET request with cutout mode specified.
     _, r = await asyncio.gather(
         run_job("2"),
+        client.get(
+            "/api/cutout/sync",
+            params={
+                "ID": "1:2:band:id",
+                "CUTOUTMODE": "image",
+                "Pos": "CIRCLE 0 -2 2",
+            },
+        ),
+    )
+    assert r.status_code == 303
+    assert r.headers["Location"] == "https://example.com/some/path"
+
+    # POST request.
+    _, r = await asyncio.gather(
+        run_job("3"),
         client.post(
             "/api/cutout/sync",
             data={"ID": "3:4:band:id", "Pos": "CIRCLE 0 -2 2"},
@@ -64,6 +79,7 @@ async def test_bad_parameters(
         {"id": "5:6:a:b", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"id": "5:6:a:b", "circle": "1"},
         {"id": "5:6:a:b", "polygon": "1 2 3"},
+        {"id": "5:6:a:b", "circle": "1 1 1", "cutoutmode": "bogus"},
     ]
     for params in bad_params:
         r = await client.get("/api/cutout/sync", params=params)

@@ -41,6 +41,7 @@ class CutoutXmlParameters(Parameters):
     """XML representation of cutout parameters."""
 
     id: MultiValuedParameter
+    cutoutmode: Parameter = Parameter(id="cutoutmode")
     pos: MultiValuedParameter = Field([])
     circle: MultiValuedParameter = Field([])
     polygon: MultiValuedParameter = Field([])
@@ -238,10 +239,26 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
         ),
     ]
 
+    cutout_mode: Annotated[
+        Literal["image", "masked-image", "exposure"],
+        Field(
+            title="Cutout mode",
+            description=(
+                "Specifies the amount of information to include in the cutout:"
+                " only the image pixels; the image, variance, and mask; or"
+                " the full original exposure"
+            ),
+        ),
+    ] = "image"
+
     @override
     def to_worker_parameters(self) -> WorkerCutout:
         stencils = [s.to_worker_stencil() for s in self.stencils]
-        return WorkerCutout(dataset_ids=self.ids, stencils=stencils)
+        return WorkerCutout(
+            dataset_ids=self.ids,
+            cutout_mode=self.cutout_mode,
+            stencils=stencils,
+        )
 
     @override
     def to_xml_model(self) -> CutoutXmlParameters:
@@ -263,6 +280,7 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
                     raise ValueError(f"Unknown stencil type {stencil.type}")
         return CutoutXmlParameters(
             id=[Parameter(id="id", value=i) for i in self.ids],
+            cutoutmode=Parameter(id="cutoutmode", value=self.cutout_mode),
             circle=circle,
             polygon=polygon,
             pos=pos,

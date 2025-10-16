@@ -141,7 +141,7 @@ def _select_cutout_mode(mode: str, logger: BoundLogger) -> CutoutMode:
     match mode:
         case "image":
             return CutoutMode.ASTROPY_IMAGE
-        case "masked_image":
+        case "masked-image":
             return CutoutMode.ASTROPY_MASKED_IMAGE
         case "exposure":
             return CutoutMode.FULL_EXPOSURE
