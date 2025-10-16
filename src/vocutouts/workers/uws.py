@@ -11,7 +11,7 @@ __all__ = ["WorkerSettings"]
 
 
 configure_logging(
-    name="vocutouts", profile=config.profile, log_level=config.log_level
+    name="vocutouts", profile=config.log_profile, log_level=config.log_level
 )
 
 WorkerSettings = uws.build_worker(structlog.get_logger("vocutouts"))
