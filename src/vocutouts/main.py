@@ -35,9 +35,9 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 
 configure_logging(
-    name="vocutouts", profile=config.profile, log_level=config.log_level
+    name="vocutouts", profile=config.log_profile, log_level=config.log_level
 )
-if config.profile == Profile.production:
+if config.log_profile == Profile.production:
     configure_uvicorn_logging(config.log_level)
 
 app = FastAPI(

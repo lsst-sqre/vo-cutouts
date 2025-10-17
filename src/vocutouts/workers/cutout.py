@@ -256,8 +256,8 @@ def cutout(
 
 configure_logging(
     name="vocutouts",
-    profile=os.getenv("CUTOUT_PROFILE", "development"),
     log_level=os.getenv("CUTOUT_LOG_LEVEL", "INFO"),
+    profile=os.getenv("CUTOUT_LOG_PROFILE", "development"),
 )
 
 # Provide five seconds of time for arq to shut the worker down cleanly after
