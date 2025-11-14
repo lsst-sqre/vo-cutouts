@@ -34,7 +34,7 @@ PENDING_JOB = """
   <uws:destruction>2024-12-04T16:11:17.000Z</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id">1:2:band:value</uws:parameter>
-    <uws:parameter id="cutoutmode">image</uws:parameter>
+    <uws:parameter id="cutoutdetail">Image</uws:parameter>
     <uws:parameter id="circle">0.0 1.0 2.0</uws:parameter>
   </uws:parameters>
 </uws:job>
@@ -59,7 +59,7 @@ COMPLETED_JOB = """
   <uws:destruction>2024-12-04T16:11:17.000Z</uws:destruction>
   <uws:parameters>
     <uws:parameter id="id">1:2:band:value</uws:parameter>
-    <uws:parameter id="cutoutmode">image</uws:parameter>
+    <uws:parameter id="cutoutdetail">Image</uws:parameter>
     <uws:parameter id="circle">0.5 0.8 2.0</uws:parameter>
   </uws:parameters>
   <uws:results>
@@ -97,7 +97,7 @@ async def test_create_job(
         "/api/cutout/jobs",
         data={
             "ID": "1:2:band:value",
-            "cutoutmode": "image",
+            "cutoutdetail": "Image",
             "pos": "CIRCLE 0.5 0.8 2",
             "runid": "some-run-id",
         },
@@ -187,7 +187,7 @@ async def test_bad_parameters(
         {"id": "foo", "polygon": "1 2 3"},
         {"id": "foo", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"ID": "some-id", "pos": "RANGE 1 1 2 2", "phase": "RUN"},
-        {"id": "foo", "circle": "1 1 1", "cutoutmode": "bogus"},
+        {"id": "foo", "circle": "1 1 1", "cutoutdetail": "bogus"},
     ]
     for params in bad_params:
         r = await client.post("/api/cutout/jobs", data=params)

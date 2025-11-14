@@ -139,11 +139,11 @@ def _select_cutout_mode(mode: str, logger: BoundLogger) -> CutoutMode:
         Raised if the specified mode is not recognized.
     """
     match mode:
-        case "image":
+        case "Image":
             return CutoutMode.ASTROPY_IMAGE
-        case "masked-image":
+        case "MaskedImage":
             return CutoutMode.ASTROPY_MASKED_IMAGE
-        case "exposure":
+        case "Exposure":
             return CutoutMode.FULL_EXPOSURE
         case _:
             msg = f"Internal error: unknown cutout mode {mode}"
@@ -218,7 +218,7 @@ def cutout(
         sky_stencils.append(sky_stencil)
 
     # Map user request to specific cutout mode.
-    cutout_mode = _select_cutout_mode(params.cutout_mode, logger)
+    cutout_mode = _select_cutout_mode(params.cutout_detail, logger)
 
     # Perform the cutout. We have no idea if unknown exceptions here are
     # transient or fatal, so conservatively assume they are fatal. Provide a
