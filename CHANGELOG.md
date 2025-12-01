@@ -6,6 +6,19 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-5.0.0'></a>
+## 5.0.0 (2025-12-01)
+
+### Backwards-incompatible changes
+
+- Add new `CUTOUTDETAIL` parameter that can be set to `Image`, `MaskedImage`, or `Exposure`, where `Exposure` provides the previous behavior. This parameter controls what information is included in the cutout. The new default is `Image`, which includes only the image pixels in the cutout.
+
+### New features
+
+- Add support for reporting errors to Sentry in the frontend. Sentry support is not enabled in the workers for now since they run on a different Python stack and do not necessarily have Safir.
+- Publish multi-platform images that support both linux/amd64 and linux/arm64.
+- Allow changing the structlog logging profile via the Helm `config.logProfile` setting.
+
 <a id='changelog-4.1.3'></a>
 ## 4.1.3 (2025-08-26)
 
