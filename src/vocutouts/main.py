@@ -17,12 +17,17 @@ from safir.dependencies.http_client import http_client_dependency
 from safir.logging import Profile, configure_logging, configure_uvicorn_logging
 from safir.middleware.x_forwarded import XForwardedMiddleware
 from safir.models import ErrorModel
+from safir.sentry import initialize_sentry
 from safir.slack.webhook import SlackRouteErrorHandler
 
+from . import __version__
 from .config import config, uws
 from .handlers import external, internal
 
 __all__ = ["app"]
+
+
+initialize_sentry(release=__version__)
 
 
 @asynccontextmanager
