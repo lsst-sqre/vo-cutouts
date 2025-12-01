@@ -44,7 +44,7 @@ async def test_sync(
             "/api/cutout/sync",
             params={
                 "ID": "1:2:band:id",
-                "CUTOUTMODE": "image",
+                "CUTOUTDETAIL": "Image",
                 "Pos": "CIRCLE 0 -2 2",
             },
         ),
@@ -79,7 +79,7 @@ async def test_bad_parameters(
         {"id": "5:6:a:b", "circle": "1 1 1", "pos": "RANGE 0 360 1"},
         {"id": "5:6:a:b", "circle": "1"},
         {"id": "5:6:a:b", "polygon": "1 2 3"},
-        {"id": "5:6:a:b", "circle": "1 1 1", "cutoutmode": "bogus"},
+        {"id": "5:6:a:b", "circle": "1 1 1", "cutoutdetail": "bogus"},
     ]
     for params in bad_params:
         r = await client.get("/api/cutout/sync", params=params)

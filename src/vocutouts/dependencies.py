@@ -24,7 +24,7 @@ __all__ = [
 def _build_parameters(
     *,
     ids: list[str],
-    mode: Literal["image", "masked-image", "exposure"],
+    detail: Literal["Image", "MaskedImage", "Exposure"],
     pos: list[str],
     circle: list[str],
     polygon: list[str],
@@ -35,8 +35,8 @@ def _build_parameters(
     ----------
     ids
         Identifiers of images from which to make a cuotut.
-    mode
-        Cutout mode.
+    detail
+        Level of detail to include in the cutout.
     pos
         POS-type stencils.
     circle
@@ -88,7 +88,9 @@ def _build_parameters(
 
     # Return the parsed parameters.
     try:
-        return CutoutParameters(ids=ids, cutout_mode=mode, stencils=stencils)
+        return CutoutParameters(
+            ids=ids, cutout_detail=detail, stencils=stencils
+        )
     except ValidationError as e:
         raise ParameterError("Invalid parameters", str(e)) from e
 
@@ -105,17 +107,18 @@ async def get_params_dependency(
             ),
         ),
     ],
-    cutoutmode: Annotated[
-        Literal["image", "masked-image", "exposure"],
+    cutoutdetail: Annotated[
+        Literal["Image", "MaskedImage", "Exposure"],
         Query(
-            title="Cutout mode",
+            title="Detail to include in cutout",
             description=(
-                "Specifies the amount of information to include in the cutout:"
-                " only the image pixels; the image, variance, and mask; or"
-                " the full original exposure"
+                "Amount of information to include in the cutout: Image for"
+                " only the image pixels; MaskedImage for the image, variance,"
+                " and mask; or Exposure for the full original exposure"
+                " including afw-format metadata tables."
             ),
         ),
-    ] = "image",
+    ] = "Image",
     pos: Annotated[
         list[str] | None,
         Query(
@@ -159,7 +162,7 @@ async def get_params_dependency(
     """Parse GET parameters into job parameters for a cutout."""
     return _build_parameters(
         ids=id,
-        mode=cutoutmode,
+        detail=cutoutdetail,
         pos=pos or [],
         circle=circle or [],
         polygon=polygon or [],
@@ -178,17 +181,18 @@ async def post_params_dependency(
             ),
         ),
     ],
-    cutoutmode: Annotated[
-        Literal["image", "masked-image", "exposure"],
+    cutoutdetail: Annotated[
+        Literal["Image", "MaskedImage", "Exposure"],
         Form(
-            title="Cutout mode",
+            title="Detail to include in cutout",
             description=(
-                "Specifies the amount of information to include in the cutout:"
-                " only the image pixels; the image, variance, and mask; or"
-                " the full original exposure"
+                "Amount of information to include in the cutout: Image for"
+                " only the image pixels; MaskedImage for the image, variance,"
+                " and mask; or Exposure for the full original exposure"
+                " including afw-format metadata tables."
             ),
         ),
-    ] = "image",
+    ] = "Image",
     pos: Annotated[
         list[str] | None,
         Form(
@@ -232,7 +236,7 @@ async def post_params_dependency(
     """Parse POST parameters into job parameters for a cutout."""
     return _build_parameters(
         ids=id,
-        mode=cutoutmode,
+        detail=cutoutdetail,
         pos=pos or [],
         circle=circle or [],
         polygon=polygon or [],

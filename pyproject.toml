@@ -129,7 +129,11 @@ filterwarnings = [
 # enables magical assert processing (showing a full diff on assert failures
 # with complex data structures rather than only the assert message) in files
 # listed in python_files.
-python_files = ["tests/*.py", "tests/*/*.py"]
+python_files = [
+"tests/*.py",
+"tests/*/*.py",
+".tox/py/lib/python3.13/site-packages/safir/testing/uws/*.py"
+]
 
 # Use the generic Ruff configuration in ruff.toml and extend it with only
 # project-specific settings.

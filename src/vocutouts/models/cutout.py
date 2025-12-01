@@ -41,7 +41,7 @@ class CutoutXmlParameters(Parameters):
     """XML representation of cutout parameters."""
 
     id: MultiValuedParameter
-    cutoutmode: Parameter = Parameter(id="cutoutmode")
+    cutoutdetail: Parameter = Parameter(id="cutoutdetail")
     pos: MultiValuedParameter = Field([])
     circle: MultiValuedParameter = Field([])
     polygon: MultiValuedParameter = Field([])
@@ -239,24 +239,25 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
         ),
     ]
 
-    cutout_mode: Annotated[
-        Literal["image", "masked-image", "exposure"],
+    cutout_detail: Annotated[
+        Literal["Image", "MaskedImage", "Exposure"],
         Field(
-            title="Cutout mode",
+            title="Detail to include in cutout",
             description=(
-                "Specifies the amount of information to include in the cutout:"
-                " only the image pixels; the image, variance, and mask; or"
-                " the full original exposure"
+                "Amount of information to include in the cutout: Image for"
+                " only the image pixels; MaskedImage for the image, variance,"
+                " and mask; or Exposure for the full original exposure"
+                " including afw-format metadata tables."
             ),
         ),
-    ] = "image"
+    ] = "Image"
 
     @override
     def to_worker_parameters(self) -> WorkerCutout:
         stencils = [s.to_worker_stencil() for s in self.stencils]
         return WorkerCutout(
             dataset_ids=self.ids,
-            cutout_mode=self.cutout_mode,
+            cutout_detail=self.cutout_detail,
             stencils=stencils,
         )
 
@@ -280,7 +281,9 @@ class CutoutParameters(ParametersModel[WorkerCutout, CutoutXmlParameters]):
                     raise ValueError(f"Unknown stencil type {stencil.type}")
         return CutoutXmlParameters(
             id=[Parameter(id="id", value=i) for i in self.ids],
-            cutoutmode=Parameter(id="cutoutmode", value=self.cutout_mode),
+            cutoutdetail=Parameter(
+                id="cutoutdetail", value=self.cutout_detail
+            ),
             circle=circle,
             polygon=polygon,
             pos=pos,

@@ -21,7 +21,7 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
-        "cutout_mode": "image",
+        "cutout_detail": "Image",
         "stencils": [
             {
                 "type": "circle",
@@ -40,7 +40,7 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
-        "cutout_mode": "image",
+        "cutout_detail": "Image",
         "stencils": [
             {
                 "type": "polygon",
@@ -67,7 +67,7 @@ def test_serialize() -> None:
     serialized = cutout.model_dump(mode="json")
     assert serialized == {
         "dataset_ids": ["foo"],
-        "cutout_mode": "image",
+        "cutout_detail": "Image",
         "stencils": [
             {
                 "type": "range",
