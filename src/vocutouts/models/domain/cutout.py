@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
+import numpy as np
 from astropy import units as u
 from astropy.coordinates import Angle, SkyCoord
-from astropy.utils import isiterable
 from pydantic import (
     BaseModel,
     BeforeValidator,
@@ -42,7 +42,7 @@ def _deserialize_angle(c: Angle | float) -> Angle:
 def _serialize_sky_coord(
     c: SkyCoord,
 ) -> list[tuple[float, float]] | tuple[float, float]:
-    if isiterable(c):
+    if np.iterable(c):
         return [(float(v.ra.degree), float(v.dec.degree)) for v in c]
     else:
         return (float(c.ra.degree), float(c.dec.degree))
@@ -51,7 +51,7 @@ def _serialize_sky_coord(
 def _deserialize_sky_coord(c: Any) -> SkyCoord:
     if isinstance(c, SkyCoord):
         return c
-    if isiterable(c[0]):
+    if np.iterable(c[0]):
         ras = [v[0] for v in c]
         decs = [v[1] for v in c]
         return SkyCoord(ras * u.degree, decs * u.degree, frame="icrs")

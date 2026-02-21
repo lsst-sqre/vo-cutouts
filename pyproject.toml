@@ -24,6 +24,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy>=7.1",
     "fastapi>=0.100",
+    "numpy>=2.4",
     "pydantic>2",
     "pydantic-settings>=2.8",
     "safir[uws]>=9.0.1",
