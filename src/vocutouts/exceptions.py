@@ -1,7 +1,5 @@
 """Exceptions for the vo-cutouts service."""
 
-from __future__ import annotations
-
 from safir.uws import UWSError
 
 __all__ = ["MultiValuedParameterError"]

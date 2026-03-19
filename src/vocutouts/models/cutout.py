@@ -4,8 +4,6 @@ This is the model used by the user-facing API. These models are converted into
 domain models for passing to the backend.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from itertools import batched
 from typing import Annotated, Literal, Self, override

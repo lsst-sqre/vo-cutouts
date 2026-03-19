@@ -1,7 +1,5 @@
 """Tests for async job creation."""
 
-from __future__ import annotations
-
 import asyncio
 import re
 

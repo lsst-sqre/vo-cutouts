@@ -8,8 +8,6 @@ workers in order to force too many dependencies on the backend worker. It
 should try to use only dependencies present in the stack container.
 """
 
-from __future__ import annotations
-
 from typing import Annotated, Any, Literal
 
 import numpy as np
