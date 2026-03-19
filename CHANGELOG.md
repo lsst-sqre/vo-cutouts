@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-5.0.1'></a>
+## 5.0.1 (2026-03-19)
+
+### Bug fixes
+
+- Fix reporting of extended errors from the backend on cutout failure.
+
 <a id='changelog-5.0.0'></a>
 ## 5.0.0 (2025-12-01)
 
