@@ -1,7 +1,5 @@
 """Catch-all tests for miscellaneous external routes."""
 
-from __future__ import annotations
-
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient

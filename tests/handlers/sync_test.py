@@ -1,7 +1,5 @@
 """Tests for sync cutout requests."""
 
-from __future__ import annotations
-
 import asyncio
 
 import pytest
