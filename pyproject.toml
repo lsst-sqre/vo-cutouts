@@ -17,10 +17,9 @@ classifiers = [
     "Private :: Do Not Upload",
     "Typing :: Typed",
 ]
-# vo-cutouts really requires Python 3.13, but the backend worker runs on
-# Python 3.12 currently (2025-02-20) due to the stack container and we need to
-# be able to install vo-cutouts there so that we can use supporting code.
-requires-python = ">=3.12"
+# The backend worker runs on the stack container, so the supported version
+# cannot be later than the version of Python shipped with that container.
+requires-python = ">=3.13"
 dependencies = [
     "astropy>=7.1",
     "fastapi>=0.100",
@@ -126,12 +125,6 @@ warn_untyped_fields = true
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "strict"
-filterwarnings = [
-    # Google modules use PyType_Spec in a deprecated way.
-    "ignore:Type google\\..*metaclass.* custom tp_new:DeprecationWarning",
-    # Deprecated use of Pydantic v1 features in vo-models.
-    "ignore:Support for class-based `config`:DeprecationWarning",
-]
 # The python_files setting is not for test detection (pytest will pick up any
 # test files named *_test.py without this setting) but to enable special
 # assert processing in any non-test supporting files under tests.  We
@@ -140,11 +133,7 @@ filterwarnings = [
 # enables magical assert processing (showing a full diff on assert failures
 # with complex data structures rather than only the assert message) in files
 # listed in python_files.
-python_files = [
-"tests/*.py",
-"tests/*/*.py",
-".tox/py/lib/python3.13/site-packages/safir/testing/uws/*.py"
-]
+python_files = ["tests/*.py", "tests/*/*.py"]
 
 # Use the generic Ruff configuration in ruff.toml and extend it with only
 # project-specific settings.
