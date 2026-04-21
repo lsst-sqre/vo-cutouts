@@ -27,7 +27,7 @@ dependencies = [
     "numpy>=2.4",
     "pydantic>2",
     "pydantic-settings>=2.8",
-    "safir[uws]>=9.0.1",
+    "safir[uws]>=15",
     "structlog>23.3.0",
     "uvicorn[standard]>=0.34",
     "vo-models>=0.4.1",
