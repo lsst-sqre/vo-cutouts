@@ -146,7 +146,10 @@ class PolygonStencil(Stencil):
         if len(data) < 6:
             msg = "Polygons require at least three vertices"
             raise ValueError(msg)
-        return cls(vertices=[Point(ra=r, dec=d) for r, d in batched(data, 2)])
+        vertices = [
+            Point(ra=r, dec=d) for r, d in batched(data, 2, strict=True)
+        ]
+        return cls(vertices=vertices)
 
     @override
     def to_string(self) -> str:
