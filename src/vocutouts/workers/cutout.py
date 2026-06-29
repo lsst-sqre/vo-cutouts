@@ -10,14 +10,17 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 import structlog
-from lsst.afw.geom import SinglePolygonException
 from lsst.daf.butler import Butler, LabeledButlerFactory
 from lsst.dax.images.cutout import (
     CutoutMode,
     ImageCutoutFactory,
     projection_finders,
 )
-from lsst.dax.images.cutout.stencils import SkyCircle, SkyPolygon
+from lsst.dax.images.cutout.stencils import (
+    SkyCircle,
+    SkyPolygon,
+    StencilNotContainedError,
+)
 from safir.arq import ArqMode
 from safir.arq.uws import (
     WorkerConfig,
@@ -229,7 +232,7 @@ def cutout(
         result = backend.process_uuid(
             sky_stencils[0], uuid, mask_plane=None, cutout_mode=cutout_mode
         )
-    except SinglePolygonException as e:
+    except StencilNotContainedError as e:
         raise WorkerUsageError(
             "No intersection between cutout and image", add_traceback=True
         ) from e
