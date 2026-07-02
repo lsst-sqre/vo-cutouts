@@ -232,14 +232,15 @@ def cutout(
         result = backend.process_uuid(
             sky_stencils[0], uuid, mask_plane=None, cutout_mode=cutout_mode
         )
+    except LookupError as e:
+        msg = f"Invalid cutout target {params.dataset_ids[0]}"
+        raise WorkerUsageError(msg, str(e), add_traceback=True) from e
     except StencilNotContainedError as e:
-        raise WorkerUsageError(
-            "No intersection between cutout and image", add_traceback=True
-        ) from e
+        msg = "No intersection between cutout and image"
+        raise WorkerUsageError(msg, add_traceback=True) from e
     except Exception as e:
-        raise WorkerFatalError(
-            "Cutout processing failed", str(e), add_traceback=True
-        ) from e
+        msg = "Cutout processing failed"
+        raise WorkerFatalError(msg, str(e), add_traceback=True) from e
 
     # Return the result.
     result_url = result.geturl()
