@@ -62,10 +62,10 @@ lint = [
     "pre-commit-uv",
     "ruff>=0.9",
 ]
-tox = [
-    "tox>=4.24",
-    "tox-docker>=5",
-    "tox-uv-bare>=1.25",
+nox = [
+    "nox",
+    "nox-uv",
+    "testcontainers[redis]",
 ]
 typing = [
     "mypy>=1.15",
@@ -77,7 +77,7 @@ branch = true
 source = ["vocutouts"]
 
 [tool.coverage.paths]
-source = ["src", ".tox/*/site-packages"]
+source = ["src"]
 
 [tool.coverage.report]
 show_missing = true
