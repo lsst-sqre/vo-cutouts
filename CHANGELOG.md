@@ -6,6 +6,21 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-5.1.0'></a>
+## 5.1.0 (2026-07-08)
+
+### New features
+
+- Update the cutout backend to add support for Rubin DP2 data.
+
+### Bug fixes
+
+- Return a more correct HTTP status code if the user requests a cutout for an unknown dataset ID.
+
+### Other changes
+
+- vo-cutouts now uses [nox](https://nox.thea.codes/en/stable/index.html) as the build system for development and testing instead of tox.
+
 <a id='changelog-5.0.1'></a>
 ## 5.0.1 (2026-03-19)
 
