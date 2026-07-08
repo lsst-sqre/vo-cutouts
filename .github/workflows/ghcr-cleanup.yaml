@@ -24,4 +24,5 @@ jobs:
           delete-tags: "tickets-*,t-*"
           delete-untagged: true
           older-than: "6 months"
+          packages: vo-cutouts,vo-cutouts-worker
           validate: true
