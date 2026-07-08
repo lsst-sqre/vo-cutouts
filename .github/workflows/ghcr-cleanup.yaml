@@ -23,6 +23,5 @@ jobs:
           delete-orphaned-images: true
           delete-tags: "tickets-*,t-*"
           delete-untagged: true
-          dry-run: true
           older-than: "6 months"
           validate: true
