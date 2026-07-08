@@ -41,9 +41,12 @@ jobs:
         run: uv run --only-group=tox tox run -e lint,typing,py,coverage-report
 
   build:
+    concurrency:
+      group: packages
+      queue: max
     needs: [test]
-    uses: lsst-sqre/multiplatform-build-and-push/.github/workflows/build.yaml@v4
     secrets: inherit
+    uses: lsst-sqre/multiplatform-build-and-push/.github/workflows/build.yaml@v4
     with:
       images: ghcr.io/${{ github.repository }}
 
@@ -59,9 +62,12 @@ jobs:
               || startsWith(github.head_ref, 't/')))
 
   build-worker:
+    concurrency:
+      group: packages
+      queue: max
     needs: [test]
-    uses: lsst-sqre/multiplatform-build-and-push/.github/workflows/build.yaml@v4
     secrets: inherit
+    uses: lsst-sqre/multiplatform-build-and-push/.github/workflows/build.yaml@v4
     with:
       dockerfile: Dockerfile.worker
       images: ghcr.io/${{ github.repository }}-worker
