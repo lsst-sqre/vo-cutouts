@@ -4,9 +4,8 @@
 #   Updates the base Python image with security patches and common system
 #   packages. This image becomes the base of all other images.
 # install-image
-#   Installs third-party dependencies (requirements/main.txt) and the
-#   application into a virtual environment. This virtual environment is
-#   ideal for copying across build stages.
+#   Installs dependencies and the application into a virtual environment.
+#   This virtual environment is ideal for copying across build stages.
 # runtime-image
 #   - Copies the virtual environment into place.
 #   - Runs a non-root user.
@@ -23,7 +22,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 FROM base-image AS install-image
 
 # Install uv.
-COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /bin/uv
 
 # Install system packages only needed for building dependencies.
 COPY scripts/install-dependency-packages.sh .
