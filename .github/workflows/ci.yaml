@@ -42,7 +42,7 @@ jobs:
 
   build:
     concurrency:
-      group: packages
+      group: docker
       queue: max
     needs: [test]
     secrets: inherit
@@ -63,7 +63,7 @@ jobs:
 
   build-worker:
     concurrency:
-      group: packages
+      group: docker-worker
       queue: max
     needs: [test]
     secrets: inherit
