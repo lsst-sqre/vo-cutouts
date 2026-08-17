@@ -19,6 +19,7 @@ from lsst.dax.images.cutout import (
 from lsst.dax.images.cutout.stencils import (
     SkyCircle,
     SkyPolygon,
+    SkyStencil,
     StencilNotContainedError,
 )
 from safir.arq import ArqMode
@@ -37,6 +38,7 @@ from ..models.domain.cutout import (
     WorkerCircleStencil,
     WorkerCutout,
     WorkerPolygonStencil,
+    WorkerStencil,
 )
 
 _BUTLER_FACTORY = LabeledButlerFactory()
@@ -152,6 +154,44 @@ def _select_cutout_mode(mode: str, logger: BoundLogger) -> CutoutMode:
             raise WorkerFatalError(msg)
 
 
+def _convert_to_sky_stencils(
+    stencils: list[WorkerStencil], logger: BoundLogger
+) -> list[SkyStencil]:
+    """Convert the stencils used by cutouts to those used by the library.
+
+    Parameters
+    ----------
+    stencils
+        Input stencils.
+    logger
+        Logger to use.
+
+    Returns
+    -------
+    list of SkyStencil
+        Stencils used by the backend.
+
+    Raises
+    ------
+    WorkerFatalError
+        Raised if the stencil type was unrecognized.
+    """
+    sky_stencils = []
+    for stencil in stencils:
+        match stencil:
+            case WorkerCircleStencil(center=center, radius=radius):
+                sky_stencil = SkyCircle.from_astropy(center, radius, clip=True)
+            case WorkerPolygonStencil(vertices=vertices):
+                sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
+            case _:
+                type_str = type(stencil).__name__
+                msg = f"Internal error: unknown stencil type {type_str}"
+                logger.warning(msg)
+                raise WorkerFatalError(msg)
+        sky_stencils.append(sky_stencil)
+    return sky_stencils
+
+
 def cutout(
     params: WorkerCutout, info: WorkerJobInfo, logger: BoundLogger
 ) -> list[WorkerResult]:
@@ -204,19 +244,7 @@ def cutout(
     backend = _get_backend(butler_label, info.token, logger)
 
     # Convert the stencils to SkyStencils.
-    sky_stencils = []
-    for stencil in params.stencils:
-        match stencil:
-            case WorkerCircleStencil(center=center, radius=radius):
-                sky_stencil = SkyCircle.from_astropy(center, radius, clip=True)
-            case WorkerPolygonStencil(vertices=vertices):
-                sky_stencil = SkyPolygon.from_astropy(vertices, clip=True)
-            case _:
-                type_str = type(stencil).__name__
-                msg = f"Internal error: unknown stencil type {type_str}"
-                logger.warning(msg)
-                raise WorkerFatalError(msg)
-        sky_stencils.append(sky_stencil)
+    sky_stencils = _convert_to_sky_stencils(params.stencils, logger)
 
     # Map user request to specific cutout mode.
     cutout_mode = _select_cutout_mode(params.cutout_detail, logger)
@@ -238,6 +266,8 @@ def cutout(
     except StencilNotContainedError as e:
         msg = "No intersection between cutout and image"
         raise WorkerUsageError(msg, add_traceback=True) from e
+    except ValueError as e:
+        raise WorkerUsageError(str(e), add_traceback=True) from e
     except Exception as e:
         msg = "Cutout processing failed"
         raise WorkerFatalError(msg, str(e), add_traceback=True) from e
