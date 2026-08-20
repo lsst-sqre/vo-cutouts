@@ -6,6 +6,13 @@ Find changes for the upcoming release in the project's [changelog.d directory](h
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-5.1.1'></a>
+## 5.1.1 (2026-08-20)
+
+### Bug fixes
+
+- Report `ValueError` exceptions from the cutout backend as a usage error. This exception is now raised when the cutout and image bounding box do not intersect.
+
 <a id='changelog-5.1.0'></a>
 ## 5.1.0 (2026-07-08)
 
