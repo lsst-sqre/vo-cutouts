@@ -26,7 +26,7 @@ dependencies = [
     "numpy>=2.4",
     "pydantic>2",
     "pydantic-settings>=2.8",
-    "safir[uws]>=15.2.0",
+    "safir[uws]>=15.2.3",
     "structlog>23.3.0",
     "uvicorn[standard]>=0.34",
     "vo-models>=0.4.1",
@@ -120,7 +120,6 @@ warn_unused_ignores = true
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
-warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
